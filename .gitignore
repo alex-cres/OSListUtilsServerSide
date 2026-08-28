@@ -1,5 +1,15 @@
-bin/
-obj/
+*.pyc
+
+# .NET build output
+**/bin/
+**/obj/
+
+# Publish output & release ZIP
+**/publish/
+*.zip
+
+# IDE / user files
 *.user
 *.suo
 .vs/
+*.DotSettings.user
