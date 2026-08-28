@@ -1,0 +1,132 @@
+INSTALLING THE EXTENSION
+------------------------
+
+1. Download the ListUtilsServerSide extension from the OutSystems Forge.
+
+2. Open Service Studio, open your app or module, and go to the
+   Manage Dependencies dialog (Ctrl+Q).
+
+3. Locate the ListUtilsServerSide extension in the list, tick the
+   actions you need, then click Apply.
+
+4. Publish the module. No server-side configuration is required.
+
+If you are deploying to your own O11 environment for the first time:
+
+1. Sign in to Service Center on the target environment.
+
+2. Go to Factory > Extensions and upload the XIF (or install via
+   LifeTime).
+
+3. Publish the extension. System.Text.Json and its transitive
+   dependencies ship inside the XIF.
+
+
+CONFIGURATION
+-------------
+
+The extension has no Site Properties, no configuration screen, and
+no per-tenant settings. Every call is stateless.
+
+
+USAGE
+-----
+
+Index-based actions (List_Pop, List_PopMultiple) operate directly on
+List of Text inputs. Use them when your data is already a text list.
+
+JSON-based actions (List_PopByCondition, List_PopMultipleByCondition,
+List_Zip, List_GroupBy, List_Difference) operate on serialized JSON
+strings. Use JSON Serialize to convert any Structure List to a JSON
+string before calling these actions, then JSON Deserialize the output
+back to your target Structure List.
+
+Recommended pattern in a Server Action:
+
+1. Receive or fetch the source list.
+2. For JSON actions: call JSON Serialize on the source list.
+3. Call the appropriate ListUtils action.
+4. Use the output list (or JSON Deserialize the output string).
+5. Continue with your business logic using the modified list.
+
+
+SERVER ACTIONS
+--------------
+
+List_Pop
+  Input:  sourceList (List of Text), index (Integer)
+  Output: updatedList (List of Text), poppedElement (Text)
+  Removes the element at the given 0-based index. Returns the
+  removed element and the list without it. Out-of-range indices
+  return the original list unchanged with an empty poppedElement.
+
+List_PopMultiple
+  Input:  sourceList (List of Text), indicesToPop (List of Integer)
+  Output: updatedList (List of Text), poppedElements (List of Text)
+  Removes multiple elements by index. Indices are processed in
+  reverse-sorted order so removals do not shift remaining positions.
+  Out-of-range indices are silently ignored.
+
+List_PopByCondition
+  Input:  sourceListJson (Text), propertyName (Text), targetValue (Text)
+  Output: updatedListJson (Text), poppedElementJson (Text)
+  Finds the first object where propertyName equals targetValue
+  (case-insensitive). Removes and returns it. If no match is found,
+  updatedListJson is the original and poppedElementJson is "{}".
+  Supports camelCase fallback (e.g. "IsActive" also checks "isActive").
+
+List_PopMultipleByCondition
+  Input:  sourceListJson (Text), propertyName (Text), targetValue (Text)
+  Output: updatedListJson (Text), poppedElementsJson (Text)
+  Same as PopByCondition but removes ALL matching elements.
+  poppedElementsJson is a JSON array of all removed objects.
+
+List_Zip
+  Input:  listAJson (Text), listBJson (Text), keyNameA (Text), keyNameB (Text)
+  Output: zippedListJson (Text)
+  Pairs elements from two lists by index into objects with the given
+  key names. Truncates to the shorter list length.
+
+List_GroupBy
+  Input:  sourceListJson (Text), propertyName (Text)
+  Output: groupedListJson (Text)
+  Groups elements by the value of propertyName. Output is a JSON
+  array of objects with "Key" (the group value) and "Items" (array
+  of elements in that group). Groups appear in first-seen order.
+
+List_Difference
+  Input:  listAJson (Text), listBJson (Text), matchKey (Text)
+  Output: differenceListJson (Text)
+  Returns elements from list A whose matchKey value does not appear
+  in list B. Matching is case-insensitive. Runs in O(N) time.
+
+
+SUPPORTED INPUT
+---------------
+
+Index-based actions: any List of Text.
+
+JSON-based actions: any valid JSON array string. Elements can be any
+structure. The actions are schema-agnostic - they examine only the
+property specified by propertyName or matchKey.
+
+
+NOTES
+-----
+
+No configuration is required. All actions are stateless.
+
+Property name matching uses a camelCase fallback: if "Status" is not
+found, "status" is also checked. This handles the case where
+OutSystems JSON Serialize produces camelCase keys.
+
+Empty or null inputs are handled gracefully: null lists return empty
+lists, null JSON strings return "[]" or "{}" as appropriate.
+
+All JSON-based actions accept any valid JSON array as input. The
+elements can be any structure - the actions do not need to know the
+structure schema.
+
+If a JSON string is malformed (not valid JSON), the action will throw
+a platform error. Validate JSON before calling the action or wrap the
+call in an exception handler.
