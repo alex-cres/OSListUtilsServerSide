@@ -8,15 +8,9 @@ Advanced list manipulation utilities — index-based pops, condition-based pops,
 
 ## Objective
 
-OutSystems lists lack common collection operations found in general-purpose languages (pop, zip, group-by, set difference). Implementing these in Server Actions requires verbose nested loops. This component provides seven server-side actions that cover the most common gaps:
+OutSystems lists lack common collection operations found in general-purpose languages (pop by index, pop by condition, zip, group-by, set difference). Implementing these natively requires verbose nested `For Each` loops with manual index tracking. This component provides seven server-side actions that cover the most common gaps in a single call each.
 
-1. **Pop / PopMultiple** — remove elements by index from a string list.
-2. **PopByCondition / PopMultipleByCondition** — remove elements from a JSON-serialized list by matching a property value.
-3. **Zip** — pair two JSON lists element-by-element.
-4. **GroupBy** — group a flat JSON list by a property.
-5. **Difference** — compute the set difference of two JSON lists on a key.
-
-JSON-based actions accept any OutSystems structure list serialized with `JSON Serialize` and return JSON that can be deserialized back with `JSON Deserialize`.
+The JSON-based actions work with **any OutSystems Structure** — the caller serializes the list with `JSON Serialize`, passes it to the action, and deserializes the result. This generic approach eliminates the need for per-structure custom extensions.
 
 ---
 
@@ -31,7 +25,7 @@ Removes an element at a specific index. Returns the removed element and the upda
 | `sourceList` | `List<string>` | Input | The source list to manipulate. |
 | `index` | `int` | Input | The 0-based index of the element to remove. |
 | `updatedList` | `List<string>` | Output | The list without the popped element. |
-| `poppedElement` | `string` | Output | The element that was removed. |
+| `poppedElement` | `string` | Output | The element that was removed (empty string if index is out of range). |
 
 ### List_PopMultiple
 
@@ -42,7 +36,7 @@ Removes multiple elements at specified indices. Returns the removed elements and
 | `sourceList` | `List<string>` | Input | The source list to manipulate. |
 | `indicesToPop` | `List<int>` | Input | The list of 0-based indices to remove. |
 | `updatedList` | `List<string>` | Output | The list without the popped elements. |
-| `poppedElements` | `List<string>` | Output | The elements that were removed, in original order. |
+| `poppedElements` | `List<string>` | Output | The elements that were removed, in their original order. |
 
 ### List_PopByCondition
 
@@ -50,11 +44,11 @@ Pops the first element matching a property condition from a JSON list.
 
 | Parameter | Type | Direction | Description |
 |-----------|------|-----------|-------------|
-| `sourceListJson` | `string` | Input | The source list serialized as a JSON string. |
-| `propertyName` | `string` | Input | The attribute name to check (e.g. `IsActive`, `Id`). |
-| `targetValue` | `string` | Input | The value to match (case-insensitive). |
+| `sourceListJson` | `string` | Input | The source list serialized as a JSON string (via `JSON Serialize`). |
+| `propertyName` | `string` | Input | The attribute name to check (e.g. `IsActive`, `Id`). Supports camelCase fallback. |
+| `targetValue` | `string` | Input | The value to match (case-insensitive string comparison). |
 | `updatedListJson` | `string` | Output | The JSON list without the matched element. |
-| `poppedElementJson` | `string` | Output | The matched JSON object, or `{}` if none. |
+| `poppedElementJson` | `string` | Output | The matched JSON object, or `{}` if no match found. |
 
 ### List_PopMultipleByCondition
 
@@ -66,7 +60,7 @@ Pops all elements matching a property condition from a JSON list.
 | `propertyName` | `string` | Input | The attribute name to check. |
 | `targetValue` | `string` | Input | The value to match (case-insensitive). |
 | `updatedListJson` | `string` | Output | The JSON list without matched elements. |
-| `poppedElementsJson` | `string` | Output | JSON array of all matched elements. |
+| `poppedElementsJson` | `string` | Output | JSON array of all matched elements, or `[]` if none. |
 
 ### List_Zip
 
@@ -76,9 +70,9 @@ Combines two JSON lists into paired objects by matching index.
 |-----------|------|-----------|-------------|
 | `listAJson` | `string` | Input | The first JSON list. |
 | `listBJson` | `string` | Input | The second JSON list. |
-| `keyNameA` | `string` | Input | Key label for List A entries in the output. |
-| `keyNameB` | `string` | Input | Key label for List B entries in the output. |
-| `zippedListJson` | `string` | Output | JSON array of paired objects. |
+| `keyNameA` | `string` | Input | Key label for List A entries in the output objects. |
+| `keyNameB` | `string` | Input | Key label for List B entries in the output objects. |
+| `zippedListJson` | `string` | Output | JSON array of paired objects `[{keyNameA: ..., keyNameB: ...}, ...]`. Truncates to the shorter list. |
 
 ### List_GroupBy
 
@@ -87,8 +81,8 @@ Groups a flat JSON list by a property value.
 | Parameter | Type | Direction | Description |
 |-----------|------|-----------|-------------|
 | `sourceListJson` | `string` | Input | The source JSON list. |
-| `propertyName` | `string` | Input | The property to group by. |
-| `groupedListJson` | `string` | Output | JSON array of `{Key, Items}` groups. |
+| `propertyName` | `string` | Input | The property to group by. Supports camelCase fallback. |
+| `groupedListJson` | `string` | Output | JSON array of `{"Key": "value", "Items": [...]}` groups. Groups appear in first-seen order. |
 
 ### List_Difference
 
@@ -98,37 +92,131 @@ Computes the set difference (A − B) of two JSON lists on a key property.
 |-----------|------|-----------|-------------|
 | `listAJson` | `string` | Input | The base JSON list. |
 | `listBJson` | `string` | Input | The subtraction JSON list. |
-| `matchKey` | `string` | Input | The property to match on (e.g. `Id`). |
-| `differenceListJson` | `string` | Output | Elements in A with no match in B. |
+| `matchKey` | `string` | Input | The property to match on (e.g. `Id`). Case-insensitive comparison. |
+| `differenceListJson` | `string` | Output | Elements in A whose `matchKey` has no match in B. |
 
 ---
 
-## Platforms
+## How It Works
 
-| Platform | Target Framework |
-|----------|-----------------|
-| ODC | .NET 10 |
-| O11 | .NET Framework 4.8 |
+All actions are **stateless** and **in-memory**. There is no file I/O, no network access, and no persistent state between calls.
+
+| Action category | Mechanism | Complexity |
+|-----------------|-----------|------------|
+| Index-based pops (`List_Pop`, `List_PopMultiple`) | Direct `List<string>` manipulation using `RemoveAt`. Multiple indices are reverse-sorted before removal to avoid index shifting. | O(N) |
+| Condition-based pops (`PopByCondition`, `PopMultipleByCondition`) | Parse the JSON string into a `JsonArray`, linear scan matching `propertyName == targetValue`, return modified arrays serialized back to JSON. | O(N) |
+| `List_Zip` | Parse both JSON arrays, iterate to `Min(A.Count, B.Count)`, construct paired `JsonObject`s. | O(min(A,B)) |
+| `List_GroupBy` | Single-pass scan building a `Dictionary<string, JsonArray>` keyed by property value. Preserves insertion order via a parallel list. | O(N) |
+| `List_Difference` | Build a `HashSet<string>` from B's key values, then filter A against it. | O(A + B) |
+
+**Property name matching:** All JSON actions try the exact `propertyName` first, then a camelCase variant (first letter lowered). This handles the mismatch between OutSystems PascalCase attribute names and the camelCase keys produced by `JSON Serialize`.
+
+**Null/empty safety:** Null or empty inputs never throw — they return empty lists, `"[]"`, or `"{}"` as appropriate.
+
+**Malformed JSON:** Invalid JSON input will throw a platform error (`JsonException`). Validate JSON before calling or wrap in an exception handler.
+
+```
+[OutSystems Structure List]
+       │
+       ▼
+┌──────────────────────┐
+│    JSON Serialize    │ ───► Converts Structure List to plain text
+└──────────────────────┘
+       │
+       ▼
+┌──────────────────────┐
+│  ListUtils Action    │ ───► Manipulates the JSON (pop, zip, group, diff)
+└──────────────────────┘
+       │
+       ├───► [updatedListJson]  ───► JSON Deserialize → Structure List
+       └───► [poppedElementJson] ──► JSON Deserialize → Structure Record
+```
 
 ---
 
-## Build
+## Requirements
+
+| | ODC | O11 |
+|-|-----|-----|
+| Platform | OutSystems Developer Cloud | OutSystems 11 |
+| Runtime | Linux container (ODC Portal) | Windows (.NET Framework 4.8) |
+| .NET | 10.0 | Framework 4.8 |
+
+### NuGet Packages
+
+| Package | ODC | O11 | Notes |
+|---------|-----|-----|-------|
+| `OutSystems.ExternalLibraries.SDK` | 1.5.0 | — | ODC-only; O11 uses Integration Studio DLLs |
+| `System.Text.Json` | — | 8.0.5 | Built into net10 BCL; explicit NuGet required on net48 |
+
+All packages are MIT or OutSystems proprietary (SDK only).
+
+---
+
+## Using in ODC
+
+1. Run the packaging script to produce the upload ZIP:
+   ```powershell
+   .\ListUtils\generate_upload_package.ps1
+   ```
+2. In **ODC Portal** → **External Logic** → **Upload** the ZIP.
+3. Create and publish an External Library.
+4. In your ODC app, add `ListUtilsServerSide` as a dependency.
+5. In any Server Action, call `JSON Serialize` on your Structure List, pass the result to the desired ListUtils action, then `JSON Deserialize` the output back to your target Structure List.
+
+---
+
+## Using in O11
+
+1. Build the O11 project:
+   ```powershell
+   cd ListUtils.O11
+   dotnet build -c Release
+   ```
+2. Create an extension in **Integration Studio** with the same action signatures (7 actions, all parameters as Text, Integer Text List, or Integer List).
+3. Click **Edit Source Code**, paste the implementation from `Actions/ListUtilsActions.cs` into the generated file.
+4. Add the `System.Text.Json` NuGet package (8.0.5) to the IS-generated `.csproj`.
+5. Build in Visual Studio, return to Integration Studio → **1-Click Publish**.
+
+---
+
+## Development
+
+### Build
 
 ```bash
 dotnet build ListUtils.sln
 ```
 
-## Test
+Builds all four projects: ODC library, O11 library, ODC tests, O11 tests.
+
+### Test
 
 ```bash
 dotnet test ListUtils.sln
 ```
 
-## Package (ODC)
+Runs 52 tests (26 ODC net10.0 + 26 O11 net48).
+
+### Package (ODC)
 
 ```powershell
 .\ListUtils\generate_upload_package.ps1
 ```
+
+Publishes for `linux-x64`, zips the output to `ExternalLibrary.zip`, and verifies the file is under the 90 MB ODC Portal limit.
+
+---
+
+## Changelog
+
+See [CHANGELOG.md](./CHANGELOG.md) for the full version history.
+
+---
+
+## Third-Party Notices
+
+See [THIRD-PARTY-NOTICES.md](./THIRD-PARTY-NOTICES.md) for the full list of open-source dependencies and their licenses.
 
 ---
 

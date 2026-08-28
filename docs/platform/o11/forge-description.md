@@ -1,32 +1,96 @@
-# OSListUtilsServerSide — O11 Forge Description
+# ListUtilsServerSide — O11 Extension Forge Description
 
-> **Current Forge version:** unreleased
+> This file is the source of truth for the O11 extension description published on OutSystems Forge.
+> Update it whenever the component's behaviour, actions, or interface changes.
+> It is versioned alongside the codebase — a copy is kept per release under `docs/versions/`.
 
-Advanced list manipulation utilities for OutSystems 11. Provides index-based pops, condition-based pops on JSON-serialized lists, zip, group-by, and set difference operations that are absent or cumbersome to implement natively in O11.
+---
 
-## Server Actions
+## Short Description (Forge subtitle — 160 chars max)
 
-**List_Pop** — Removes an element at a specific index from a string list. Returns the removed element and the updated list.
+Advanced list manipulation utilities — pop by index, pop by condition, zip, group-by, and set difference. Works with any Structure via JSON serialization.
 
-**List_PopMultiple** — Removes multiple elements at specified indices. Returns the removed elements (in original order) and the updated list.
+---
 
-**List_PopByCondition** — Pops the first element matching a property condition from a JSON-serialized list. Returns the popped element and the modified list as JSON.
+## Full Description
 
-**List_PopMultipleByCondition** — Pops all elements matching a property condition from a JSON-serialized list. Returns the popped elements and the modified list as JSON.
+### What This Component Does
 
-**List_Zip** — Combines two JSON lists into paired objects based on matching indexes. Truncates to the shorter list.
+**ListUtilsServerSide** is an Extension that provides seven high-utility list manipulation actions that are absent or cumbersome to implement natively in OutSystems 11. It covers index-based removal, condition-based filtering, list pairing (zip), grouping, and set difference — all in single server-side calls.
 
-**List_GroupBy** — Groups a flat JSON list by a specific property into `{Key, Items}` groups.
+For generic structure support, the JSON-based actions accept any Structure List serialized with `JSON Serialize` and return JSON strings that can be deserialized back with `JSON Deserialize`. This eliminates the need to build separate extensions for each data structure.
 
-**List_Difference** — Computes the set difference (A − B) of two JSON lists, matching on a specified key property.
+---
 
-## Features
+### Server Actions
 
-- Index-based and condition-based element removal
-- Generic structure support via JSON serialization (works with any OutSystems Structure)
-- Case-insensitive property matching with camelCase fallback
-- Set operations (difference) with O(N) performance
+#### Index-Based Actions
 
-## Installation
+**List_Pop** — Removes an element at a specific 0-based index from a Text List. Returns the removed element and the updated list. Out-of-range indices return the original list unchanged with an empty popped element.
 
-Import the extension XIF through Service Center or LifeTime, then reference it in Service Studio.
+**List_PopMultiple** — Removes multiple elements at specified indices from a Text List. Indices are processed in reverse-sorted order so earlier removals do not shift the positions of later ones. Out-of-range indices are silently ignored.
+
+#### Condition-Based Actions (JSON)
+
+**List_PopByCondition** — Finds the first object in a JSON array where a named property equals a target value (case-insensitive). Removes and returns it. Supports camelCase fallback for property names.
+
+**List_PopMultipleByCondition** — Same as above but removes ALL matching elements. Returns the list of removed elements as a JSON array.
+
+#### Relational & Set Actions (JSON)
+
+**List_Zip** — Pairs two JSON lists element-by-element into objects with caller-specified key names. Truncates to the shorter list.
+
+**List_GroupBy** — Groups a flat JSON list by a property value. Returns an array of `{Key, Items}` objects in first-seen order.
+
+**List_Difference** — Computes the set difference (A − B) matching on a key property. Runs in O(N) time using a hash set.
+
+---
+
+### How to Use
+
+1. Import the extension XIF through **Service Center** or **LifeTime**.
+
+2. In **Service Studio**, add **ListUtilsServerSide** as a dependency (Ctrl+Q → search → tick the actions).
+
+3. In any Server Action:
+
+```
+[Your Structure List]
+       │
+       ▼
+┌──────────────────────┐
+│    JSON Serialize    │ ───► Converts Structure List to plain text
+└──────────────────────┘
+       │
+       ▼
+┌──────────────────────┐
+│  ListUtils Action    │ ───► Manipulates (pop, zip, group, diff)
+└──────────────────────┘
+       │
+       ├───► [updatedListJson]  ───► JSON Deserialize → Structure List
+       └───► [poppedElementJson] ──► JSON Deserialize → Structure Record
+```
+
+4. For index-based actions (`List_Pop`, `List_PopMultiple`), pass `List of Text` directly — no JSON serialization needed.
+
+---
+
+### Features
+
+- **7 server-side actions** covering the most common list manipulation gaps
+- **Generic structure support** via JSON serialization — works with any OutSystems Structure
+- **Case-insensitive property matching** with automatic camelCase fallback
+- **O(N) performance** for all operations — no nested loops
+- **Null-safe** — empty or null inputs return empty results, never exceptions
+- **Stateless** — no configuration, no site properties, no persistent state
+
+---
+
+### Installation
+
+Import the extension XIF through Service Center or LifeTime, then reference it in Service Studio. The `System.Text.Json` dependency and its transitive assemblies ship inside the XIF — nothing else needs to be installed on the server.
+
+### Compatibility
+
+- Requires .NET Framework 4.8 on the O11 server.
+- Bundles `System.Text.Json` 8.0.5 (MIT license). If another extension on the same server bundles a different version, use a binding redirect in the eSpace web.config.
