@@ -1,3 +1,5 @@
+using System.Text.Json.Nodes;
+
 namespace ListUtils.Tests;
 
 public class ListPopTests
@@ -7,117 +9,130 @@ public class ListPopTests
     [Fact]
     public void List_Pop_ValidIndex_ReturnsElementAndUpdatedList()
     {
-        var source = new List<string> { "a", "b", "c" };
+        string json = """["a","b","c"]""";
 
-        _sut.List_Pop(source, 1, out var updated, out var popped);
+        _sut.List_Pop(json, 1, out var updated, out var popped);
 
-        Assert.Equal("b", popped);
-        Assert.Equal(new List<string> { "a", "c" }, updated);
+        Assert.Equal("\"b\"", popped);
+        var arr = JsonNode.Parse(updated)!.AsArray();
+        Assert.Equal(2, arr.Count);
+        Assert.Equal("a", arr[0]!.ToString());
+        Assert.Equal("c", arr[1]!.ToString());
     }
 
     [Fact]
     public void List_Pop_IndexOutOfRange_ReturnsOriginalList()
     {
-        var source = new List<string> { "a", "b" };
+        string json = """["a","b"]""";
 
-        _sut.List_Pop(source, 5, out var updated, out var popped);
+        _sut.List_Pop(json, 5, out var updated, out var popped);
 
-        Assert.Equal("", popped);
-        Assert.Equal(source, updated);
+        Assert.Equal("null", popped);
+        Assert.Equal(json, updated);
     }
 
     [Fact]
     public void List_Pop_NegativeIndex_ReturnsOriginalList()
     {
-        var source = new List<string> { "a", "b" };
+        string json = """["a","b"]""";
 
-        _sut.List_Pop(source, -1, out var updated, out var popped);
+        _sut.List_Pop(json, -1, out var updated, out var popped);
 
-        Assert.Equal("", popped);
-        Assert.Equal(source, updated);
+        Assert.Equal("null", popped);
+        Assert.Equal(json, updated);
     }
 
     [Fact]
-    public void List_Pop_NullList_ReturnsEmptyList()
+    public void List_Pop_NullInput_ReturnsEmpty()
     {
         _sut.List_Pop(null!, 0, out var updated, out var popped);
 
-        Assert.Equal("", popped);
-        Assert.Empty(updated);
+        Assert.Equal("null", popped);
+        Assert.Equal("[]", updated);
     }
 
     [Fact]
     public void List_Pop_FirstElement_RemovesFirst()
     {
-        var source = new List<string> { "x", "y", "z" };
+        string json = """["x","y","z"]""";
 
-        _sut.List_Pop(source, 0, out var updated, out var popped);
+        _sut.List_Pop(json, 0, out var updated, out var popped);
 
-        Assert.Equal("x", popped);
-        Assert.Equal(new List<string> { "y", "z" }, updated);
+        Assert.Equal("\"x\"", popped);
+        var arr = JsonNode.Parse(updated)!.AsArray();
+        Assert.Equal(2, arr.Count);
     }
 
     [Fact]
     public void List_Pop_LastElement_RemovesLast()
     {
-        var source = new List<string> { "x", "y", "z" };
+        string json = """["x","y","z"]""";
 
-        _sut.List_Pop(source, 2, out var updated, out var popped);
+        _sut.List_Pop(json, 2, out var updated, out var popped);
 
-        Assert.Equal("z", popped);
-        Assert.Equal(new List<string> { "x", "y" }, updated);
+        Assert.Equal("\"z\"", popped);
+        var arr = JsonNode.Parse(updated)!.AsArray();
+        Assert.Equal(2, arr.Count);
+    }
+
+    [Fact]
+    public void List_Pop_ObjectElement_ReturnsJsonObject()
+    {
+        string json = """[{"Id":1,"Name":"Alice"},{"Id":2,"Name":"Bob"}]""";
+
+        _sut.List_Pop(json, 0, out var updated, out var popped);
+
+        var poppedObj = JsonNode.Parse(popped)!.AsObject();
+        Assert.Equal("Alice", poppedObj["Name"]!.ToString());
+        var arr = JsonNode.Parse(updated)!.AsArray();
+        Assert.Single(arr);
     }
 
     [Fact]
     public void List_PopMultiple_ValidIndices_ReturnsElementsInOrder()
     {
-        var source = new List<string> { "a", "b", "c", "d", "e" };
+        string json = """["a","b","c","d","e"]""";
 
-        _sut.List_PopMultiple(source, new List<int> { 1, 3 }, out var updated, out var popped);
+        _sut.List_PopMultiple(json, "1,3", out var updated, out var popped);
 
-        Assert.Equal(new List<string> { "b", "d" }, popped);
-        Assert.Equal(new List<string> { "a", "c", "e" }, updated);
-    }
+        var poppedArr = JsonNode.Parse(popped)!.AsArray();
+        Assert.Equal(2, poppedArr.Count);
+        Assert.Equal("b", poppedArr[0]!.ToString());
+        Assert.Equal("d", poppedArr[1]!.ToString());
 
-    [Fact]
-    public void List_PopMultiple_NullIndices_ReturnsOriginalList()
-    {
-        var source = new List<string> { "a", "b" };
-
-        _sut.List_PopMultiple(source, null!, out var updated, out var popped);
-
-        Assert.Equal(source, updated);
-        Assert.Empty(popped);
+        var updatedArr = JsonNode.Parse(updated)!.AsArray();
+        Assert.Equal(3, updatedArr.Count);
     }
 
     [Fact]
     public void List_PopMultiple_EmptyIndices_ReturnsOriginalList()
     {
-        var source = new List<string> { "a", "b" };
+        string json = """["a","b"]""";
 
-        _sut.List_PopMultiple(source, new List<int>(), out var updated, out var popped);
+        _sut.List_PopMultiple(json, "", out var updated, out var popped);
 
-        Assert.Equal(source, updated);
-        Assert.Empty(popped);
+        Assert.Equal(json, updated);
+        Assert.Equal("[]", popped);
     }
 
     [Fact]
     public void List_PopMultiple_OutOfRangeIndicesIgnored()
     {
-        var source = new List<string> { "a", "b", "c" };
+        string json = """["a","b","c"]""";
 
-        _sut.List_PopMultiple(source, new List<int> { 0, 99 }, out var updated, out var popped);
+        _sut.List_PopMultiple(json, "0,99", out var updated, out var popped);
 
-        Assert.Equal(new List<string> { "a" }, popped);
-        Assert.Equal(new List<string> { "b", "c" }, updated);
+        var poppedArr = JsonNode.Parse(popped)!.AsArray();
+        Assert.Single(poppedArr);
+        Assert.Equal("a", poppedArr[0]!.ToString());
     }
 
     [Fact]
     public void List_PopMultiple_NullSource_ReturnsEmpty()
     {
-        _sut.List_PopMultiple(null!, new List<int> { 0 }, out var updated, out var popped);
+        _sut.List_PopMultiple(null!, "0", out var updated, out var popped);
 
-        Assert.Empty(updated);
-        Assert.Empty(popped);
+        Assert.Equal("[]", updated);
+        Assert.Equal("[]", popped);
     }
 }

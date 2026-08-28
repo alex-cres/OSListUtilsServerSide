@@ -6,56 +6,81 @@ namespace ListUtils;
 public class ListUtils : IListUtils
 {
     public void List_Pop(
-        List<string> sourceList,
+        string sourceListJson,
         int index,
-        out List<string> updatedList,
-        out string poppedElement)
+        out string updatedListJson,
+        out string poppedElementJson)
     {
-        if (sourceList == null || index < 0 || index >= sourceList.Count)
+        if (string.IsNullOrEmpty(sourceListJson))
         {
-            updatedList = sourceList ?? new List<string>();
-            poppedElement = "";
+            updatedListJson = "[]";
+            poppedElementJson = "null";
             return;
         }
 
-        var resultList = new List<string>(sourceList);
-        poppedElement = resultList[index];
-        resultList.RemoveAt(index);
-        updatedList = resultList;
+        var array = JsonNode.Parse(sourceListJson)!.AsArray();
+
+        if (index < 0 || index >= array.Count)
+        {
+            updatedListJson = sourceListJson;
+            poppedElementJson = "null";
+            return;
+        }
+
+        var popped = array[index];
+        poppedElementJson = popped?.ToJsonString(JsonOptions) ?? "null";
+        array.RemoveAt(index);
+        updatedListJson = array.ToJsonString(JsonOptions);
     }
 
     public void List_PopMultiple(
-        List<string> sourceList,
-        List<int> indicesToPop,
-        out List<string> updatedList,
-        out List<string> poppedElements)
+        string sourceListJson,
+        string indicesToPop,
+        out string updatedListJson,
+        out string poppedElementsJson)
     {
-        updatedList = new List<string>();
-        poppedElements = new List<string>();
-
-        if (sourceList == null) return;
-
-        var resultList = new List<string>(sourceList);
-        if (indicesToPop == null || indicesToPop.Count == 0)
+        if (string.IsNullOrEmpty(sourceListJson))
         {
-            updatedList = resultList;
+            updatedListJson = "[]";
+            poppedElementsJson = "[]";
             return;
         }
 
-        var sortedIndices = new List<int>(indicesToPop);
-        sortedIndices.Sort();
-        sortedIndices.Reverse();
+        var array = JsonNode.Parse(sourceListJson)!.AsArray();
 
-        foreach (int index in sortedIndices)
+        if (string.IsNullOrEmpty(indicesToPop))
         {
-            if (index >= 0 && index < resultList.Count)
+            updatedListJson = sourceListJson;
+            poppedElementsJson = "[]";
+            return;
+        }
+
+        var indices = indicesToPop.Split(',')
+            .Select(s => int.TryParse(s.Trim(), out var v) ? v : -1)
+            .Where(i => i >= 0)
+            .Distinct()
+            .OrderByDescending(i => i)
+            .ToList();
+
+        var poppedArray = new JsonArray();
+
+        foreach (int idx in indices)
+        {
+            if (idx < array.Count)
             {
-                poppedElements.Insert(0, resultList[index]);
-                resultList.RemoveAt(index);
+                var item = array[idx];
+                poppedArray.Add(JsonNode.Parse(item!.ToJsonString())!);
+                array.RemoveAt(idx);
             }
         }
 
-        updatedList = resultList;
+        // Reverse so popped elements are in original order
+        var ordered = new JsonArray();
+        for (int i = poppedArray.Count - 1; i >= 0; i--)
+            ordered.Add(JsonNode.Parse(poppedArray[i]!.ToJsonString())!);
+
+        updatedListJson = array.ToJsonString(JsonOptions);
+        poppedElementsJson = ordered.ToJsonString(JsonOptions);
     }
 
     public void List_PopByCondition(

@@ -9,56 +9,80 @@ namespace OutSystems.NssListUtils;
 public class CssListUtils : IssListUtils
 {
     public void MssList_Pop(
-        List<string> ssSourceList,
+        string ssSourceListJson,
         int ssIndex,
-        out List<string> ssUpdatedList,
-        out string ssPoppedElement)
+        out string ssUpdatedListJson,
+        out string ssPoppedElementJson)
     {
-        if (ssSourceList == null || ssIndex < 0 || ssIndex >= ssSourceList.Count)
+        if (string.IsNullOrEmpty(ssSourceListJson))
         {
-            ssUpdatedList = ssSourceList ?? new List<string>();
-            ssPoppedElement = "";
+            ssUpdatedListJson = "[]";
+            ssPoppedElementJson = "null";
             return;
         }
 
-        var resultList = new List<string>(ssSourceList);
-        ssPoppedElement = resultList[ssIndex];
-        resultList.RemoveAt(ssIndex);
-        ssUpdatedList = resultList;
+        var array = JsonNode.Parse(ssSourceListJson)!.AsArray();
+
+        if (ssIndex < 0 || ssIndex >= array.Count)
+        {
+            ssUpdatedListJson = ssSourceListJson;
+            ssPoppedElementJson = "null";
+            return;
+        }
+
+        var popped = array[ssIndex];
+        ssPoppedElementJson = popped?.ToJsonString(JsonOptions) ?? "null";
+        array.RemoveAt(ssIndex);
+        ssUpdatedListJson = array.ToJsonString(JsonOptions);
     }
 
     public void MssList_PopMultiple(
-        List<string> ssSourceList,
-        List<int> ssIndicesToPop,
-        out List<string> ssUpdatedList,
-        out List<string> ssPoppedElements)
+        string ssSourceListJson,
+        string ssIndicesToPop,
+        out string ssUpdatedListJson,
+        out string ssPoppedElementsJson)
     {
-        ssUpdatedList = new List<string>();
-        ssPoppedElements = new List<string>();
-
-        if (ssSourceList == null) return;
-
-        var resultList = new List<string>(ssSourceList);
-        if (ssIndicesToPop == null || ssIndicesToPop.Count == 0)
+        if (string.IsNullOrEmpty(ssSourceListJson))
         {
-            ssUpdatedList = resultList;
+            ssUpdatedListJson = "[]";
+            ssPoppedElementsJson = "[]";
             return;
         }
 
-        var sortedIndices = new List<int>(ssIndicesToPop);
-        sortedIndices.Sort();
-        sortedIndices.Reverse();
+        var array = JsonNode.Parse(ssSourceListJson)!.AsArray();
 
-        foreach (int index in sortedIndices)
+        if (string.IsNullOrEmpty(ssIndicesToPop))
         {
-            if (index >= 0 && index < resultList.Count)
+            ssUpdatedListJson = ssSourceListJson;
+            ssPoppedElementsJson = "[]";
+            return;
+        }
+
+        var indices = ssIndicesToPop.Split(',')
+            .Select(s => int.TryParse(s.Trim(), out var v) ? v : -1)
+            .Where(i => i >= 0)
+            .Distinct()
+            .OrderByDescending(i => i)
+            .ToList();
+
+        var poppedArray = new JsonArray();
+
+        foreach (int idx in indices)
+        {
+            if (idx < array.Count)
             {
-                ssPoppedElements.Insert(0, resultList[index]);
-                resultList.RemoveAt(index);
+                var item = array[idx];
+                poppedArray.Add(JsonNode.Parse(item!.ToJsonString())!);
+                array.RemoveAt(idx);
             }
         }
 
-        ssUpdatedList = resultList;
+        var ordered = new JsonArray();
+        for (int i = poppedArray.Count - 1; i >= 0; i--)
+            ordered.Add(JsonNode.Parse(poppedArray[i]!.ToJsonString())!);
+
+        ssUpdatedListJson = array.ToJsonString(JsonOptions);
+        ssPoppedElementsJson = ordered.ToJsonString(JsonOptions);
     }
 
     public void MssList_PopByCondition(

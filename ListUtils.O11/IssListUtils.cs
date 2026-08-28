@@ -5,16 +5,16 @@ namespace OutSystems.NssListUtils;
 public interface IssListUtils
 {
     void MssList_Pop(
-        List<string> ssSourceList,
+        string ssSourceListJson,
         int ssIndex,
-        out List<string> ssUpdatedList,
-        out string ssPoppedElement);
+        out string ssUpdatedListJson,
+        out string ssPoppedElementJson);
 
     void MssList_PopMultiple(
-        List<string> ssSourceList,
-        List<int> ssIndicesToPop,
-        out List<string> ssUpdatedList,
-        out List<string> ssPoppedElements);
+        string ssSourceListJson,
+        string ssIndicesToPop,
+        out string ssUpdatedListJson,
+        out string ssPoppedElementsJson);
 
     void MssList_PopByCondition(
         string ssSourceListJson,

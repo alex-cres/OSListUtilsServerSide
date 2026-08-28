@@ -5,27 +5,27 @@ namespace ListUtils;
 [OSInterface(Description = "Advanced list manipulation utilities — index-based pops, condition-based pops, zip, group-by, and set difference. Uses JSON serialization for generic structure support.", IconResourceName = "ListUtils.resources.icon.png")]
 public interface IListUtils
 {
-    [OSAction(Description = "Removes an element at a specific index. Returns the removed element and the updated list.")]
+    [OSAction(Description = "Removes an element at a specific index from a JSON list. Returns the removed element and the updated list as JSON.")]
     void List_Pop(
-        [OSParameter(Description = "The source list to manipulate")]
-        List<string> sourceList,
+        [OSParameter(Description = "The source list serialized as a JSON array string")]
+        string sourceListJson,
         [OSParameter(Description = "The 0-based index of the element to remove")]
         int index,
-        [OSParameter(Description = "The list without the popped element")]
-        out List<string> updatedList,
-        [OSParameter(Description = "The element that was removed")]
-        out string poppedElement);
+        [OSParameter(Description = "The JSON array without the popped element")]
+        out string updatedListJson,
+        [OSParameter(Description = "The JSON element that was removed")]
+        out string poppedElementJson);
 
-    [OSAction(Description = "Removes multiple elements at specified indices. Returns the removed elements and the updated list.")]
+    [OSAction(Description = "Removes multiple elements at specified indices from a JSON list. Returns the removed elements and the updated list as JSON.")]
     void List_PopMultiple(
-        [OSParameter(Description = "The source list to manipulate")]
-        List<string> sourceList,
-        [OSParameter(Description = "The list of 0-based indices to remove")]
-        List<int> indicesToPop,
-        [OSParameter(Description = "The list without the popped elements")]
-        out List<string> updatedList,
-        [OSParameter(Description = "The elements that were removed")]
-        out List<string> poppedElements);
+        [OSParameter(Description = "The source list serialized as a JSON array string")]
+        string sourceListJson,
+        [OSParameter(Description = "Comma-separated 0-based indices to remove (e.g. '1,3,5')")]
+        string indicesToPop,
+        [OSParameter(Description = "The JSON array without the popped elements")]
+        out string updatedListJson,
+        [OSParameter(Description = "The JSON array of elements that were removed")]
+        out string poppedElementsJson);
 
     [OSAction(Description = "Pops the first element matching a property condition. Returns the popped element and modified list as JSON.")]
     void List_PopByCondition(
