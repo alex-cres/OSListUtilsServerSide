@@ -2,7 +2,7 @@ using OutSystems.ExternalLibraries.SDK;
 
 namespace ListUtils;
 
-[OSInterface(Description = "Advanced list manipulation utilities — index-based pops, condition-based pops, zip, group-by, and set difference. Uses JSON serialization for generic structure support.")]
+[OSInterface(Description = "Advanced list manipulation utilities — index-based pops, condition-based pops, zip, group-by, and set difference. Uses JSON serialization for generic structure support.", IconResourceName = "ListUtils.resources.icon.png")]
 public interface IListUtils
 {
     [OSAction(Description = "Removes an element at a specific index. Returns the removed element and the updated list.")]
