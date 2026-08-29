@@ -35,6 +35,8 @@ public interface IListUtils
         string propertyName,
         [OSParameter(Description = "The value to filter by (as a string, e.g. 'true' or '5')")]
         string targetValue,
+        [OSParameter(Description = "Comparison operator: Equals (default), NotEquals, Contains, StartsWith, EndsWith, GreaterThan, LessThan, GreaterOrEqual, LessOrEqual. Empty = Equals.")]
+        string comparisonOperator,
         [OSParameter(Description = "The updated JSON list without the matched element")]
         out string updatedListJson,
         [OSParameter(Description = "The single JSON object that was matched and removed")]
@@ -48,6 +50,8 @@ public interface IListUtils
         string propertyName,
         [OSParameter(Description = "The value to filter by")]
         string targetValue,
+        [OSParameter(Description = "Comparison operator: Equals (default), NotEquals, Contains, StartsWith, EndsWith, GreaterThan, LessThan, GreaterOrEqual, LessOrEqual. Empty = Equals.")]
+        string comparisonOperator,
         [OSParameter(Description = "The updated JSON list without any matched elements")]
         out string updatedListJson,
         [OSParameter(Description = "The JSON array of all items that were matched and removed")]
@@ -83,6 +87,8 @@ public interface IListUtils
         string listBJson,
         [OSParameter(Description = "The property key to match on (e.g. 'Id')")]
         string matchKey,
+        [OSParameter(Description = "Comparison operator for key matching: Equals (default), Contains, StartsWith. Empty = Equals.")]
+        string comparisonOperator,
         [OSParameter(Description = "The elements in A that have no match in B")]
         out string differenceListJson);
 }

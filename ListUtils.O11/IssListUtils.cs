@@ -20,6 +20,7 @@ public interface IssListUtils
         string ssSourceListJson,
         string ssPropertyName,
         string ssTargetValue,
+        string ssComparisonOperator,
         out string ssUpdatedListJson,
         out string ssPoppedElementJson);
 
@@ -27,6 +28,7 @@ public interface IssListUtils
         string ssSourceListJson,
         string ssPropertyName,
         string ssTargetValue,
+        string ssComparisonOperator,
         out string ssUpdatedListJson,
         out string ssPoppedElementsJson);
 
@@ -46,5 +48,6 @@ public interface IssListUtils
         string ssListAJson,
         string ssListBJson,
         string ssMatchKey,
+        string ssComparisonOperator,
         out string ssDifferenceListJson);
 }

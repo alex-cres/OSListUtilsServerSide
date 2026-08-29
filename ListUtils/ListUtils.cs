@@ -87,6 +87,7 @@ public class ListUtils : IListUtils
         string sourceListJson,
         string propertyName,
         string targetValue,
+        string comparisonOperator,
         out string updatedListJson,
         out string poppedElementJson)
     {
@@ -103,7 +104,7 @@ public class ListUtils : IListUtils
         for (int i = 0; i < array.Count; i++)
         {
             var value = GetPropertyValue(array[i]!, propertyName);
-            if (value != null && value.Equals(targetValue, StringComparison.OrdinalIgnoreCase))
+            if (value != null && MatchesCondition(value, targetValue, comparisonOperator))
             {
                 matchedNode = array[i];
                 array.RemoveAt(i);
@@ -119,6 +120,7 @@ public class ListUtils : IListUtils
         string sourceListJson,
         string propertyName,
         string targetValue,
+        string comparisonOperator,
         out string updatedListJson,
         out string poppedElementsJson)
     {
@@ -136,7 +138,7 @@ public class ListUtils : IListUtils
         foreach (var item in originalArray)
         {
             var value = GetPropertyValue(item!, propertyName);
-            if (value != null && value.Equals(targetValue, StringComparison.OrdinalIgnoreCase))
+            if (value != null && MatchesCondition(value, targetValue, comparisonOperator))
             {
                 poppedArray.Add(JsonNode.Parse(item!.ToJsonString())!);
             }
@@ -225,6 +227,7 @@ public class ListUtils : IListUtils
         string listAJson,
         string listBJson,
         string matchKey,
+        string comparisonOperator,
         out string differenceListJson)
     {
         if (string.IsNullOrEmpty(listAJson)) { differenceListJson = "[]"; return; }
@@ -233,18 +236,19 @@ public class ListUtils : IListUtils
         var arrA = JsonNode.Parse(listAJson)!.AsArray();
         var arrB = JsonNode.Parse(listBJson)!.AsArray();
 
-        var keysInB = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var bValues = new List<string>();
         foreach (var b in arrB)
         {
             var k = GetPropertyValue(b!, matchKey);
-            if (k != null) keysInB.Add(k);
+            if (k != null) bValues.Add(k);
         }
 
         var result = new JsonArray();
         foreach (var item in arrA)
         {
             var key = GetPropertyValue(item!, matchKey);
-            if (key == null || !keysInB.Contains(key))
+            bool matchedAny = key != null && bValues.Any(bv => MatchesCondition(key, bv, comparisonOperator));
+            if (!matchedAny)
             {
                 result.Add(JsonNode.Parse(item!.ToJsonString())!);
             }
@@ -263,6 +267,46 @@ public class ListUtils : IListUtils
         if (obj.TryGetPropertyValue(camel, out val) && val != null)
             return val.ToString();
         return null;
+    }
+
+    private static bool MatchesCondition(string actual, string target, string? op)
+    {
+        var normalized = (op ?? "").Trim();
+        switch (normalized.ToUpperInvariant())
+        {
+            case "NOTEQUALS":
+            case "!=":
+                return !actual.Equals(target, StringComparison.OrdinalIgnoreCase);
+            case "CONTAINS":
+                return actual.Contains(target, StringComparison.OrdinalIgnoreCase);
+            case "STARTSWITH":
+                return actual.StartsWith(target, StringComparison.OrdinalIgnoreCase);
+            case "ENDSWITH":
+                return actual.EndsWith(target, StringComparison.OrdinalIgnoreCase);
+            case "GREATERTHAN":
+            case ">":
+                return TryCompareNumeric(actual, target, out int gt) && gt > 0;
+            case "LESSTHAN":
+            case "<":
+                return TryCompareNumeric(actual, target, out int lt) && lt < 0;
+            case "GREATEROREQUAL":
+            case ">=":
+                return TryCompareNumeric(actual, target, out int ge) && ge >= 0;
+            case "LESSOREQUAL":
+            case "<=":
+                return TryCompareNumeric(actual, target, out int le) && le <= 0;
+            default:
+                return actual.Equals(target, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    private static bool TryCompareNumeric(string a, string b, out int result)
+    {
+        result = 0;
+        if (!decimal.TryParse(a, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var da)) return false;
+        if (!decimal.TryParse(b, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var db)) return false;
+        result = da.CompareTo(db);
+        return true;
     }
 
     private static string ToCamelCase(string str)

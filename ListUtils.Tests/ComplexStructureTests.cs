@@ -40,7 +40,7 @@ public class ComplexStructureTests
             ]
             """;
 
-        _sut.List_PopByCondition(json, "Id", "2", out var updated, out var popped);
+        _sut.List_PopByCondition(json, "Id", "2", "", out var updated, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("Inactive", poppedObj["Meta"]!["Status"]!.ToString());
@@ -119,7 +119,7 @@ public class ComplexStructureTests
             ]
             """;
 
-        _sut.List_Difference(listA, listB, "OrderId", out var diff);
+        _sut.List_Difference(listA, listB, "OrderId", "", out var diff);
 
         var arr = JsonNode.Parse(diff)!.AsArray();
         Assert.Equal(2, arr.Count);
@@ -175,7 +175,7 @@ public class ComplexStructureTests
             ]
             """;
 
-        _sut.List_PopMultipleByCondition(json, "InStock", "true", out var updated, out var popped);
+        _sut.List_PopMultipleByCondition(json, "InStock", "true", "", out var updated, out var popped);
 
         var poppedArr = JsonNode.Parse(popped)!.AsArray();
         Assert.Equal(2, poppedArr.Count);
@@ -233,7 +233,7 @@ public class ComplexStructureTests
             ]
             """;
 
-        _sut.List_PopByCondition(json, "Lang", "中文", out var updated, out var popped);
+        _sut.List_PopByCondition(json, "Lang", "中文", "", out var updated, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("你好", poppedObj["Text"]!.ToString());
@@ -258,7 +258,7 @@ public class ComplexStructureTests
             ]
             """;
 
-        _sut.List_Difference(listA, listB, "Email", out var diff);
+        _sut.List_Difference(listA, listB, "Email", "", out var diff);
 
         var arr = JsonNode.Parse(diff)!.AsArray();
         Assert.Equal(2, arr.Count);

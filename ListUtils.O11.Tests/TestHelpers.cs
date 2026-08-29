@@ -11,11 +11,11 @@ internal interface IListUtils
 {
     void List_Pop(string sourceListJson, int index, out string updatedListJson, out string poppedElementJson);
     void List_PopMultiple(string sourceListJson, string indicesToPop, out string updatedListJson, out string poppedElementsJson);
-    void List_PopByCondition(string sourceListJson, string propertyName, string targetValue, out string updatedListJson, out string poppedElementJson);
-    void List_PopMultipleByCondition(string sourceListJson, string propertyName, string targetValue, out string updatedListJson, out string poppedElementsJson);
+    void List_PopByCondition(string sourceListJson, string propertyName, string targetValue, string comparisonOperator, out string updatedListJson, out string poppedElementJson);
+    void List_PopMultipleByCondition(string sourceListJson, string propertyName, string targetValue, string comparisonOperator, out string updatedListJson, out string poppedElementsJson);
     void List_Zip(string listAJson, string listBJson, string keyNameA, string keyNameB, out string zippedListJson);
     void List_GroupBy(string sourceListJson, string propertyName, out string groupedListJson);
-    void List_Difference(string listAJson, string listBJson, string matchKey, out string differenceListJson);
+    void List_Difference(string listAJson, string listBJson, string matchKey, string comparisonOperator, out string differenceListJson);
 }
 
 internal sealed class ListUtils : IListUtils
@@ -28,11 +28,11 @@ internal sealed class ListUtils : IListUtils
     public void List_PopMultiple(string sourceListJson, string indicesToPop, out string updatedListJson, out string poppedElementsJson)
         => _inner.MssList_PopMultiple(sourceListJson, indicesToPop, out updatedListJson, out poppedElementsJson);
 
-    public void List_PopByCondition(string sourceListJson, string propertyName, string targetValue, out string updatedListJson, out string poppedElementJson)
-        => _inner.MssList_PopByCondition(sourceListJson, propertyName, targetValue, out updatedListJson, out poppedElementJson);
+    public void List_PopByCondition(string sourceListJson, string propertyName, string targetValue, string comparisonOperator, out string updatedListJson, out string poppedElementJson)
+        => _inner.MssList_PopByCondition(sourceListJson, propertyName, targetValue, comparisonOperator, out updatedListJson, out poppedElementJson);
 
-    public void List_PopMultipleByCondition(string sourceListJson, string propertyName, string targetValue, out string updatedListJson, out string poppedElementsJson)
-        => _inner.MssList_PopMultipleByCondition(sourceListJson, propertyName, targetValue, out updatedListJson, out poppedElementsJson);
+    public void List_PopMultipleByCondition(string sourceListJson, string propertyName, string targetValue, string comparisonOperator, out string updatedListJson, out string poppedElementsJson)
+        => _inner.MssList_PopMultipleByCondition(sourceListJson, propertyName, targetValue, comparisonOperator, out updatedListJson, out poppedElementsJson);
 
     public void List_Zip(string listAJson, string listBJson, string keyNameA, string keyNameB, out string zippedListJson)
         => _inner.MssList_Zip(listAJson, listBJson, keyNameA, keyNameB, out zippedListJson);
@@ -40,6 +40,6 @@ internal sealed class ListUtils : IListUtils
     public void List_GroupBy(string sourceListJson, string propertyName, out string groupedListJson)
         => _inner.MssList_GroupBy(sourceListJson, propertyName, out groupedListJson);
 
-    public void List_Difference(string listAJson, string listBJson, string matchKey, out string differenceListJson)
-        => _inner.MssList_Difference(listAJson, listBJson, matchKey, out differenceListJson);
+    public void List_Difference(string listAJson, string listBJson, string matchKey, string comparisonOperator, out string differenceListJson)
+        => _inner.MssList_Difference(listAJson, listBJson, matchKey, comparisonOperator, out differenceListJson);
 }
