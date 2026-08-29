@@ -51,11 +51,13 @@ List_PopMultiple
 
 List_PopByCondition
   Input:  sourceListJson (Text), propertyName (Text), targetValue (Text),
-          comparisonOperator (Text), caseSensitive (Boolean)
+          comparisonOperator (Text), caseSensitive (Boolean),
+          searchFromEnd (Boolean)
   Output: updatedListJson (Text), poppedElementJson (Text)
-  Finds the first object where propertyName matches targetValue using
-  the given comparisonOperator. Removes and returns it. If no match is
-  found, updatedListJson is the original and poppedElementJson is "{}".
+  Finds the first (or last, if searchFromEnd = True) object where
+  propertyName matches targetValue using the given comparisonOperator.
+  Removes and returns it. If no match is found, updatedListJson is the
+  original and poppedElementJson is "{}".
   propertyName supports dot-separated nested paths and array indexing
   (e.g. "Address.City", "Items[0].Name", "Tags[-1]").
 
@@ -68,11 +70,12 @@ List_PopMultipleByCondition
 
 List_PopByConditions
   Input:  sourceListJson (Text), conditionsJson (Text),
-          logicalOperator (Text)
+          logicalOperator (Text), searchFromEnd (Boolean)
   Output: updatedListJson (Text), poppedElementJson (Text)
-  Finds the first object matching multiple conditions combined with
-  AND (default) or OR. conditionsJson is a JSON array of objects with
-  path, operator, value, and optional caseSensitive fields.
+  Finds the first (or last, if searchFromEnd = True) object matching
+  multiple conditions combined with AND (default) or OR. conditionsJson
+  is a JSON array of objects with path, operator, value, and optional
+  caseSensitive fields.
 
 List_PopMultipleByConditions
   Input:  sourceListJson (Text), conditionsJson (Text),
@@ -167,6 +170,20 @@ Each condition entry supports:
 Combined with logicalOperator = "AND" (all must match) or "OR" (at
 least one must match). Empty conditions array returns the original
 list unchanged.
+
+
+SEARCH DIRECTION
+----------------
+
+List_PopByCondition and List_PopByConditions accept a searchFromEnd
+Boolean:
+
+  False (default)   Iterates from index 0 upward. Pops the FIRST match.
+  True              Iterates from the last index downward. Pops the
+                    LAST match.
+
+List_PopMultipleByCondition and List_PopMultipleByConditions always
+pop every match, so they do not need this flag.
 
 
 NOTES

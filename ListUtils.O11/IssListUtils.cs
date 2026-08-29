@@ -22,6 +22,7 @@ public interface IssListUtils
         string ssTargetValue,
         string ssComparisonOperator,
         bool ssCaseSensitive,
+        bool ssSearchFromEnd,
         out string ssUpdatedListJson,
         out string ssPoppedElementJson);
 
@@ -38,6 +39,7 @@ public interface IssListUtils
         string ssSourceListJson,
         string ssConditionsJson,
         string ssLogicalOperator,
+        bool ssSearchFromEnd,
         out string ssUpdatedListJson,
         out string ssPoppedElementJson);
 

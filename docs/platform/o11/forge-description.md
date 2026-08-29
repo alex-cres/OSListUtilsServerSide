@@ -98,6 +98,17 @@ Combined with `logicalOperator = "AND"` (all must match) or `"OR"` (at least one
 
 ---
 
+### Search Direction
+
+`List_PopByCondition` and `List_PopByConditions` accept a `SearchFromEnd` boolean:
+
+- `false` (default) — pops the FIRST match, iterating from the beginning
+- `true` — pops the LAST match, iterating from the end
+
+`List_PopMultipleByCondition` and `List_PopMultipleByConditions` always pop every match, so they do not need this flag.
+
+---
+
 ### How to Use
 
 1. Import the extension XIF through **Service Center** or **LifeTime**.

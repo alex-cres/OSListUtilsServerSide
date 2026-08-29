@@ -11,7 +11,7 @@ public class CaseSensitiveTests
     {
         string json = """[{"Name":"Alice"},{"Name":"ALICE"},{"Name":"alice"}]""";
 
-        _sut.List_PopByCondition(json, "Name", "Alice", "Equals", true, out _, out var popped);
+        _sut.List_PopByCondition(json, "Name", "Alice", "Equals", true, false, out _, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("Alice", poppedObj["Name"]!.ToString());
@@ -33,7 +33,7 @@ public class CaseSensitiveTests
     {
         string json = """[{"Name":"ALICE"},{"Name":"bob"}]""";
 
-        _sut.List_PopByCondition(json, "Name", "alice", "Equals", false, out _, out var popped);
+        _sut.List_PopByCondition(json, "Name", "alice", "Equals", false, false, out _, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("ALICE", poppedObj["Name"]!.ToString());
@@ -55,7 +55,7 @@ public class CaseSensitiveTests
     {
         string json = """[{"File":"README.md"},{"File":"readme.md"}]""";
 
-        _sut.List_PopByCondition(json, "File", "README", "StartsWith", true, out _, out var popped);
+        _sut.List_PopByCondition(json, "File", "README", "StartsWith", true, false, out _, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("README.md", poppedObj["File"]!.ToString());
@@ -91,7 +91,7 @@ public class CaseSensitiveTests
     {
         string json = """[{"Status":"ACTIVE"},{"Status":"active"}]""";
 
-        _sut.List_PopByCondition(json, "Status", "ACTIVE", "NotEquals", true, out _, out var popped);
+        _sut.List_PopByCondition(json, "Status", "ACTIVE", "NotEquals", true, false, out _, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("active", poppedObj["Status"]!.ToString());

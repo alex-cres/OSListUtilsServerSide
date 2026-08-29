@@ -128,7 +128,7 @@ Declared in [ListUtils.O11.csproj](ListUtils.O11/ListUtils.O11.csproj).
 
 ## 4. Test projects
 
-85 tests per platform × 2 = **170 tests total** across 8 test files per project.
+94 tests per platform × 2 = **188 tests total** across 9 test files per project.
 
 ### `ListUtils.Tests/` (ODC, net10.0)
 
@@ -143,6 +143,7 @@ Declared in [ListUtils.O11.csproj](ListUtils.O11/ListUtils.O11.csproj).
 | CaseSensitiveTests.cs | Case-sensitive Equals, NotEquals, Contains, StartsWith on strings; case-insensitive vs case-sensitive Difference |
 | ArrayIndexPathTests.cs | Fixed indices, negative indices (from end), array + dot combined, out-of-range guard, nested arrays inside arrays |
 | MultiConditionTests.cs | AND/OR combinations, nested-path in condition, empty conditions guard, per-condition case sensitivity, mixed operators |
+| SearchDirectionTests.cs | SearchFromEnd on List_PopByCondition and List_PopByConditions — pops last match vs first match; verifies list order preserved after removal |
 
 Test data is inline string literals — **no binary test files are committed**.
 
@@ -160,6 +161,7 @@ Test data is inline string literals — **no binary test files are committed**.
 | CaseSensitiveTests.cs | Byte-for-byte identical to ODC |
 | ArrayIndexPathTests.cs | Byte-for-byte identical to ODC |
 | MultiConditionTests.cs | Byte-for-byte identical to ODC |
+| SearchDirectionTests.cs | Byte-for-byte identical to ODC |
 
 The adapter pattern ensures `new ListUtils()` resolves to the wrapper in the
 O11 test namespace, delegating to `CssListUtils` internally. This allows all
@@ -175,7 +177,7 @@ test files to compile unchanged on both platforms.
 | Implementation | `ListUtils` | `CssListUtils` |
 | Namespace | `ListUtils` | `OutSystems.NssListUtils` |
 | Method names | `List_Pop`, `List_Zip`, etc. | `MssList_Pop`, `MssList_Zip`, etc. |
-| Parameter prefix | *(none)* | `ss` (e.g. `ssSourceList`, `ssIndex`) |
+| Parameter naming | PascalCase (`SourceListJson`, `PropertyName`, `CaseSensitive`) | `ss`-prefixed camelCase (`ssSourceListJson`, `ssPropertyName`) |
 
 ---
 

@@ -12,12 +12,14 @@ Changes in progress — not yet published to OutSystems Forge.
 - ODC external library (net10.0) with `OutSystems.ExternalLibraries.SDK`
 - O11 extension (net48) with `System.Text.Json`
 - Component icons (64x64 PNG for ODC, 32x32 ICO for O11)
-- `comparisonOperator` parameter on condition-based single-condition actions — supports Equals (default), NotEquals, Contains, StartsWith, EndsWith, GreaterThan, LessThan, GreaterOrEqual, LessOrEqual (plus symbol aliases `!=`, `>`, `<`, `>=`, `<=`)
-- `caseSensitive` boolean parameter on List_PopByCondition, List_PopMultipleByCondition, and List_Difference — toggles case-sensitive string comparison
-- Nested property path support on all condition-based actions and List_GroupBy — dot-separated paths (e.g. `Address.City`, `Meta.Status.Value`) walk into nested JSON objects with camelCase fallback at each segment
+- `ComparisonOperator` parameter on condition-based single-condition actions — supports Equals (default), NotEquals, Contains, StartsWith, EndsWith, GreaterThan, LessThan, GreaterOrEqual, LessOrEqual (plus symbol aliases `!=`, `>`, `<`, `>=`, `<=`)
+- `CaseSensitive` boolean parameter on List_PopByCondition, List_PopMultipleByCondition, and List_Difference — toggles case-sensitive string comparison
+- `SearchFromEnd` boolean parameter on List_PopByCondition and List_PopByConditions — pops the LAST match instead of the first
+- Nested property path support on all condition-based actions and List_GroupBy — dot-separated paths (e.g. `Address.City`) with camelCase fallback per segment
 - Array indexing in property paths — `Tags[0]`, `Items[-1].Name`, `Data.Values[0]`. Negative indices count from the end.
 - Two new multi-condition actions: `List_PopByConditions` and `List_PopMultipleByConditions` accepting a JSON conditions array with per-condition path, operator, value, and caseSensitive fields; combined with `AND` or `OR` logical operator
-- 170 tests (85 ODC + 85 O11) covering pop, JSON, complex structure, operator, nested-path, array indexing, case-sensitive, and multi-condition scenarios
+- All Server Action parameter names use PascalCase for consistency with OutSystems naming conventions
+- 188 tests (94 ODC + 94 O11) covering pop, JSON, complex structure, operator, nested-path, array indexing, case-sensitive, multi-condition, and search-direction scenarios
 
 ## Changed
 

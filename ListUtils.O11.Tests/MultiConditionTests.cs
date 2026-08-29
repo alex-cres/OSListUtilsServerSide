@@ -23,7 +23,7 @@ public class MultiConditionTests
             ]
             """;
 
-        _sut.List_PopByConditions(json, conditions, "AND", out _, out var popped);
+        _sut.List_PopByConditions(json, conditions, "AND", false, out _, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("Alice", poppedObj["Name"]!.ToString());
@@ -58,7 +58,7 @@ public class MultiConditionTests
         string json = """[{"A":"x","B":"y"},{"A":"x","B":"z"}]""";
         string conditions = """[{"path":"A","operator":"Equals","value":"x"},{"path":"B","operator":"Equals","value":"z"}]""";
 
-        _sut.List_PopByConditions(json, conditions, "", out _, out var popped);
+        _sut.List_PopByConditions(json, conditions, "", false, out _, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("z", poppedObj["B"]!.ToString());
@@ -69,7 +69,7 @@ public class MultiConditionTests
     {
         string json = """[{"Id":1}]""";
 
-        _sut.List_PopByConditions(json, "[]", "AND", out var updated, out var popped);
+        _sut.List_PopByConditions(json, "[]", "AND", false, out var updated, out var popped);
 
         Assert.Equal(json, updated);
         Assert.Equal("{}", popped);
@@ -117,7 +117,7 @@ public class MultiConditionTests
             ]
             """;
 
-        _sut.List_PopByConditions(json, conditions, "AND", out _, out var popped);
+        _sut.List_PopByConditions(json, conditions, "AND", false, out _, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("1", poppedObj["Id"]!.ToString());
@@ -139,7 +139,7 @@ public class MultiConditionTests
     [Fact]
     public void PopByConditions_NullSource_ReturnsDefaults()
     {
-        _sut.List_PopByConditions(null!, """[{"path":"X","operator":"Equals","value":"y"}]""", "AND", out var updated, out var popped);
+        _sut.List_PopByConditions(null!, """[{"path":"X","operator":"Equals","value":"y"}]""", "AND", false, out var updated, out var popped);
 
         Assert.Equal("[]", updated);
         Assert.Equal("{}", popped);

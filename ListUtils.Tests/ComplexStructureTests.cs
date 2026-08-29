@@ -40,7 +40,7 @@ public class ComplexStructureTests
             ]
             """;
 
-        _sut.List_PopByCondition(json, "Id", "2", "", false, out var updated, out var popped);
+        _sut.List_PopByCondition(json, "Id", "2", "", false, false, out var updated, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("Inactive", poppedObj["Meta"]!["Status"]!.ToString());
@@ -233,7 +233,7 @@ public class ComplexStructureTests
             ]
             """;
 
-        _sut.List_PopByCondition(json, "Lang", "中文", "", false, out var updated, out var popped);
+        _sut.List_PopByCondition(json, "Lang", "中文", "", false, false, out var updated, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("你好", poppedObj["Text"]!.ToString());

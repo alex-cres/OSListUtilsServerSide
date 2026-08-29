@@ -13,7 +13,7 @@ public class ListJsonTests
     {
         string json = """[{"Id":"1","Name":"Alice"},{"Id":"2","Name":"Bob"},{"Id":"1","Name":"Charlie"}]""";
 
-        _sut.List_PopByCondition(json, "Id", "1", "", false, out var updated, out var popped);
+        _sut.List_PopByCondition(json, "Id", "1", "", false, false, out var updated, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("Alice", poppedObj["Name"]!.ToString());
@@ -27,7 +27,7 @@ public class ListJsonTests
     {
         string json = """[{"Id":"1"},{"Id":"2"}]""";
 
-        _sut.List_PopByCondition(json, "Id", "99", "", false, out var updated, out var popped);
+        _sut.List_PopByCondition(json, "Id", "99", "", false, false, out var updated, out var popped);
 
         Assert.Equal("{}", popped);
         var updatedArr = JsonNode.Parse(updated)!.AsArray();
@@ -37,7 +37,7 @@ public class ListJsonTests
     [Fact]
     public void List_PopByCondition_NullInput_ReturnsDefaults()
     {
-        _sut.List_PopByCondition(null!, "Id", "1", "", false, out var updated, out var popped);
+        _sut.List_PopByCondition(null!, "Id", "1", "", false, false, out var updated, out var popped);
 
         Assert.Equal("[]", updated);
         Assert.Equal("{}", popped);
@@ -48,7 +48,7 @@ public class ListJsonTests
     {
         string json = """[{"isActive":"true","name":"Item1"}]""";
 
-        _sut.List_PopByCondition(json, "IsActive", "true", "", false, out var updated, out var popped);
+        _sut.List_PopByCondition(json, "IsActive", "true", "", false, false, out var updated, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("Item1", poppedObj["name"]!.ToString());

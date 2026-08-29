@@ -17,7 +17,7 @@ public class ArrayIndexPathTests
             ]
             """;
 
-        _sut.List_PopByCondition(json, "Tags[0]", "blue", "Equals", false, out _, out var popped);
+        _sut.List_PopByCondition(json, "Tags[0]", "blue", "Equals", false, false, out _, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("2", poppedObj["Id"]!.ToString());
@@ -33,7 +33,7 @@ public class ArrayIndexPathTests
             ]
             """;
 
-        _sut.List_PopByCondition(json, "Path[-1]", "data.bin", "Equals", false, out _, out var popped);
+        _sut.List_PopByCondition(json, "Path[-1]", "data.bin", "Equals", false, false, out _, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("2", poppedObj["Id"]!.ToString());
@@ -49,7 +49,7 @@ public class ArrayIndexPathTests
             ]
             """;
 
-        _sut.List_PopByCondition(json, "Items[0].Name", "other", "Equals", false, out _, out var popped);
+        _sut.List_PopByCondition(json, "Items[0].Name", "other", "Equals", false, false, out _, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("2", poppedObj["Id"]!.ToString());
@@ -77,7 +77,7 @@ public class ArrayIndexPathTests
     {
         string json = """[{"Id":1,"Tags":["a"]}]""";
 
-        _sut.List_PopByCondition(json, "Tags[5]", "a", "Equals", false, out var updated, out var popped);
+        _sut.List_PopByCondition(json, "Tags[5]", "a", "Equals", false, false, out var updated, out var popped);
 
         Assert.Equal("{}", popped);
         Assert.Equal(json, updated);
@@ -130,7 +130,7 @@ public class ArrayIndexPathTests
             ]
             """;
 
-        _sut.List_PopByCondition(json, "Groups[0].Members[0]", "Carol", "Equals", false, out _, out var popped);
+        _sut.List_PopByCondition(json, "Groups[0].Members[0]", "Carol", "Equals", false, false, out _, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("2", poppedObj["Id"]!.ToString());
@@ -141,7 +141,7 @@ public class ArrayIndexPathTests
     {
         string json = """[{"Id":1,"Arr":["x","y","z"]}]""";
 
-        _sut.List_PopByCondition(json, "Arr[-2]", "y", "Equals", false, out _, out var popped);
+        _sut.List_PopByCondition(json, "Arr[-2]", "y", "Equals", false, false, out _, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("1", poppedObj["Id"]!.ToString());

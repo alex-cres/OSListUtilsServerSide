@@ -34,7 +34,7 @@ Removes multiple elements at specified indices. Returns the removed elements and
 | Parameter | Type | Direction | Description |
 |-----------|------|-----------|-------------|
 | `sourceList` | `List<string>` | Input | The source list to manipulate. |
-| `indicesToPop` | `List<int>` | Input | The list of 0-based indices to remove. |
+| `IndicesToPop` | `List<int>` | Input | The list of 0-based indices to remove. |
 | `updatedList` | `List<string>` | Output | The list without the popped elements. |
 | `poppedElements` | `List<string>` | Output | The elements that were removed, in their original order. |
 
@@ -44,13 +44,14 @@ Pops the first element matching a property condition from a JSON list.
 
 | Parameter | Type | Direction | Description |
 |-----------|------|-----------|-------------|
-| `sourceListJson` | `string` | Input | The source list serialized as a JSON string (via `JSON Serialize`). |
-| `propertyName` | `string` | Input | Property path to check. Supports nested paths (`Address.City`) and array indexing (`Items[0].Name`, `Tags[-1]`). |
-| `targetValue` | `string` | Input | The value to match. |
-| `comparisonOperator` | `string` | Input | `Equals` (default), `NotEquals`, `Contains`, `StartsWith`, `EndsWith`, `GreaterThan`, `LessThan`, `GreaterOrEqual`, `LessOrEqual`. Empty = `Equals`. |
-| `caseSensitive` | `bool` | Input | When `true`, string comparison is case-sensitive. When `false` (default), case-insensitive. Ignored by numeric operators. |
-| `updatedListJson` | `string` | Output | The JSON list without the matched element. |
-| `poppedElementJson` | `string` | Output | The matched JSON object, or `{}` if no match found. |
+| `SourceListJson` | `string` | Input | The source list serialized as a JSON string (via `JSON Serialize`). |
+| `PropertyName` | `string` | Input | Property path to check. Supports nested paths (`Address.City`) and array indexing (`Items[0].Name`, `Tags[-1]`). |
+| `TargetValue` | `string` | Input | The value to match. |
+| `ComparisonOperator` | `string` | Input | `Equals` (default), `NotEquals`, `Contains`, `StartsWith`, `EndsWith`, `GreaterThan`, `LessThan`, `GreaterOrEqual`, `LessOrEqual`. Empty = `Equals`. |
+| `CaseSensitive` | `bool` | Input | When `true`, string comparison is case-sensitive. When `false` (default), case-insensitive. Ignored by numeric operators. |
+| `SearchFromEnd` | `bool` | Input | When `true`, searches from the end backwards (pops the LAST match). When `false` (default), searches from the beginning (pops the FIRST match). |
+| `UpdatedListJson` | `string` | Output | The JSON list without the matched element. |
+| `PoppedElementJson` | `string` | Output | The matched JSON object, or `{}` if no match found. |
 
 ### List_PopMultipleByCondition
 
@@ -58,13 +59,13 @@ Pops all elements matching a property condition from a JSON list.
 
 | Parameter | Type | Direction | Description |
 |-----------|------|-----------|-------------|
-| `sourceListJson` | `string` | Input | The source list serialized as a JSON string. |
-| `propertyName` | `string` | Input | Property path to check. Supports nested paths and array indexing. |
-| `targetValue` | `string` | Input | The value to match. |
-| `comparisonOperator` | `string` | Input | Same operators as `List_PopByCondition`. |
-| `caseSensitive` | `bool` | Input | Case-sensitivity flag (default `false`). |
-| `updatedListJson` | `string` | Output | The JSON list without matched elements. |
-| `poppedElementsJson` | `string` | Output | JSON array of all matched elements, or `[]` if none. |
+| `SourceListJson` | `string` | Input | The source list serialized as a JSON string. |
+| `PropertyName` | `string` | Input | Property path to check. Supports nested paths and array indexing. |
+| `TargetValue` | `string` | Input | The value to match. |
+| `ComparisonOperator` | `string` | Input | Same operators as `List_PopByCondition`. |
+| `CaseSensitive` | `bool` | Input | Case-sensitivity flag (default `false`). |
+| `UpdatedListJson` | `string` | Output | The JSON list without matched elements. |
+| `PoppedElementsJson` | `string` | Output | JSON array of all matched elements, or `[]` if none. |
 
 ### List_PopByConditions
 
@@ -72,11 +73,12 @@ Pops the first element matching multiple conditions combined with AND/OR.
 
 | Parameter | Type | Direction | Description |
 |-----------|------|-----------|-------------|
-| `sourceListJson` | `string` | Input | The source list serialized as a JSON string. |
-| `conditionsJson` | `string` | Input | JSON array of conditions. Each condition has `path`, `operator`, `value`, optional `caseSensitive`. Example below. |
-| `logicalOperator` | `string` | Input | `AND` (default) — all conditions must match; `OR` — at least one must match. |
-| `updatedListJson` | `string` | Output | The JSON list without the matched element. |
-| `poppedElementJson` | `string` | Output | The matched JSON object, or `{}` if no match found. |
+| `SourceListJson` | `string` | Input | The source list serialized as a JSON string. |
+| `ConditionsJson` | `string` | Input | JSON array of conditions. Each condition has `path`, `operator`, `value`, optional `CaseSensitive`. Example below. |
+| `LogicalOperator` | `string` | Input | `AND` (default) — all conditions must match; `OR` — at least one must match. |
+| `SearchFromEnd` | `bool` | Input | When `true`, searches from the end backwards (pops the LAST match). When `false` (default), searches from the beginning. |
+| `UpdatedListJson` | `string` | Output | The JSON list without the matched element. |
+| `PoppedElementJson` | `string` | Output | The matched JSON object, or `{}` if no match found. |
 
 ### List_PopMultipleByConditions
 
@@ -84,11 +86,11 @@ Pops all elements matching multiple conditions combined with AND/OR.
 
 | Parameter | Type | Direction | Description |
 |-----------|------|-----------|-------------|
-| `sourceListJson` | `string` | Input | The source list serialized as a JSON string. |
-| `conditionsJson` | `string` | Input | JSON array of conditions (same format as `List_PopByConditions`). |
-| `logicalOperator` | `string` | Input | `AND` or `OR`. |
-| `updatedListJson` | `string` | Output | The JSON list without matched elements. |
-| `poppedElementsJson` | `string` | Output | JSON array of all matched elements. |
+| `SourceListJson` | `string` | Input | The source list serialized as a JSON string. |
+| `ConditionsJson` | `string` | Input | JSON array of conditions (same format as `List_PopByConditions`). |
+| `LogicalOperator` | `string` | Input | `AND` or `OR`. |
+| `UpdatedListJson` | `string` | Output | The JSON list without matched elements. |
+| `PoppedElementsJson` | `string` | Output | JSON array of all matched elements. |
 
 **Conditions JSON format:**
 
@@ -104,7 +106,7 @@ Each condition supports:
 - `path` — property path (nested + array indexing supported)
 - `operator` — any operator from the operators table
 - `value` — target value as text
-- `caseSensitive` (optional, default `false`) — per-condition case sensitivity
+- `CaseSensitive` (optional, default `false`) — per-condition case sensitivity
 
 ### List_Zip
 
@@ -112,11 +114,11 @@ Combines two JSON lists into paired objects by matching index.
 
 | Parameter | Type | Direction | Description |
 |-----------|------|-----------|-------------|
-| `listAJson` | `string` | Input | The first JSON list. |
-| `listBJson` | `string` | Input | The second JSON list. |
-| `keyNameA` | `string` | Input | Key label for List A entries in the output objects. |
-| `keyNameB` | `string` | Input | Key label for List B entries in the output objects. |
-| `zippedListJson` | `string` | Output | JSON array of paired objects `[{keyNameA: ..., keyNameB: ...}, ...]`. Truncates to the shorter list. |
+| `ListAJson` | `string` | Input | The first JSON list. |
+| `ListBJson` | `string` | Input | The second JSON list. |
+| `KeyNameA` | `string` | Input | Key label for List A entries in the output objects. |
+| `KeyNameB` | `string` | Input | Key label for List B entries in the output objects. |
+| `ZippedListJson` | `string` | Output | JSON array of paired objects `[{keyNameA: ..., keyNameB: ...}, ...]`. Truncates to the shorter list. |
 
 ### List_GroupBy
 
@@ -124,9 +126,9 @@ Groups a flat JSON list by a property value.
 
 | Parameter | Type | Direction | Description |
 |-----------|------|-----------|-------------|
-| `sourceListJson` | `string` | Input | The source JSON list. |
-| `propertyName` | `string` | Input | Property path to group by. Supports nested paths with dots (e.g. `Customer.Country`). CamelCase fallback applied at each segment. |
-| `groupedListJson` | `string` | Output | JSON array of `{"Key": "value", "Items": [...]}` groups. Groups appear in first-seen order. |
+| `SourceListJson` | `string` | Input | The source JSON list. |
+| `PropertyName` | `string` | Input | Property path to group by. Supports nested paths with dots (e.g. `Customer.Country`). CamelCase fallback applied at each segment. |
+| `GroupedListJson` | `string` | Output | JSON array of `{"Key": "value", "Items": [...]}` groups. Groups appear in first-seen order. |
 
 ### List_Difference
 
@@ -134,22 +136,22 @@ Computes the set difference (A − B) of two JSON lists on a key property.
 
 | Parameter | Type | Direction | Description |
 |-----------|------|-----------|-------------|
-| `listAJson` | `string` | Input | The base JSON list. |
-| `listBJson` | `string` | Input | The subtraction JSON list. |
-| `matchKey` | `string` | Input | Property path to match on. Supports nested paths and array indexing (`Ref.Code`, `Codes[0]`). |
-| `comparisonOperator` | `string` | Input | Any operator from the operators table below. |
-| `caseSensitive` | `bool` | Input | Case-sensitivity flag (default `false`). |
-| `differenceListJson` | `string` | Output | Elements in A whose `matchKey` has no match in B. |
+| `ListAJson` | `string` | Input | The base JSON list. |
+| `ListBJson` | `string` | Input | The subtraction JSON list. |
+| `MatchKey` | `string` | Input | Property path to match on. Supports nested paths and array indexing (`Ref.Code`, `Codes[0]`). |
+| `ComparisonOperator` | `string` | Input | Any operator from the operators table below. |
+| `CaseSensitive` | `bool` | Input | Case-sensitivity flag (default `false`). |
+| `DifferenceListJson` | `string` | Output | Elements in A whose `MatchKey` has no match in B. |
 
 ---
 
 ## Comparison Operators
 
-The condition-based actions (`List_PopByCondition`, `List_PopMultipleByCondition`, `List_Difference`) accept an operator that controls how `targetValue` is compared against the property value. Multi-condition actions (`List_PopByConditions`, `List_PopMultipleByConditions`) accept the same operators inside each condition entry.
+The condition-based actions (`List_PopByCondition`, `List_PopMultipleByCondition`, `List_Difference`) accept an operator that controls how `TargetValue` is compared against the property value. Multi-condition actions (`List_PopByConditions`, `List_PopMultipleByConditions`) accept the same operators inside each condition entry.
 
 | Operator | Aliases | Behaviour |
 |----------|---------|-----------|
-| `Equals` | *(default)*, `""` | Exact match (case-sensitive per `caseSensitive` flag) |
+| `Equals` | *(default)*, `""` | Exact match (case-sensitive per `CaseSensitive` flag) |
 | `NotEquals` | `!=` | Inverse of Equals |
 | `Contains` | | Substring match |
 | `StartsWith` | | Prefix match |
@@ -159,7 +161,7 @@ The condition-based actions (`List_PopByCondition`, `List_PopMultipleByCondition
 | `GreaterOrEqual` | `>=` | Numeric comparison including boundary |
 | `LessOrEqual` | `<=` | Numeric comparison including boundary |
 
-**Case sensitivity**: string operators (`Equals`, `NotEquals`, `Contains`, `StartsWith`, `EndsWith`) honour the `caseSensitive` flag. Numeric operators ignore it.
+**Case sensitivity**: string operators (`Equals`, `NotEquals`, `Contains`, `StartsWith`, `EndsWith`) honour the `CaseSensitive` flag. Numeric operators ignore it.
 
 **Numeric operators** parse both values with `InvariantCulture`. Non-numeric values evaluate as no-match.
 
@@ -167,7 +169,7 @@ The condition-based actions (`List_PopByCondition`, `List_PopMultipleByCondition
 
 ## Property Paths
 
-`propertyName`, `matchKey`, and paths inside condition JSON support both **dot-separated navigation** and **array indexing**:
+`PropertyName`, `MatchKey`, and paths inside condition JSON support both **dot-separated navigation** and **array indexing**:
 
 | Path syntax | Resolves to |
 |------------|-------------|
@@ -210,7 +212,28 @@ Combined with `logicalOperator = "AND"`.
 ]
 ```
 
-Each condition has: `path`, `operator`, `value`, and optional `caseSensitive` (default `false`). Empty conditions array returns the original list unchanged.
+Each condition has: `path`, `operator`, `value`, and optional `CaseSensitive` (default `false`). Empty conditions array returns the original list unchanged.
+
+---
+
+## Search Direction
+
+`List_PopByCondition` and `List_PopByConditions` accept a `SearchFromEnd` boolean that controls whether the FIRST or LAST match is popped.
+
+| `SearchFromEnd` | Behaviour |
+|-----------------|-----------|
+| `false` (default) | Iterates from index 0 upward. Pops the first match. |
+| `true` | Iterates from the last index downward. Pops the last match. |
+
+Example — pop the most recent "Pending" order from a chronological list:
+
+```
+List_PopByCondition(orders, "Status", "Pending", "Equals", false, true, ...)
+                                                            ^^^^  ^^^^
+                                                 CaseSensitive  SearchFromEnd
+```
+
+`List_PopMultipleByCondition` and `List_PopMultipleByConditions` do NOT have this flag — they always pop every match, so direction is irrelevant.
 
 ---
 
@@ -226,7 +249,7 @@ All actions are **stateless** and **in-memory**. There is no file I/O, no networ
 | `List_GroupBy` | Single-pass scan building a `Dictionary<string, JsonArray>` keyed by property value. Preserves insertion order via a parallel list. | O(N) |
 | `List_Difference` | Build a `HashSet<string>` from B's key values, then filter A against it. | O(A + B) |
 
-**Property name matching:** All JSON actions try the exact `propertyName` first, then a camelCase variant (first letter lowered). This handles the mismatch between OutSystems PascalCase attribute names and the camelCase keys produced by `JSON Serialize`.
+**Property name matching:** All JSON actions try the exact `PropertyName` first, then a camelCase variant (first letter lowered). This handles the mismatch between OutSystems PascalCase attribute names and the camelCase keys produced by `JSON Serialize`.
 
 **Null/empty safety:** Null or empty inputs never throw — they return empty lists, `"[]"`, or `"{}"` as appropriate.
 

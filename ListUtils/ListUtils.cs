@@ -6,56 +6,56 @@ namespace ListUtils;
 public class ListUtils : IListUtils
 {
     public void List_Pop(
-        string sourceListJson,
-        int index,
-        out string updatedListJson,
-        out string poppedElementJson)
+        string SourceListJson,
+        int Index,
+        out string UpdatedListJson,
+        out string PoppedElementJson)
     {
-        if (string.IsNullOrEmpty(sourceListJson))
+        if (string.IsNullOrEmpty(SourceListJson))
         {
-            updatedListJson = "[]";
-            poppedElementJson = "null";
+            UpdatedListJson = "[]";
+            PoppedElementJson = "null";
             return;
         }
 
-        var array = JsonNode.Parse(sourceListJson)!.AsArray();
+        var array = JsonNode.Parse(SourceListJson)!.AsArray();
 
-        if (index < 0 || index >= array.Count)
+        if (Index < 0 || Index >= array.Count)
         {
-            updatedListJson = sourceListJson;
-            poppedElementJson = "null";
+            UpdatedListJson = SourceListJson;
+            PoppedElementJson = "null";
             return;
         }
 
-        var popped = array[index];
-        poppedElementJson = popped?.ToJsonString(JsonOptions) ?? "null";
-        array.RemoveAt(index);
-        updatedListJson = array.ToJsonString(JsonOptions);
+        var popped = array[Index];
+        PoppedElementJson = popped?.ToJsonString(JsonOptions) ?? "null";
+        array.RemoveAt(Index);
+        UpdatedListJson = array.ToJsonString(JsonOptions);
     }
 
     public void List_PopMultiple(
-        string sourceListJson,
-        string indicesToPop,
-        out string updatedListJson,
-        out string poppedElementsJson)
+        string SourceListJson,
+        string IndicesToPop,
+        out string UpdatedListJson,
+        out string PoppedElementsJson)
     {
-        if (string.IsNullOrEmpty(sourceListJson))
+        if (string.IsNullOrEmpty(SourceListJson))
         {
-            updatedListJson = "[]";
-            poppedElementsJson = "[]";
+            UpdatedListJson = "[]";
+            PoppedElementsJson = "[]";
             return;
         }
 
-        var array = JsonNode.Parse(sourceListJson)!.AsArray();
+        var array = JsonNode.Parse(SourceListJson)!.AsArray();
 
-        if (string.IsNullOrEmpty(indicesToPop))
+        if (string.IsNullOrEmpty(IndicesToPop))
         {
-            updatedListJson = sourceListJson;
-            poppedElementsJson = "[]";
+            UpdatedListJson = SourceListJson;
+            PoppedElementsJson = "[]";
             return;
         }
 
-        var indices = indicesToPop.Split(',')
+        var indices = IndicesToPop.Split(',')
             .Select(s => int.TryParse(s.Trim(), out var v) ? v : -1)
             .Where(i => i >= 0)
             .Distinct()
@@ -74,146 +74,184 @@ public class ListUtils : IListUtils
             }
         }
 
-        // Reverse so popped elements are in original order
         var ordered = new JsonArray();
         for (int i = poppedArray.Count - 1; i >= 0; i--)
             ordered.Add(JsonNode.Parse(poppedArray[i]!.ToJsonString())!);
 
-        updatedListJson = array.ToJsonString(JsonOptions);
-        poppedElementsJson = ordered.ToJsonString(JsonOptions);
+        UpdatedListJson = array.ToJsonString(JsonOptions);
+        PoppedElementsJson = ordered.ToJsonString(JsonOptions);
     }
 
     public void List_PopByCondition(
-        string sourceListJson,
-        string propertyName,
-        string targetValue,
-        string comparisonOperator,
-        bool caseSensitive,
-        out string updatedListJson,
-        out string poppedElementJson)
+        string SourceListJson,
+        string PropertyName,
+        string TargetValue,
+        string ComparisonOperator,
+        bool CaseSensitive,
+        bool SearchFromEnd,
+        out string UpdatedListJson,
+        out string PoppedElementJson)
     {
-        if (string.IsNullOrEmpty(sourceListJson) || string.IsNullOrEmpty(propertyName))
+        if (string.IsNullOrEmpty(SourceListJson) || string.IsNullOrEmpty(PropertyName))
         {
-            updatedListJson = sourceListJson ?? "[]";
-            poppedElementJson = "{}";
+            UpdatedListJson = SourceListJson ?? "[]";
+            PoppedElementJson = "{}";
             return;
         }
 
-        var array = JsonNode.Parse(sourceListJson)!.AsArray();
+        var array = JsonNode.Parse(SourceListJson)!.AsArray();
         JsonNode? matchedNode = null;
+        int matchedIndex = -1;
 
-        for (int i = 0; i < array.Count; i++)
+        if (SearchFromEnd)
         {
-            var value = GetPropertyValue(array[i]!, propertyName);
-            if (value != null && MatchesCondition(value, targetValue, comparisonOperator, caseSensitive))
+            for (int i = array.Count - 1; i >= 0; i--)
             {
-                matchedNode = array[i];
-                array.RemoveAt(i);
-                break;
+                var value = GetPropertyValue(array[i]!, PropertyName);
+                if (value != null && MatchesCondition(value, TargetValue, ComparisonOperator, CaseSensitive))
+                {
+                    matchedIndex = i;
+                    break;
+                }
+            }
+        }
+        else
+        {
+            for (int i = 0; i < array.Count; i++)
+            {
+                var value = GetPropertyValue(array[i]!, PropertyName);
+                if (value != null && MatchesCondition(value, TargetValue, ComparisonOperator, CaseSensitive))
+                {
+                    matchedIndex = i;
+                    break;
+                }
             }
         }
 
-        updatedListJson = array.ToJsonString(JsonOptions);
-        poppedElementJson = matchedNode?.ToJsonString(JsonOptions) ?? "{}";
+        if (matchedIndex >= 0)
+        {
+            matchedNode = array[matchedIndex];
+            array.RemoveAt(matchedIndex);
+        }
+
+        UpdatedListJson = array.ToJsonString(JsonOptions);
+        PoppedElementJson = matchedNode?.ToJsonString(JsonOptions) ?? "{}";
     }
 
     public void List_PopMultipleByCondition(
-        string sourceListJson,
-        string propertyName,
-        string targetValue,
-        string comparisonOperator,
-        bool caseSensitive,
-        out string updatedListJson,
-        out string poppedElementsJson)
+        string SourceListJson,
+        string PropertyName,
+        string TargetValue,
+        string ComparisonOperator,
+        bool CaseSensitive,
+        out string UpdatedListJson,
+        out string PoppedElementsJson)
     {
-        if (string.IsNullOrEmpty(sourceListJson) || string.IsNullOrEmpty(propertyName))
+        if (string.IsNullOrEmpty(SourceListJson) || string.IsNullOrEmpty(PropertyName))
         {
-            updatedListJson = sourceListJson ?? "[]";
-            poppedElementsJson = "[]";
+            UpdatedListJson = SourceListJson ?? "[]";
+            PoppedElementsJson = "[]";
             return;
         }
 
-        var originalArray = JsonNode.Parse(sourceListJson)!.AsArray();
+        var originalArray = JsonNode.Parse(SourceListJson)!.AsArray();
         var keptArray = new JsonArray();
         var poppedArray = new JsonArray();
 
         foreach (var item in originalArray)
         {
-            var value = GetPropertyValue(item!, propertyName);
-            if (value != null && MatchesCondition(value, targetValue, comparisonOperator, caseSensitive))
-            {
+            var value = GetPropertyValue(item!, PropertyName);
+            if (value != null && MatchesCondition(value, TargetValue, ComparisonOperator, CaseSensitive))
                 poppedArray.Add(JsonNode.Parse(item!.ToJsonString())!);
-            }
             else
-            {
                 keptArray.Add(JsonNode.Parse(item!.ToJsonString())!);
-            }
         }
 
-        updatedListJson = keptArray.ToJsonString(JsonOptions);
-        poppedElementsJson = poppedArray.ToJsonString(JsonOptions);
+        UpdatedListJson = keptArray.ToJsonString(JsonOptions);
+        PoppedElementsJson = poppedArray.ToJsonString(JsonOptions);
     }
 
     public void List_PopByConditions(
-        string sourceListJson,
-        string conditionsJson,
-        string logicalOperator,
-        out string updatedListJson,
-        out string poppedElementJson)
+        string SourceListJson,
+        string ConditionsJson,
+        string LogicalOperator,
+        bool SearchFromEnd,
+        out string UpdatedListJson,
+        out string PoppedElementJson)
     {
-        if (string.IsNullOrEmpty(sourceListJson))
+        if (string.IsNullOrEmpty(SourceListJson))
         {
-            updatedListJson = "[]";
-            poppedElementJson = "{}";
+            UpdatedListJson = "[]";
+            PoppedElementJson = "{}";
             return;
         }
 
-        var conditions = ParseConditions(conditionsJson);
-        var array = JsonNode.Parse(sourceListJson)!.AsArray();
+        var conditions = ParseConditions(ConditionsJson);
+        var array = JsonNode.Parse(SourceListJson)!.AsArray();
 
         if (conditions.Count == 0)
         {
-            updatedListJson = sourceListJson;
-            poppedElementJson = "{}";
+            UpdatedListJson = SourceListJson;
+            PoppedElementJson = "{}";
             return;
         }
 
-        JsonNode? matchedNode = null;
-        for (int i = 0; i < array.Count; i++)
+        int matchedIndex = -1;
+        if (SearchFromEnd)
         {
-            if (EvaluateConditions(array[i]!, conditions, logicalOperator))
+            for (int i = array.Count - 1; i >= 0; i--)
             {
-                matchedNode = array[i];
-                array.RemoveAt(i);
-                break;
+                if (EvaluateConditions(array[i]!, conditions, LogicalOperator))
+                {
+                    matchedIndex = i;
+                    break;
+                }
+            }
+        }
+        else
+        {
+            for (int i = 0; i < array.Count; i++)
+            {
+                if (EvaluateConditions(array[i]!, conditions, LogicalOperator))
+                {
+                    matchedIndex = i;
+                    break;
+                }
             }
         }
 
-        updatedListJson = array.ToJsonString(JsonOptions);
-        poppedElementJson = matchedNode?.ToJsonString(JsonOptions) ?? "{}";
+        JsonNode? matchedNode = null;
+        if (matchedIndex >= 0)
+        {
+            matchedNode = array[matchedIndex];
+            array.RemoveAt(matchedIndex);
+        }
+
+        UpdatedListJson = array.ToJsonString(JsonOptions);
+        PoppedElementJson = matchedNode?.ToJsonString(JsonOptions) ?? "{}";
     }
 
     public void List_PopMultipleByConditions(
-        string sourceListJson,
-        string conditionsJson,
-        string logicalOperator,
-        out string updatedListJson,
-        out string poppedElementsJson)
+        string SourceListJson,
+        string ConditionsJson,
+        string LogicalOperator,
+        out string UpdatedListJson,
+        out string PoppedElementsJson)
     {
-        if (string.IsNullOrEmpty(sourceListJson))
+        if (string.IsNullOrEmpty(SourceListJson))
         {
-            updatedListJson = "[]";
-            poppedElementsJson = "[]";
+            UpdatedListJson = "[]";
+            PoppedElementsJson = "[]";
             return;
         }
 
-        var conditions = ParseConditions(conditionsJson);
-        var originalArray = JsonNode.Parse(sourceListJson)!.AsArray();
+        var conditions = ParseConditions(ConditionsJson);
+        var originalArray = JsonNode.Parse(SourceListJson)!.AsArray();
 
         if (conditions.Count == 0)
         {
-            updatedListJson = sourceListJson;
-            poppedElementsJson = "[]";
+            UpdatedListJson = SourceListJson;
+            PoppedElementsJson = "[]";
             return;
         }
 
@@ -222,31 +260,31 @@ public class ListUtils : IListUtils
 
         foreach (var item in originalArray)
         {
-            if (EvaluateConditions(item!, conditions, logicalOperator))
+            if (EvaluateConditions(item!, conditions, LogicalOperator))
                 poppedArray.Add(JsonNode.Parse(item!.ToJsonString())!);
             else
                 keptArray.Add(JsonNode.Parse(item!.ToJsonString())!);
         }
 
-        updatedListJson = keptArray.ToJsonString(JsonOptions);
-        poppedElementsJson = poppedArray.ToJsonString(JsonOptions);
+        UpdatedListJson = keptArray.ToJsonString(JsonOptions);
+        PoppedElementsJson = poppedArray.ToJsonString(JsonOptions);
     }
 
     public void List_Zip(
-        string listAJson,
-        string listBJson,
-        string keyNameA,
-        string keyNameB,
-        out string zippedListJson)
+        string ListAJson,
+        string ListBJson,
+        string KeyNameA,
+        string KeyNameB,
+        out string ZippedListJson)
     {
-        if (string.IsNullOrEmpty(listAJson) || string.IsNullOrEmpty(listBJson))
+        if (string.IsNullOrEmpty(ListAJson) || string.IsNullOrEmpty(ListBJson))
         {
-            zippedListJson = "[]";
+            ZippedListJson = "[]";
             return;
         }
 
-        var arrA = JsonNode.Parse(listAJson)!.AsArray();
-        var arrB = JsonNode.Parse(listBJson)!.AsArray();
+        var arrA = JsonNode.Parse(ListAJson)!.AsArray();
+        var arrB = JsonNode.Parse(ListBJson)!.AsArray();
         var result = new JsonArray();
 
         int minCount = Math.Min(arrA.Count, arrB.Count);
@@ -254,33 +292,33 @@ public class ListUtils : IListUtils
         {
             var pair = new JsonObject
             {
-                [keyNameA] = JsonNode.Parse(arrA[i]!.ToJsonString()),
-                [keyNameB] = JsonNode.Parse(arrB[i]!.ToJsonString())
+                [KeyNameA] = JsonNode.Parse(arrA[i]!.ToJsonString()),
+                [KeyNameB] = JsonNode.Parse(arrB[i]!.ToJsonString())
             };
             result.Add(pair);
         }
 
-        zippedListJson = result.ToJsonString(JsonOptions);
+        ZippedListJson = result.ToJsonString(JsonOptions);
     }
 
     public void List_GroupBy(
-        string sourceListJson,
-        string propertyName,
-        out string groupedListJson)
+        string SourceListJson,
+        string PropertyName,
+        out string GroupedListJson)
     {
-        if (string.IsNullOrEmpty(sourceListJson))
+        if (string.IsNullOrEmpty(SourceListJson))
         {
-            groupedListJson = "[]";
+            GroupedListJson = "[]";
             return;
         }
 
-        var array = JsonNode.Parse(sourceListJson)!.AsArray();
+        var array = JsonNode.Parse(SourceListJson)!.AsArray();
         var groups = new Dictionary<string, JsonArray>(StringComparer.Ordinal);
         var groupOrder = new List<string>();
 
         foreach (var item in array)
         {
-            string key = GetPropertyValue(item!, propertyName) ?? "Unknown";
+            string key = GetPropertyValue(item!, PropertyName) ?? "Unknown";
             if (!groups.ContainsKey(key))
             {
                 groups[key] = new JsonArray();
@@ -300,42 +338,40 @@ public class ListUtils : IListUtils
             result.Add(groupObj);
         }
 
-        groupedListJson = result.ToJsonString(JsonOptions);
+        GroupedListJson = result.ToJsonString(JsonOptions);
     }
 
     public void List_Difference(
-        string listAJson,
-        string listBJson,
-        string matchKey,
-        string comparisonOperator,
-        bool caseSensitive,
-        out string differenceListJson)
+        string ListAJson,
+        string ListBJson,
+        string MatchKey,
+        string ComparisonOperator,
+        bool CaseSensitive,
+        out string DifferenceListJson)
     {
-        if (string.IsNullOrEmpty(listAJson)) { differenceListJson = "[]"; return; }
-        if (string.IsNullOrEmpty(listBJson)) { differenceListJson = listAJson; return; }
+        if (string.IsNullOrEmpty(ListAJson)) { DifferenceListJson = "[]"; return; }
+        if (string.IsNullOrEmpty(ListBJson)) { DifferenceListJson = ListAJson; return; }
 
-        var arrA = JsonNode.Parse(listAJson)!.AsArray();
-        var arrB = JsonNode.Parse(listBJson)!.AsArray();
+        var arrA = JsonNode.Parse(ListAJson)!.AsArray();
+        var arrB = JsonNode.Parse(ListBJson)!.AsArray();
 
         var bValues = new List<string>();
         foreach (var b in arrB)
         {
-            var k = GetPropertyValue(b!, matchKey);
+            var k = GetPropertyValue(b!, MatchKey);
             if (k != null) bValues.Add(k);
         }
 
         var result = new JsonArray();
         foreach (var item in arrA)
         {
-            var key = GetPropertyValue(item!, matchKey);
-            bool matchedAny = key != null && bValues.Any(bv => MatchesCondition(key, bv, comparisonOperator, caseSensitive));
+            var key = GetPropertyValue(item!, MatchKey);
+            bool matchedAny = key != null && bValues.Any(bv => MatchesCondition(key, bv, ComparisonOperator, CaseSensitive));
             if (!matchedAny)
-            {
                 result.Add(JsonNode.Parse(item!.ToJsonString())!);
-            }
         }
 
-        differenceListJson = result.ToJsonString(JsonOptions);
+        DifferenceListJson = result.ToJsonString(JsonOptions);
     }
 
     private static string? GetPropertyValue(JsonNode node, string propertyPath)
@@ -355,7 +391,6 @@ public class ListUtils : IListUtils
     {
         if (current == null || string.IsNullOrEmpty(segment)) return null;
 
-        // Parse "Name" or "Name[index]"
         string name = segment;
         int? index = null;
         var bracketStart = segment.IndexOf('[');
@@ -378,9 +413,7 @@ public class ListUtils : IListUtils
         {
             if (current is not JsonObject obj) return null;
             if (obj.TryGetPropertyValue(name, out var val) && val != null)
-            {
                 next = val;
-            }
             else
             {
                 string camel = ToCamelCase(name);
@@ -402,7 +435,7 @@ public class ListUtils : IListUtils
         return next;
     }
 
-    private static bool MatchesCondition(string actual, string target, string? op, bool caseSensitive = false)
+    private static bool MatchesCondition(string actual, string target, string? op, bool caseSensitive)
     {
         var normalized = (op ?? "").Trim();
         var cmp = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;

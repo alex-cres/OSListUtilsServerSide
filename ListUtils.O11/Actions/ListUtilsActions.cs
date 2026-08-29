@@ -91,6 +91,7 @@ public class CssListUtils : IssListUtils
         string ssTargetValue,
         string ssComparisonOperator,
         bool ssCaseSensitive,
+        bool ssSearchFromEnd,
         out string ssUpdatedListJson,
         out string ssPoppedElementJson)
     {
@@ -102,17 +103,38 @@ public class CssListUtils : IssListUtils
         }
 
         var array = JsonNode.Parse(ssSourceListJson)!.AsArray();
-        JsonNode? matchedNode = null;
+        int matchedIndex = -1;
 
-        for (int i = 0; i < array.Count; i++)
+        if (ssSearchFromEnd)
         {
-            var value = GetPropertyValue(array[i]!, ssPropertyName);
-            if (value != null && MatchesCondition(value, ssTargetValue, ssComparisonOperator, ssCaseSensitive))
+            for (int i = array.Count - 1; i >= 0; i--)
             {
-                matchedNode = array[i];
-                array.RemoveAt(i);
-                break;
+                var value = GetPropertyValue(array[i]!, ssPropertyName);
+                if (value != null && MatchesCondition(value, ssTargetValue, ssComparisonOperator, ssCaseSensitive))
+                {
+                    matchedIndex = i;
+                    break;
+                }
             }
+        }
+        else
+        {
+            for (int i = 0; i < array.Count; i++)
+            {
+                var value = GetPropertyValue(array[i]!, ssPropertyName);
+                if (value != null && MatchesCondition(value, ssTargetValue, ssComparisonOperator, ssCaseSensitive))
+                {
+                    matchedIndex = i;
+                    break;
+                }
+            }
+        }
+
+        JsonNode? matchedNode = null;
+        if (matchedIndex >= 0)
+        {
+            matchedNode = array[matchedIndex];
+            array.RemoveAt(matchedIndex);
         }
 
         ssUpdatedListJson = array.ToJsonString(JsonOptions);
@@ -156,6 +178,7 @@ public class CssListUtils : IssListUtils
         string ssSourceListJson,
         string ssConditionsJson,
         string ssLogicalOperator,
+        bool ssSearchFromEnd,
         out string ssUpdatedListJson,
         out string ssPoppedElementJson)
     {
@@ -176,15 +199,35 @@ public class CssListUtils : IssListUtils
             return;
         }
 
-        JsonNode? matchedNode = null;
-        for (int i = 0; i < array.Count; i++)
+        int matchedIndex = -1;
+        if (ssSearchFromEnd)
         {
-            if (EvaluateConditions(array[i]!, conditions, ssLogicalOperator))
+            for (int i = array.Count - 1; i >= 0; i--)
             {
-                matchedNode = array[i];
-                array.RemoveAt(i);
-                break;
+                if (EvaluateConditions(array[i]!, conditions, ssLogicalOperator))
+                {
+                    matchedIndex = i;
+                    break;
+                }
             }
+        }
+        else
+        {
+            for (int i = 0; i < array.Count; i++)
+            {
+                if (EvaluateConditions(array[i]!, conditions, ssLogicalOperator))
+                {
+                    matchedIndex = i;
+                    break;
+                }
+            }
+        }
+
+        JsonNode? matchedNode = null;
+        if (matchedIndex >= 0)
+        {
+            matchedNode = array[matchedIndex];
+            array.RemoveAt(matchedIndex);
         }
 
         ssUpdatedListJson = array.ToJsonString(JsonOptions);

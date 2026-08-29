@@ -13,7 +13,7 @@ public class OperatorTests
     {
         string json = """[{"Name":"Alexander"},{"Name":"Alex"},{"Name":"Bob"}]""";
 
-        _sut.List_PopByCondition(json, "Name", "lex", "Contains", false, out var updated, out var popped);
+        _sut.List_PopByCondition(json, "Name", "lex", "Contains", false, false, out var updated, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("Alexander", poppedObj["Name"]!.ToString());
@@ -41,7 +41,7 @@ public class OperatorTests
     {
         string json = """[{"Email":"admin@co.com"},{"Email":"user@co.com"},{"Email":"admin@other.com"}]""";
 
-        _sut.List_PopByCondition(json, "Email", "admin", "StartsWith", false, out _, out var popped);
+        _sut.List_PopByCondition(json, "Email", "admin", "StartsWith", false, false, out _, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("admin@co.com", poppedObj["Email"]!.ToString());
@@ -99,7 +99,7 @@ public class OperatorTests
     {
         string json = """[{"Price":99.99},{"Price":5.50},{"Price":25.00}]""";
 
-        _sut.List_PopByCondition(json, "Price", "10", "LessThan", false, out _, out var popped);
+        _sut.List_PopByCondition(json, "Price", "10", "LessThan", false, false, out _, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.True(decimal.Parse(poppedObj["Price"]!.ToString(), System.Globalization.CultureInfo.InvariantCulture) < 10);
@@ -136,7 +136,7 @@ public class OperatorTests
     {
         string json = """[{"Name":"Alice","Score":"high"},{"Name":"Bob","Score":"low"}]""";
 
-        _sut.List_PopByCondition(json, "Score", "50", "GreaterThan", false, out var updated, out var popped);
+        _sut.List_PopByCondition(json, "Score", "50", "GreaterThan", false, false, out var updated, out var popped);
 
         Assert.Equal("{}", popped);
         var updatedArr = JsonNode.Parse(updated)!.AsArray();
@@ -163,7 +163,7 @@ public class OperatorTests
     {
         string json = """[{"Type":"A"},{"Type":"B"}]""";
 
-        _sut.List_PopByCondition(json, "Type", "A", "!=", false, out _, out var popped);
+        _sut.List_PopByCondition(json, "Type", "A", "!=", false, false, out _, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("B", poppedObj["Type"]!.ToString());

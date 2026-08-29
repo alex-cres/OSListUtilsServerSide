@@ -17,7 +17,7 @@ public class NestedPathTests
             ]
             """;
 
-        _sut.List_PopByCondition(json, "Address.City", "LA", "", false, out var updated, out var popped);
+        _sut.List_PopByCondition(json, "Address.City", "LA", "", false, false, out var updated, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("2", poppedObj["Id"]!.ToString());
@@ -95,7 +95,7 @@ public class NestedPathTests
             ]
             """;
 
-        _sut.List_PopByCondition(json, "Wrapper.Data.Value", "target", "", false, out _, out var popped);
+        _sut.List_PopByCondition(json, "Wrapper.Data.Value", "target", "", false, false, out _, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("1", poppedObj["Id"]!.ToString());
@@ -106,7 +106,7 @@ public class NestedPathTests
     {
         string json = """[{"Id":1,"Address":{"City":"NYC"}}]""";
 
-        _sut.List_PopByCondition(json, "Address.State", "NY", "", false, out var updated, out var popped);
+        _sut.List_PopByCondition(json, "Address.State", "NY", "", false, false, out var updated, out var popped);
 
         Assert.Equal("{}", popped);
         Assert.Equal(json, updated);
@@ -122,7 +122,7 @@ public class NestedPathTests
             ]
             """;
 
-        _sut.List_PopByCondition(json, "Details.Description", "widget", "Contains", false, out _, out var popped);
+        _sut.List_PopByCondition(json, "Details.Description", "widget", "Contains", false, false, out _, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("1", poppedObj["Item"]!.ToString());
@@ -133,7 +133,7 @@ public class NestedPathTests
     {
         string json = """[{"Id":1,"address":{"city":"NYC"}}]""";
 
-        _sut.List_PopByCondition(json, "Address.City", "NYC", "", false, out _, out var popped);
+        _sut.List_PopByCondition(json, "Address.City", "NYC", "", false, false, out _, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("1", poppedObj["Id"]!.ToString());
