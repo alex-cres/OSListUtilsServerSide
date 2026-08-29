@@ -69,29 +69,29 @@ Declared in [ListUtils.csproj](ListUtils/ListUtils.csproj).
 flowchart LR
     In[inputs] --> Type{Action type?}
 
-    Type -->|List_Pop / List_PopMultiple| IndexOp[JsonNode.Parse → JsonArray<br/>RemoveAt by index<br/>&#40;reverse-sorted for PopMultiple&#41;]
+    Type -->|List_Pop / List_PopMultiple| IndexOp["JsonNode.Parse → JsonArray<br/>RemoveAt by index<br/>(reverse-sorted for PopMultiple)"]
 
     Type -->|PopByCondition /<br/>PopMultipleByCondition| ParseSingle[JsonNode.Parse → JsonArray]
     ParseSingle --> SingleScan{Search from end?}
-    SingleScan -->|false / N/A for Multiple| ScanFwd[Forward scan i = 0..N]
-    SingleScan -->|true &#40;Pop only&#41;| ScanBwd[Backward scan i = N-1..0]
-    ScanFwd --> Eval1[For each item:<br/>GetPropertyValue&#40;path&#41; via NavigateSegment<br/>then MatchesCondition&#40;value, target, op, caseSensitive&#41;]
+    SingleScan -->|"false / N/A for Multiple"| ScanFwd[Forward scan i = 0..N]
+    SingleScan -->|"true (Pop only)"| ScanBwd[Backward scan i = N-1..0]
+    ScanFwd --> Eval1["For each item:<br/>GetPropertyValue(path) via NavigateSegment<br/>then MatchesCondition(value, target, op, caseSensitive)"]
     ScanBwd --> Eval1
 
-    Type -->|PopByConditions /<br/>PopMultipleByConditions| ParseMulti[ParseConditions&#40;conditionsJson&#41;<br/>→ List&lt;Condition&gt;<br/>+ JsonNode.Parse → JsonArray]
+    Type -->|PopByConditions /<br/>PopMultipleByConditions| ParseMulti["ParseConditions(conditionsJson)<br/>→ List&lt;Condition&gt;<br/>+ JsonNode.Parse → JsonArray"]
     ParseMulti --> MultiScan{Search from end?}
-    MultiScan -->|false / N/A for Multiple| ScanFwdM[Forward scan]
-    MultiScan -->|true &#40;Pop only&#41;| ScanBwdM[Backward scan]
-    ScanFwdM --> Eval2[EvaluateConditions&#40;item, conditions, AND/OR&#41;<br/>AND: all must match<br/>OR: any must match]
+    MultiScan -->|"false / N/A for Multiple"| ScanFwdM[Forward scan]
+    MultiScan -->|"true (Pop only)"| ScanBwdM[Backward scan]
+    ScanFwdM --> Eval2["EvaluateConditions(item, conditions, AND/OR)<br/>AND: all must match<br/>OR: any must match"]
     ScanBwdM --> Eval2
 
     Type -->|List_Zip| Zip[Parse both arrays<br/>→ index-paired JsonObjects<br/>truncate to shorter]
 
-    Type -->|List_GroupBy| GroupBy[Parse source array<br/>→ Dictionary&lt;string, JsonArray&gt;<br/>keyed by GetPropertyValue&#40;path&#41;<br/>preserves first-seen order]
+    Type -->|List_GroupBy| GroupBy["Parse source array<br/>→ Dictionary&lt;string, JsonArray&gt;<br/>keyed by GetPropertyValue(path)<br/>preserves first-seen order"]
 
-    Type -->|List_Difference| Diff[Parse both arrays<br/>→ List&lt;string&gt; of B key values<br/>→ filter A: keep if no bValue matches<br/>&#40;bValue.Any via MatchesCondition&#41;]
+    Type -->|List_Difference| Diff["Parse both arrays<br/>Build B-value list once<br/>Equals / NotEquals: HashSet lookup - O(A+B)<br/>StartsWith / EndsWith: HashSet + prefix/suffix scan - O(A·L)<br/>Numeric ops: precompute min(B) / max(B) - O(A+B)<br/>Contains: linear scan via MatchesCondition - O(A*B)"]
 
-    Eval1 --> Serialize[ToJsonString&#40;JsonOptions&#41;]
+    Eval1 --> Serialize["ToJsonString(JsonOptions)"]
     Eval2 --> Serialize
     Zip --> Serialize
     GroupBy --> Serialize
@@ -102,10 +102,10 @@ flowchart LR
 
     subgraph PathNav[GetPropertyValue / NavigateSegment]
         direction TB
-        Path[Split path on '.'] --> Seg[Per segment:<br/>parse 'Name&#91;index&#93;' or 'Name']
-        Seg --> Prop[TryGetPropertyValue&#40;name&#41;<br/>fallback camelCase]
-        Prop --> Idx{Has &#91;index&#93;?}
-        Idx -->|yes| Arr[Array indexing<br/>&#40;negative counts from end&#41;]
+        Path["Split path on '.'"] --> Seg["Per segment:<br/>parse 'Name[index]' or 'Name'"]
+        Seg --> Prop["TryGetPropertyValue(name)<br/>fallback camelCase"]
+        Prop --> Idx{"Has [index]?"}
+        Idx -->|yes| Arr["Array indexing<br/>(negative counts from end)"]
         Idx -->|no| Next[Continue to next segment]
     end
 
@@ -170,7 +170,27 @@ Declared in [ListUtils.O11.csproj](ListUtils.O11/ListUtils.O11.csproj).
 
 ## 4. Test projects
 
-94 tests per platform × 2 = **188 tests total** across 9 test files per project.
+125 functional tests + 95 load tests per platform × 2 = **440 tests total**. 11 test files per project.
+
+Load tests use a shared 10,000-element complex JSON structure (nested objects, arrays, mixed types) and assert each Server Action completes in under **300 ms** in Release. Every load test also verifies the **result correctness** (expected element count or the invariant `updated + popped = source`) parsed outside the stopwatch so it does not count against the timing budget. `List_Difference` with `Contains` uses a 1,000-element pair because the substring operator is inherently O(A×B).
+
+Load tests use a shared 10,000-element complex JSON structure (nested objects, arrays, mixed types) and assert each Server Action completes in under **300 ms** in Release. `List_Difference` with `Contains` uses a 1,000-element pair because the substring operator is inherently O(A×B).
+
+`List_Difference` fast paths cover every operator except `Contains`:
+
+| Operator | Complexity | Mechanism |
+|----------|------------|-----------|
+| Equals (default) | O(A+B) | `HashSet<string>` from B, `Contains(keyA)` per A |
+| NotEquals / != | O(A+B) | Same set, keep A iff `bSet == {keyA}` |
+| StartsWith | O(A·L) | Iterate all prefixes of `keyA` against the B set |
+| EndsWith | O(A·L) | Iterate all suffixes of `keyA` against the B set |
+| GreaterThan / > | O(A+B) | Precompute `min(B)`, keep A iff `keyA ≤ min` (or not numeric) |
+| LessThan / < | O(A+B) | Precompute `max(B)` |
+| GreaterOrEqual / >= | O(A+B) | Precompute `min(B)` |
+| LessOrEqual / <= | O(A+B) | Precompute `max(B)` |
+| Contains | O(A·B) | Linear scan via `MatchesCondition` — no set-based shortcut without a suffix trie |
+
+All actions clone JSON nodes with `JsonNode.DeepClone()` (System.Text.Json 8.0+) instead of the `JsonNode.Parse(node.ToJsonString())` round-trip.
 
 ### `ListUtils.Tests/` (ODC, net10.0)
 
@@ -186,6 +206,7 @@ Declared in [ListUtils.O11.csproj](ListUtils.O11/ListUtils.O11.csproj).
 | ArrayIndexPathTests.cs | Fixed indices, negative indices (from end), array + dot combined, out-of-range guard, nested arrays inside arrays |
 | MultiConditionTests.cs | AND/OR combinations, nested-path in condition, empty conditions guard, per-condition case sensitivity, mixed operators |
 | SearchDirectionTests.cs | SearchFromEnd on List_PopByCondition and List_PopByConditions — pops last match vs first match; verifies list order preserved after removal |
+| LoadTests.cs | 90 load tests — 10 per Server Action — driven by a shared 10,000-element complex JSON list. Each test asserts elapsed time < 300 ms in Release. `List_Difference` with `Contains` uses a 1,000-element pair (slow-path). |
 
 Test data is inline string literals — **no binary test files are committed**.
 
@@ -204,6 +225,7 @@ Test data is inline string literals — **no binary test files are committed**.
 | ArrayIndexPathTests.cs | Byte-for-byte identical to ODC |
 | MultiConditionTests.cs | Byte-for-byte identical to ODC |
 | SearchDirectionTests.cs | Byte-for-byte identical to ODC |
+| LoadTests.cs | Byte-for-byte identical to ODC |
 
 The adapter pattern ensures `new ListUtils()` resolves to the wrapper in the
 O11 test namespace, delegating to `CssListUtils` internally. This allows all

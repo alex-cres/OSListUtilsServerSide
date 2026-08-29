@@ -198,5 +198,141 @@ public class OperatorTests
         Assert.Equal(2, arr.Count);
     }
 
+    [Fact]
+    public void Difference_NotEquals_KeepsOnlyItemsThatMatchAllB()
+    {
+        // ∃b: keyA != b — true unless every b equals keyA (bSet == {keyA}).
+        string listA = """[{"Id":"1"},{"Id":"2"},{"Id":"3"}]""";
+        string listB = """[{"Id":"2"},{"Id":"2"}]""";
+
+        _sut.List_Difference(listA, listB, "Id", "NotEquals", false, out var diff);
+
+        var arr = JsonNode.Parse(diff)!.AsArray();
+        Assert.Single(arr);
+        Assert.Equal("2", arr[0]!["Id"]!.ToString());
+    }
+
+    [Fact]
+    public void Difference_NotEquals_RemovesAll_WhenBHasMultipleDistinctValues()
+    {
+        string listA = """[{"Id":"1"},{"Id":"2"},{"Id":"3"}]""";
+        string listB = """[{"Id":"9"},{"Id":"8"}]""";
+
+        _sut.List_Difference(listA, listB, "Id", "NotEquals", false, out var diff);
+
+        var arr = JsonNode.Parse(diff)!.AsArray();
+        Assert.Empty(arr);
+    }
+
+    [Fact]
+    public void Difference_StartsWith_RemovesItemsThatStartWithAnyBValue()
+    {
+        string listA = """[{"Code":"US-NY"},{"Code":"US-CA"},{"Code":"UK-LDN"}]""";
+        string listB = """[{"Code":"US"}]""";
+
+        _sut.List_Difference(listA, listB, "Code", "StartsWith", false, out var diff);
+
+        var arr = JsonNode.Parse(diff)!.AsArray();
+        Assert.Single(arr);
+        Assert.Equal("UK-LDN", arr[0]!["Code"]!.ToString());
+    }
+
+    [Fact]
+    public void Difference_EndsWith_RemovesItemsThatEndWithAnyBValue()
+    {
+        string listA = """[{"Code":"NY-US"},{"Code":"CA-US"},{"Code":"LDN-UK"}]""";
+        string listB = """[{"Code":"-US"}]""";
+
+        _sut.List_Difference(listA, listB, "Code", "EndsWith", false, out var diff);
+
+        var arr = JsonNode.Parse(diff)!.AsArray();
+        Assert.Single(arr);
+        Assert.Equal("LDN-UK", arr[0]!["Code"]!.ToString());
+    }
+
+    [Fact]
+    public void Difference_GreaterThan_RemovesItemsAboveMinB()
+    {
+        // ∃b: keyA > b iff keyA > min(B) = 10. So remove all A > 10.
+        string listA = """[{"Score":"5"},{"Score":"10"},{"Score":"15"},{"Score":"20"}]""";
+        string listB = """[{"Score":"10"},{"Score":"50"}]""";
+
+        _sut.List_Difference(listA, listB, "Score", "GreaterThan", false, out var diff);
+
+        var arr = JsonNode.Parse(diff)!.AsArray();
+        Assert.Equal(2, arr.Count);
+        Assert.Equal("5", arr[0]!["Score"]!.ToString());
+        Assert.Equal("10", arr[1]!["Score"]!.ToString());
+    }
+
+    [Fact]
+    public void Difference_LessThan_RemovesItemsBelowMaxB()
+    {
+        // ∃b: keyA < b iff keyA < max(B) = 50. So remove all A < 50.
+        string listA = """[{"Score":"5"},{"Score":"10"},{"Score":"50"},{"Score":"100"}]""";
+        string listB = """[{"Score":"10"},{"Score":"50"}]""";
+
+        _sut.List_Difference(listA, listB, "Score", "LessThan", false, out var diff);
+
+        var arr = JsonNode.Parse(diff)!.AsArray();
+        Assert.Equal(2, arr.Count);
+        Assert.Equal("50", arr[0]!["Score"]!.ToString());
+        Assert.Equal("100", arr[1]!["Score"]!.ToString());
+    }
+
+    [Fact]
+    public void Difference_GreaterOrEqual_KeepsItemsBelowMinB()
+    {
+        // ∃b: keyA >= b iff keyA >= min(B) = 10. Keep A < 10.
+        string listA = """[{"Score":"5"},{"Score":"10"},{"Score":"15"}]""";
+        string listB = """[{"Score":"10"},{"Score":"50"}]""";
+
+        _sut.List_Difference(listA, listB, "Score", "GreaterOrEqual", false, out var diff);
+
+        var arr = JsonNode.Parse(diff)!.AsArray();
+        Assert.Single(arr);
+        Assert.Equal("5", arr[0]!["Score"]!.ToString());
+    }
+
+    [Fact]
+    public void Difference_LessOrEqual_KeepsItemsAboveMaxB()
+    {
+        // ∃b: keyA <= b iff keyA <= max(B) = 50. Keep A > 50.
+        string listA = """[{"Score":"5"},{"Score":"50"},{"Score":"100"}]""";
+        string listB = """[{"Score":"10"},{"Score":"50"}]""";
+
+        _sut.List_Difference(listA, listB, "Score", "LessOrEqual", false, out var diff);
+
+        var arr = JsonNode.Parse(diff)!.AsArray();
+        Assert.Single(arr);
+        Assert.Equal("100", arr[0]!["Score"]!.ToString());
+    }
+
+    [Fact]
+    public void Difference_Numeric_NonNumericKeyA_IsKept()
+    {
+        // Non-numeric keys can't satisfy any numeric comparison → matchedAny=false → kept.
+        string listA = """[{"Score":"abc"},{"Score":"5"}]""";
+        string listB = """[{"Score":"10"}]""";
+
+        _sut.List_Difference(listA, listB, "Score", "GreaterThan", false, out var diff);
+
+        var arr = JsonNode.Parse(diff)!.AsArray();
+        Assert.Equal(2, arr.Count);
+    }
+
+    [Fact]
+    public void Difference_Numeric_NoNumericB_KeepsEverything()
+    {
+        // No parseable B → matchedAny=false → keep everything.
+        string listA = """[{"Score":"5"},{"Score":"10"}]""";
+        string listB = """[{"Score":"foo"},{"Score":"bar"}]""";
+
+        _sut.List_Difference(listA, listB, "Score", "GreaterThan", false, out var diff);
+
+        var arr = JsonNode.Parse(diff)!.AsArray();
+        Assert.Equal(2, arr.Count);
+    }
+
     #endregion
 }
