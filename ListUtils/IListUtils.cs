@@ -31,7 +31,7 @@ public interface IListUtils
     void List_PopByCondition(
         [OSParameter(Description = "The source list serialized as a JSON string")]
         string sourceListJson,
-        [OSParameter(Description = "The exact name of the structure attribute to check (e.g. 'IsActive' or 'Id')")]
+        [OSParameter(Description = "Property path to check. Supports nested paths with dots (e.g. 'Address.City' or 'Meta.Status'). CamelCase fallback applied at each segment.")]
         string propertyName,
         [OSParameter(Description = "The value to filter by (as a string, e.g. 'true' or '5')")]
         string targetValue,
@@ -46,7 +46,7 @@ public interface IListUtils
     void List_PopMultipleByCondition(
         [OSParameter(Description = "The source list serialized as a JSON string")]
         string sourceListJson,
-        [OSParameter(Description = "The exact name of the structure attribute to check")]
+        [OSParameter(Description = "Property path to check. Supports nested paths with dots (e.g. 'Address.City' or 'Meta.Status'). CamelCase fallback applied at each segment.")]
         string propertyName,
         [OSParameter(Description = "The value to filter by")]
         string targetValue,
@@ -74,7 +74,7 @@ public interface IListUtils
     void List_GroupBy(
         [OSParameter(Description = "The source JSON list")]
         string sourceListJson,
-        [OSParameter(Description = "The property to group by")]
+        [OSParameter(Description = "Property path to group by. Supports nested paths with dots (e.g. 'Address.City'). CamelCase fallback applied at each segment.")]
         string propertyName,
         [OSParameter(Description = "Grouped JSON array with Key and Items per group")]
         out string groupedListJson);
@@ -85,7 +85,7 @@ public interface IListUtils
         string listAJson,
         [OSParameter(Description = "The subtraction JSON list")]
         string listBJson,
-        [OSParameter(Description = "The property key to match on (e.g. 'Id')")]
+        [OSParameter(Description = "Property path to match on. Supports nested paths with dots (e.g. 'Meta.Id'). CamelCase fallback applied at each segment.")]
         string matchKey,
         [OSParameter(Description = "Comparison operator for key matching: Equals (default), Contains, StartsWith. Empty = Equals.")]
         string comparisonOperator,

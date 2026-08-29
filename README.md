@@ -45,8 +45,9 @@ Pops the first element matching a property condition from a JSON list.
 | Parameter | Type | Direction | Description |
 |-----------|------|-----------|-------------|
 | `sourceListJson` | `string` | Input | The source list serialized as a JSON string (via `JSON Serialize`). |
-| `propertyName` | `string` | Input | The attribute name to check (e.g. `IsActive`, `Id`). Supports camelCase fallback. |
-| `targetValue` | `string` | Input | The value to match (case-insensitive string comparison). |
+| `propertyName` | `string` | Input | Property path to check. Supports nested paths with dots (e.g. `Address.City` or `Meta.Status`). CamelCase fallback applied at each segment. |
+| `targetValue` | `string` | Input | The value to match. |
+| `comparisonOperator` | `string` | Input | `Equals` (default), `NotEquals`, `Contains`, `StartsWith`, `EndsWith`, `GreaterThan`, `LessThan`, `GreaterOrEqual`, `LessOrEqual`. Empty = `Equals`. |
 | `updatedListJson` | `string` | Output | The JSON list without the matched element. |
 | `poppedElementJson` | `string` | Output | The matched JSON object, or `{}` if no match found. |
 
@@ -57,8 +58,9 @@ Pops all elements matching a property condition from a JSON list.
 | Parameter | Type | Direction | Description |
 |-----------|------|-----------|-------------|
 | `sourceListJson` | `string` | Input | The source list serialized as a JSON string. |
-| `propertyName` | `string` | Input | The attribute name to check. |
-| `targetValue` | `string` | Input | The value to match (case-insensitive). |
+| `propertyName` | `string` | Input | Property path to check. Supports nested paths with dots (e.g. `Address.City`). |
+| `targetValue` | `string` | Input | The value to match. |
+| `comparisonOperator` | `string` | Input | Same operators as `List_PopByCondition`. |
 | `updatedListJson` | `string` | Output | The JSON list without matched elements. |
 | `poppedElementsJson` | `string` | Output | JSON array of all matched elements, or `[]` if none. |
 
@@ -81,7 +83,7 @@ Groups a flat JSON list by a property value.
 | Parameter | Type | Direction | Description |
 |-----------|------|-----------|-------------|
 | `sourceListJson` | `string` | Input | The source JSON list. |
-| `propertyName` | `string` | Input | The property to group by. Supports camelCase fallback. |
+| `propertyName` | `string` | Input | Property path to group by. Supports nested paths with dots (e.g. `Customer.Country`). CamelCase fallback applied at each segment. |
 | `groupedListJson` | `string` | Output | JSON array of `{"Key": "value", "Items": [...]}` groups. Groups appear in first-seen order. |
 
 ### List_Difference
@@ -92,8 +94,45 @@ Computes the set difference (A − B) of two JSON lists on a key property.
 |-----------|------|-----------|-------------|
 | `listAJson` | `string` | Input | The base JSON list. |
 | `listBJson` | `string` | Input | The subtraction JSON list. |
-| `matchKey` | `string` | Input | The property to match on (e.g. `Id`). Case-insensitive comparison. |
+| `matchKey` | `string` | Input | Property path to match on. Supports nested paths with dots (e.g. `Ref.Code`). |
+| `comparisonOperator` | `string` | Input | `Equals` (default), `NotEquals`, `Contains`, `StartsWith`, `EndsWith`, `GreaterThan`, `LessThan`, `GreaterOrEqual`, `LessOrEqual`. Empty = `Equals`. |
 | `differenceListJson` | `string` | Output | Elements in A whose `matchKey` has no match in B. |
+
+---
+
+## Comparison Operators
+
+The three condition-based actions (`List_PopByCondition`, `List_PopMultipleByCondition`, `List_Difference`) accept an operator that controls how `targetValue` is compared against the property value.
+
+| Operator | Aliases | Behaviour |
+|----------|---------|-----------|
+| `Equals` | *(default)*, `""` | Case-insensitive exact match |
+| `NotEquals` | `!=` | Inverse of Equals |
+| `Contains` | | Case-insensitive substring match |
+| `StartsWith` | | Case-insensitive prefix match |
+| `EndsWith` | | Case-insensitive suffix match |
+| `GreaterThan` | `>` | Numeric comparison (property value > target) |
+| `LessThan` | `<` | Numeric comparison (property value < target) |
+| `GreaterOrEqual` | `>=` | Numeric comparison including boundary |
+| `LessOrEqual` | `<=` | Numeric comparison including boundary |
+
+**Numeric operators** parse both values with `InvariantCulture`. Non-numeric values evaluate as no-match.
+
+---
+
+## Nested Property Paths
+
+`propertyName` and `matchKey` support **dot-separated paths** to reach into nested objects:
+
+```
+"Address.City"           → obj["Address"]["City"]
+"Meta.Status"            → obj["Meta"]["Status"]
+"Wrapper.Data.Value"     → obj["Wrapper"]["Data"]["Value"]
+```
+
+CamelCase fallback is applied **at each segment** — so `Address.City` also matches `address.city` in the JSON.
+
+If any segment is missing or the value at any level is not an object, the item is treated as non-matching.
 
 ---
 

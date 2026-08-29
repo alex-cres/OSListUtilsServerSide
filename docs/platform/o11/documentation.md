@@ -68,15 +68,18 @@ List_PopMultiple
   Out-of-range indices are silently ignored.
 
 List_PopByCondition
-  Input:  sourceListJson (Text), propertyName (Text), targetValue (Text)
+  Input:  sourceListJson (Text), propertyName (Text), targetValue (Text),
+          comparisonOperator (Text)
   Output: updatedListJson (Text), poppedElementJson (Text)
-  Finds the first object where propertyName equals targetValue
-  (case-insensitive). Removes and returns it. If no match is found,
-  updatedListJson is the original and poppedElementJson is "{}".
-  Supports camelCase fallback (e.g. "IsActive" also checks "isActive").
+  Finds the first object where propertyName matches targetValue using
+  the given comparisonOperator. Removes and returns it. If no match is
+  found, updatedListJson is the original and poppedElementJson is "{}".
+  propertyName supports dot-separated nested paths (e.g. "Address.City").
+  CamelCase fallback is applied at each path segment.
 
 List_PopMultipleByCondition
-  Input:  sourceListJson (Text), propertyName (Text), targetValue (Text)
+  Input:  sourceListJson (Text), propertyName (Text), targetValue (Text),
+          comparisonOperator (Text)
   Output: updatedListJson (Text), poppedElementsJson (Text)
   Same as PopByCondition but removes ALL matching elements.
   poppedElementsJson is a JSON array of all removed objects.
@@ -93,12 +96,49 @@ List_GroupBy
   Groups elements by the value of propertyName. Output is a JSON
   array of objects with "Key" (the group value) and "Items" (array
   of elements in that group). Groups appear in first-seen order.
+  propertyName supports dot-separated nested paths.
 
 List_Difference
-  Input:  listAJson (Text), listBJson (Text), matchKey (Text)
+  Input:  listAJson (Text), listBJson (Text), matchKey (Text),
+          comparisonOperator (Text)
   Output: differenceListJson (Text)
-  Returns elements from list A whose matchKey value does not appear
-  in list B. Matching is case-insensitive. Runs in O(N) time.
+  Returns elements from list A whose matchKey value does not match
+  any matchKey value in list B using the given comparisonOperator.
+  matchKey supports dot-separated nested paths.
+
+
+COMPARISON OPERATORS
+--------------------
+
+The condition-based actions accept an operator string:
+
+  Equals or ""              Case-insensitive exact match (default)
+  NotEquals or !=           Inverse of Equals
+  Contains                  Case-insensitive substring match
+  StartsWith                Case-insensitive prefix match
+  EndsWith                  Case-insensitive suffix match
+  GreaterThan or >          Numeric > comparison
+  LessThan or <             Numeric < comparison
+  GreaterOrEqual or >=      Numeric >= comparison
+  LessOrEqual or <=         Numeric <= comparison
+
+Numeric operators parse both values with InvariantCulture. Non-numeric
+values evaluate as no-match.
+
+
+NESTED PROPERTY PATHS
+---------------------
+
+propertyName, matchKey, and the GroupBy property support dot-separated
+paths to reach into nested JSON objects:
+
+  Address.City        obj["Address"]["City"]
+  Meta.Status         obj["Meta"]["Status"]
+  Wrapper.Data.Value  obj["Wrapper"]["Data"]["Value"]
+
+CamelCase fallback is applied at each segment. If any segment is missing
+or the value at any level is not an object, the item is treated as
+non-matching.
 
 
 SUPPORTED INPUT

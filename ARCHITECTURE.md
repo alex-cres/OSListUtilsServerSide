@@ -128,15 +128,18 @@ Declared in [ListUtils.O11.csproj](ListUtils.O11/ListUtils.O11.csproj).
 
 ## 4. Test projects
 
-26 tests per platform × 2 = **52 tests total** across 2 test files per project.
+59 tests per platform × 2 = **118 tests total** across 5 test files per project.
 
 ### `ListUtils.Tests/` (ODC, net10.0)
 
 | File | Responsibility |
 |------|---------------|
 | Usings.cs | `global using Xunit;` |
-| ListPopTests.cs | Index-based pop tests: valid index, OOB, negative, null list, first/last element, multiple indices, null/empty indices, OOB ignored, null source |
-| ListJsonTests.cs | JSON-based tests: PopByCondition (match, no match, null, camelCase), PopMultipleByCondition (match all, no match), Zip (equal, unequal, empty), GroupBy (groups, empty), Difference (removes, null A/B, case-insensitive) |
+| ListPopTests.cs | Index-based pop tests: valid index, OOB, negative, null list, first/last element, multiple indices, null/empty indices, OOB ignored, null source, object elements |
+| ListJsonTests.cs | JSON-based tests: PopByCondition/PopMultipleByCondition (match, no match, null, camelCase), Zip (equal, unequal, empty), GroupBy (groups, empty), Difference (removes, null A/B, case-insensitive) |
+| ComplexStructureTests.cs | Nested objects, deep nesting, mixed value types, large structures with many fields, unicode text, special characters |
+| OperatorTests.cs | Contains, StartsWith, EndsWith, NotEquals, GreaterThan, LessThan, GreaterOrEqual, LessOrEqual, symbol aliases (`!=`, `>`, `<`, `>=`, `<=`), non-numeric guard |
+| NestedPathTests.cs | Dot-separated property paths (2-level and 3-level), path miss, path with operator, camelCase fallback per segment |
 
 Test data is inline string literals — **no binary test files are committed**.
 
@@ -148,6 +151,9 @@ Test data is inline string literals — **no binary test files are committed**.
 | Usings.cs | `global using Xunit;` |
 | ListPopTests.cs | Byte-for-byte identical to ODC |
 | ListJsonTests.cs | Byte-for-byte identical to ODC |
+| ComplexStructureTests.cs | Byte-for-byte identical to ODC |
+| OperatorTests.cs | Byte-for-byte identical to ODC |
+| NestedPathTests.cs | Byte-for-byte identical to ODC |
 
 The adapter pattern ensures `new ListUtils()` resolves to the wrapper in the
 O11 test namespace, delegating to `CssListUtils` internally. This allows all

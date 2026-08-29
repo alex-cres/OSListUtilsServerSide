@@ -259,15 +259,29 @@ public class CssListUtils : IssListUtils
         ssDifferenceListJson = result.ToJsonString(JsonOptions);
     }
 
-    private static string? GetPropertyValue(JsonNode node, string propertyName)
+    private static string? GetPropertyValue(JsonNode node, string propertyPath)
     {
-        if (node is not JsonObject obj) return null;
-        if (obj.TryGetPropertyValue(propertyName, out var val) && val != null)
-            return val.ToString();
-        string camel = ToCamelCase(propertyName);
-        if (obj.TryGetPropertyValue(camel, out val) && val != null)
-            return val.ToString();
-        return null;
+        if (string.IsNullOrEmpty(propertyPath)) return null;
+
+        JsonNode? current = node;
+        foreach (var segment in propertyPath.Split('.'))
+        {
+            if (current is not JsonObject obj) return null;
+            if (obj.TryGetPropertyValue(segment, out var val) && val != null)
+            {
+                current = val;
+                continue;
+            }
+            string camel = ToCamelCase(segment);
+            if (obj.TryGetPropertyValue(camel, out val) && val != null)
+            {
+                current = val;
+                continue;
+            }
+            return null;
+        }
+
+        return current?.ToString();
     }
 
     private static bool MatchesCondition(string actual, string target, string op)

@@ -26,13 +26,13 @@ For generic structure support, the JSON-based actions accept any Structure List 
 
 #### Index-Based Actions
 
-**List_Pop** — Removes an element at a specific 0-based index from a Text List. Returns the removed element and the updated list. Out-of-range indices return the original list unchanged with an empty popped element.
+**List_Pop** — Removes an element at a specific 0-based index from a JSON list. Returns the removed element and the updated list.
 
-**List_PopMultiple** — Removes multiple elements at specified indices from a Text List. Indices are processed in reverse-sorted order so earlier removals do not shift the positions of later ones. Out-of-range indices are silently ignored.
+**List_PopMultiple** — Removes multiple elements at specified indices (comma-separated string). Indices are processed in reverse-sorted order so earlier removals do not shift later positions.
 
 #### Condition-Based Actions (JSON)
 
-**List_PopByCondition** — Finds the first object in a JSON array where a named property equals a target value (case-insensitive). Removes and returns it. Supports camelCase fallback for property names.
+**List_PopByCondition** — Finds the first object in a JSON array matching a property condition. Removes and returns it. Supports 9 comparison operators (Equals, NotEquals, Contains, StartsWith, EndsWith, GreaterThan, LessThan, GreaterOrEqual, LessOrEqual) and dot-separated nested property paths (e.g. `Address.City`).
 
 **List_PopMultipleByCondition** — Same as above but removes ALL matching elements. Returns the list of removed elements as a JSON array.
 
@@ -40,9 +40,38 @@ For generic structure support, the JSON-based actions accept any Structure List 
 
 **List_Zip** — Pairs two JSON lists element-by-element into objects with caller-specified key names. Truncates to the shorter list.
 
-**List_GroupBy** — Groups a flat JSON list by a property value. Returns an array of `{Key, Items}` objects in first-seen order.
+**List_GroupBy** — Groups a flat JSON list by a property value (nested paths supported). Returns an array of `{Key, Items}` objects in first-seen order.
 
-**List_Difference** — Computes the set difference (A − B) matching on a key property. Runs in O(N) time using a hash set.
+**List_Difference** — Computes the set difference (A − B) matching on a key property. Supports nested paths and comparison operators. Runs in O(A + B) time.
+
+---
+
+### Comparison Operators
+
+The three condition-based actions accept an operator:
+
+| Operator | Behaviour |
+|----------|-----------|
+| `Equals` (default), `""` | Case-insensitive exact match |
+| `NotEquals`, `!=` | Inverse of Equals |
+| `Contains` | Substring match |
+| `StartsWith`, `EndsWith` | Prefix / suffix match |
+| `GreaterThan`, `>` / `LessThan`, `<` | Numeric comparison |
+| `GreaterOrEqual`, `>=` / `LessOrEqual`, `<=` | Numeric with boundary |
+
+---
+
+### Nested Property Paths
+
+`PropertyName` and `MatchKey` support dot-separated paths to reach into nested objects:
+
+```
+Address.City         →  obj["Address"]["City"]
+Meta.Status          →  obj["Meta"]["Status"]
+Wrapper.Data.Value   →  obj["Wrapper"]["Data"]["Value"]
+```
+
+CamelCase fallback is applied at each segment.
 
 ---
 
@@ -79,7 +108,9 @@ For generic structure support, the JSON-based actions accept any Structure List 
 
 - **7 server-side actions** covering the most common list manipulation gaps
 - **Generic structure support** via JSON serialization — works with any OutSystems Structure
-- **Case-insensitive property matching** with automatic camelCase fallback
+- **9 comparison operators** on condition-based actions (Equals, NotEquals, Contains, StartsWith, EndsWith, GreaterThan, LessThan, GreaterOrEqual, LessOrEqual)
+- **Nested property paths** — dot-separated navigation into nested JSON objects
+- **Case-insensitive property matching** with automatic camelCase fallback at every path segment
 - **O(N) performance** for all operations — no nested loops
 - **Null-safe** — empty or null inputs return empty results, never exceptions
 - **No external dependencies** on ODC — uses built-in `System.Text.Json`
