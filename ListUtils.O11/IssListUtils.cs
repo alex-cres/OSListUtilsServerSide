@@ -21,6 +21,7 @@ public interface IssListUtils
         string ssPropertyName,
         string ssTargetValue,
         string ssComparisonOperator,
+        bool ssCaseSensitive,
         out string ssUpdatedListJson,
         out string ssPoppedElementJson);
 
@@ -29,6 +30,21 @@ public interface IssListUtils
         string ssPropertyName,
         string ssTargetValue,
         string ssComparisonOperator,
+        bool ssCaseSensitive,
+        out string ssUpdatedListJson,
+        out string ssPoppedElementsJson);
+
+    void MssList_PopByConditions(
+        string ssSourceListJson,
+        string ssConditionsJson,
+        string ssLogicalOperator,
+        out string ssUpdatedListJson,
+        out string ssPoppedElementJson);
+
+    void MssList_PopMultipleByConditions(
+        string ssSourceListJson,
+        string ssConditionsJson,
+        string ssLogicalOperator,
         out string ssUpdatedListJson,
         out string ssPoppedElementsJson);
 
@@ -49,5 +65,6 @@ public interface IssListUtils
         string ssListBJson,
         string ssMatchKey,
         string ssComparisonOperator,
+        bool ssCaseSensitive,
         out string ssDifferenceListJson);
 }

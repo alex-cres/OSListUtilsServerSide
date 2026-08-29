@@ -17,7 +17,7 @@ public class NestedPathTests
             ]
             """;
 
-        _sut.List_PopByCondition(json, "Address.City", "LA", "", out var updated, out var popped);
+        _sut.List_PopByCondition(json, "Address.City", "LA", "", false, out var updated, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("2", poppedObj["Id"]!.ToString());
@@ -36,7 +36,7 @@ public class NestedPathTests
             ]
             """;
 
-        _sut.List_PopMultipleByCondition(json, "Meta.Status", "Paid", "", out _, out var popped);
+        _sut.List_PopMultipleByCondition(json, "Meta.Status", "Paid", "", false, out _, out var popped);
 
         var poppedArr = JsonNode.Parse(popped)!.AsArray();
         Assert.Equal(2, poppedArr.Count);
@@ -77,7 +77,7 @@ public class NestedPathTests
             ]
             """;
 
-        _sut.List_Difference(listA, listB, "Ref.Code", "", out var diff);
+        _sut.List_Difference(listA, listB, "Ref.Code", "", false, out var diff);
 
         var arr = JsonNode.Parse(diff)!.AsArray();
         Assert.Equal(2, arr.Count);
@@ -95,7 +95,7 @@ public class NestedPathTests
             ]
             """;
 
-        _sut.List_PopByCondition(json, "Wrapper.Data.Value", "target", "", out _, out var popped);
+        _sut.List_PopByCondition(json, "Wrapper.Data.Value", "target", "", false, out _, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("1", poppedObj["Id"]!.ToString());
@@ -106,7 +106,7 @@ public class NestedPathTests
     {
         string json = """[{"Id":1,"Address":{"City":"NYC"}}]""";
 
-        _sut.List_PopByCondition(json, "Address.State", "NY", "", out var updated, out var popped);
+        _sut.List_PopByCondition(json, "Address.State", "NY", "", false, out var updated, out var popped);
 
         Assert.Equal("{}", popped);
         Assert.Equal(json, updated);
@@ -122,7 +122,7 @@ public class NestedPathTests
             ]
             """;
 
-        _sut.List_PopByCondition(json, "Details.Description", "widget", "Contains", out _, out var popped);
+        _sut.List_PopByCondition(json, "Details.Description", "widget", "Contains", false, out _, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("1", poppedObj["Item"]!.ToString());
@@ -133,7 +133,7 @@ public class NestedPathTests
     {
         string json = """[{"Id":1,"address":{"city":"NYC"}}]""";
 
-        _sut.List_PopByCondition(json, "Address.City", "NYC", "", out _, out var popped);
+        _sut.List_PopByCondition(json, "Address.City", "NYC", "", false, out _, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("1", poppedObj["Id"]!.ToString());

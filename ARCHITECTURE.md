@@ -35,7 +35,7 @@ Primary class: `ListUtils`, implementing `IListUtils`.
 
 | File | Type | Purpose |
 |------|------|---------|
-| [IListUtils.cs](ListUtils/IListUtils.cs) | `[OSInterface]` | Declares 7 actions: `List_Pop`, `List_PopMultiple`, `List_PopByCondition`, `List_PopMultipleByCondition`, `List_Zip`, `List_GroupBy`, `List_Difference` |
+| [IListUtils.cs](ListUtils/IListUtils.cs) | `[OSInterface]` | Declares 9 actions: `List_Pop`, `List_PopMultiple`, `List_PopByCondition`, `List_PopMultipleByCondition`, `List_PopByConditions`, `List_PopMultipleByConditions`, `List_Zip`, `List_GroupBy`, `List_Difference` |
 
 No `[OSStructure]` types — all outputs are primitives (`string`, `List<string>`, `List<int>`).
 
@@ -100,7 +100,7 @@ Target framework: **`net48`**, `LangVersion=10`. Namespace: `OutSystems.NssListU
 
 | File | Type | Purpose |
 |------|------|---------|
-| [IssListUtils.cs](ListUtils.O11/IssListUtils.cs) | Interface | Declares `MssList_Pop`, `MssList_PopMultiple`, `MssList_PopByCondition`, `MssList_PopMultipleByCondition`, `MssList_Zip`, `MssList_GroupBy`, `MssList_Difference` |
+| [IssListUtils.cs](ListUtils.O11/IssListUtils.cs) | Interface | Declares `MssList_Pop`, `MssList_PopMultiple`, `MssList_PopByCondition`, `MssList_PopMultipleByCondition`, `MssList_PopByConditions`, `MssList_PopMultipleByConditions`, `MssList_Zip`, `MssList_GroupBy`, `MssList_Difference` |
 
 No record types — all parameters use `string`, `int`, `List<string>`, `List<int>` (OutSystems-compatible primitives on both platforms).
 
@@ -128,7 +128,7 @@ Declared in [ListUtils.O11.csproj](ListUtils.O11/ListUtils.O11.csproj).
 
 ## 4. Test projects
 
-59 tests per platform × 2 = **118 tests total** across 5 test files per project.
+85 tests per platform × 2 = **170 tests total** across 8 test files per project.
 
 ### `ListUtils.Tests/` (ODC, net10.0)
 
@@ -140,6 +140,9 @@ Declared in [ListUtils.O11.csproj](ListUtils.O11/ListUtils.O11.csproj).
 | ComplexStructureTests.cs | Nested objects, deep nesting, mixed value types, large structures with many fields, unicode text, special characters |
 | OperatorTests.cs | Contains, StartsWith, EndsWith, NotEquals, GreaterThan, LessThan, GreaterOrEqual, LessOrEqual, symbol aliases (`!=`, `>`, `<`, `>=`, `<=`), non-numeric guard |
 | NestedPathTests.cs | Dot-separated property paths (2-level and 3-level), path miss, path with operator, camelCase fallback per segment |
+| CaseSensitiveTests.cs | Case-sensitive Equals, NotEquals, Contains, StartsWith on strings; case-insensitive vs case-sensitive Difference |
+| ArrayIndexPathTests.cs | Fixed indices, negative indices (from end), array + dot combined, out-of-range guard, nested arrays inside arrays |
+| MultiConditionTests.cs | AND/OR combinations, nested-path in condition, empty conditions guard, per-condition case sensitivity, mixed operators |
 
 Test data is inline string literals — **no binary test files are committed**.
 
@@ -154,6 +157,9 @@ Test data is inline string literals — **no binary test files are committed**.
 | ComplexStructureTests.cs | Byte-for-byte identical to ODC |
 | OperatorTests.cs | Byte-for-byte identical to ODC |
 | NestedPathTests.cs | Byte-for-byte identical to ODC |
+| CaseSensitiveTests.cs | Byte-for-byte identical to ODC |
+| ArrayIndexPathTests.cs | Byte-for-byte identical to ODC |
+| MultiConditionTests.cs | Byte-for-byte identical to ODC |
 
 The adapter pattern ensures `new ListUtils()` resolves to the wrapper in the
 O11 test namespace, delegating to `CssListUtils` internally. This allows all

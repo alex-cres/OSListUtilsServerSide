@@ -32,46 +32,69 @@ For generic structure support, the JSON-based actions accept any Structure List 
 
 #### Condition-Based Actions (JSON)
 
-**List_PopByCondition** — Finds the first object in a JSON array matching a property condition. Removes and returns it. Supports 9 comparison operators (Equals, NotEquals, Contains, StartsWith, EndsWith, GreaterThan, LessThan, GreaterOrEqual, LessOrEqual) and dot-separated nested property paths (e.g. `Address.City`).
+**List_PopByCondition** — Finds the first object in a JSON array matching a property condition. Supports 9 comparison operators, dot-separated nested paths (e.g. `Address.City`), array indexing (e.g. `Items[0].Name`, `Tags[-1]`), and a `caseSensitive` flag.
 
 **List_PopMultipleByCondition** — Same as above but removes ALL matching elements. Returns the list of removed elements as a JSON array.
+
+**List_PopByConditions** — Multi-condition version. Accepts a JSON array of conditions with per-condition path, operator, value, and caseSensitive fields; combines them with AND (default) or OR logical operator.
+
+**List_PopMultipleByConditions** — Multi-condition version that removes ALL matching elements.
 
 #### Relational & Set Actions (JSON)
 
 **List_Zip** — Pairs two JSON lists element-by-element into objects with caller-specified key names. Truncates to the shorter list.
 
-**List_GroupBy** — Groups a flat JSON list by a property value (nested paths supported). Returns an array of `{Key, Items}` objects in first-seen order.
+**List_GroupBy** — Groups a flat JSON list by a property value (nested paths + array indexing supported). Returns an array of `{Key, Items}` objects in first-seen order.
 
-**List_Difference** — Computes the set difference (A − B) matching on a key property. Supports nested paths and comparison operators. Runs in O(A + B) time.
+**List_Difference** — Computes the set difference (A − B) matching on a key property. Supports nested paths, array indexing, comparison operators, and case sensitivity.
 
 ---
 
 ### Comparison Operators
 
-The three condition-based actions accept an operator:
+The condition-based actions accept an operator:
 
 | Operator | Behaviour |
 |----------|-----------|
-| `Equals` (default), `""` | Case-insensitive exact match |
+| `Equals` (default), `""` | Exact match (per `caseSensitive` flag) |
 | `NotEquals`, `!=` | Inverse of Equals |
 | `Contains` | Substring match |
 | `StartsWith`, `EndsWith` | Prefix / suffix match |
 | `GreaterThan`, `>` / `LessThan`, `<` | Numeric comparison |
 | `GreaterOrEqual`, `>=` / `LessOrEqual`, `<=` | Numeric with boundary |
 
+The `caseSensitive` boolean (default `false`) toggles case sensitivity for string operators. Numeric operators ignore it.
+
 ---
 
-### Nested Property Paths
+### Property Paths
 
-`PropertyName` and `MatchKey` support dot-separated paths to reach into nested objects:
+`PropertyName`, `MatchKey`, and paths inside condition JSON support both dot navigation and array indexing:
 
 ```
-Address.City         →  obj["Address"]["City"]
-Meta.Status          →  obj["Meta"]["Status"]
-Wrapper.Data.Value   →  obj["Wrapper"]["Data"]["Value"]
+Address.City             →  obj["Address"]["City"]
+Items[0].Name            →  obj["Items"][0]["Name"]
+Tags[-1]                 →  last element of Tags
+Groups[0].Members[-1]    →  mix of dots and indexing at multiple depths
 ```
 
-CamelCase fallback is applied at each segment.
+CamelCase fallback is applied at each segment. Negative indices count from the end.
+
+---
+
+### Multiple Conditions
+
+`List_PopByConditions` and `List_PopMultipleByConditions` accept a JSON array of conditions:
+
+```
+[
+  {"path": "Status", "operator": "Equals", "value": "Active"},
+  {"path": "Score", "operator": "GreaterThan", "value": "50"},
+  {"path": "Meta.Region", "operator": "Equals", "value": "EU", "caseSensitive": true}
+]
+```
+
+Combined with `logicalOperator = "AND"` (all must match) or `"OR"` (at least one).
 
 ---
 
@@ -106,11 +129,13 @@ CamelCase fallback is applied at each segment.
 
 ### Features
 
-- **7 server-side actions** covering the most common list manipulation gaps
+- **9 server-side actions** covering the most common list manipulation gaps
 - **Generic structure support** via JSON serialization — works with any OutSystems Structure
-- **9 comparison operators** on condition-based actions (Equals, NotEquals, Contains, StartsWith, EndsWith, GreaterThan, LessThan, GreaterOrEqual, LessOrEqual)
-- **Nested property paths** — dot-separated navigation into nested JSON objects
-- **Case-insensitive property matching** with automatic camelCase fallback at every path segment
+- **9 comparison operators** (Equals, NotEquals, Contains, StartsWith, EndsWith, GreaterThan, LessThan, GreaterOrEqual, LessOrEqual) with symbol aliases
+- **Multiple conditions with AND/OR** — combine any number of conditions per query
+- **Case sensitivity toggle** — per-action flag or per-condition field in multi-condition mode
+- **Nested property paths + array indexing** — dot navigation, positive/negative indices, mixed at any depth
+- **CamelCase fallback** applied at every path segment
 - **O(N) performance** for all operations — no nested loops
 - **Null-safe** — empty or null inputs return empty results, never exceptions
 - **Stateless** — no configuration, no site properties, no persistent state

@@ -31,12 +31,14 @@ public interface IListUtils
     void List_PopByCondition(
         [OSParameter(Description = "The source list serialized as a JSON string")]
         string sourceListJson,
-        [OSParameter(Description = "Property path to check. Supports nested paths with dots (e.g. 'Address.City' or 'Meta.Status'). CamelCase fallback applied at each segment.")]
+        [OSParameter(Description = "Property path to check. Supports nested paths with dots (e.g. 'Address.City') and array indexing (e.g. 'Items[0]', 'Tags[-1]'). CamelCase fallback applied at each segment.")]
         string propertyName,
         [OSParameter(Description = "The value to filter by (as a string, e.g. 'true' or '5')")]
         string targetValue,
         [OSParameter(Description = "Comparison operator: Equals (default), NotEquals, Contains, StartsWith, EndsWith, GreaterThan, LessThan, GreaterOrEqual, LessOrEqual. Empty = Equals.")]
         string comparisonOperator,
+        [OSParameter(Description = "When true, string comparison is case-sensitive. When false (default), case-insensitive. Ignored by numeric operators.")]
+        bool caseSensitive,
         [OSParameter(Description = "The updated JSON list without the matched element")]
         out string updatedListJson,
         [OSParameter(Description = "The single JSON object that was matched and removed")]
@@ -46,12 +48,40 @@ public interface IListUtils
     void List_PopMultipleByCondition(
         [OSParameter(Description = "The source list serialized as a JSON string")]
         string sourceListJson,
-        [OSParameter(Description = "Property path to check. Supports nested paths with dots (e.g. 'Address.City' or 'Meta.Status'). CamelCase fallback applied at each segment.")]
+        [OSParameter(Description = "Property path to check. Supports nested paths with dots and array indexing (e.g. 'Items[0].Name').")]
         string propertyName,
         [OSParameter(Description = "The value to filter by")]
         string targetValue,
         [OSParameter(Description = "Comparison operator: Equals (default), NotEquals, Contains, StartsWith, EndsWith, GreaterThan, LessThan, GreaterOrEqual, LessOrEqual. Empty = Equals.")]
         string comparisonOperator,
+        [OSParameter(Description = "When true, string comparison is case-sensitive. When false (default), case-insensitive.")]
+        bool caseSensitive,
+        [OSParameter(Description = "The updated JSON list without any matched elements")]
+        out string updatedListJson,
+        [OSParameter(Description = "The JSON array of all items that were matched and removed")]
+        out string poppedElementsJson);
+
+    [OSAction(Description = "Pops the first element matching multiple conditions combined with AND/OR. Returns the popped element and modified list as JSON.")]
+    void List_PopByConditions(
+        [OSParameter(Description = "The source list serialized as a JSON string")]
+        string sourceListJson,
+        [OSParameter(Description = "JSON array of conditions: [{\"path\":\"Status\",\"operator\":\"Equals\",\"value\":\"Active\",\"caseSensitive\":false},{\"path\":\"Score\",\"operator\":\"GreaterThan\",\"value\":\"50\"}]")]
+        string conditionsJson,
+        [OSParameter(Description = "How to combine conditions: 'AND' (default) - all must match; 'OR' - at least one must match. Empty = AND.")]
+        string logicalOperator,
+        [OSParameter(Description = "The updated JSON list without the matched element")]
+        out string updatedListJson,
+        [OSParameter(Description = "The single JSON object that was matched and removed")]
+        out string poppedElementJson);
+
+    [OSAction(Description = "Pops all elements matching multiple conditions combined with AND/OR. Returns the popped elements and modified list as JSON.")]
+    void List_PopMultipleByConditions(
+        [OSParameter(Description = "The source list serialized as a JSON string")]
+        string sourceListJson,
+        [OSParameter(Description = "JSON array of conditions: [{\"path\":\"Status\",\"operator\":\"Equals\",\"value\":\"Active\",\"caseSensitive\":false},{\"path\":\"Score\",\"operator\":\"GreaterThan\",\"value\":\"50\"}]")]
+        string conditionsJson,
+        [OSParameter(Description = "How to combine conditions: 'AND' (default) - all must match; 'OR' - at least one must match. Empty = AND.")]
+        string logicalOperator,
         [OSParameter(Description = "The updated JSON list without any matched elements")]
         out string updatedListJson,
         [OSParameter(Description = "The JSON array of all items that were matched and removed")]
@@ -85,10 +115,12 @@ public interface IListUtils
         string listAJson,
         [OSParameter(Description = "The subtraction JSON list")]
         string listBJson,
-        [OSParameter(Description = "Property path to match on. Supports nested paths with dots (e.g. 'Meta.Id'). CamelCase fallback applied at each segment.")]
+        [OSParameter(Description = "Property path to match on. Supports nested paths and array indexing (e.g. 'Meta.Id', 'Refs[0].Code').")]
         string matchKey,
         [OSParameter(Description = "Comparison operator for key matching: Equals (default), Contains, StartsWith. Empty = Equals.")]
         string comparisonOperator,
+        [OSParameter(Description = "When true, key comparison is case-sensitive. When false (default), case-insensitive.")]
+        bool caseSensitive,
         [OSParameter(Description = "The elements in A that have no match in B")]
         out string differenceListJson);
 }

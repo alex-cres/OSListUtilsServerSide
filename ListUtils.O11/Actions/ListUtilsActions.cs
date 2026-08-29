@@ -90,6 +90,7 @@ public class CssListUtils : IssListUtils
         string ssPropertyName,
         string ssTargetValue,
         string ssComparisonOperator,
+        bool ssCaseSensitive,
         out string ssUpdatedListJson,
         out string ssPoppedElementJson)
     {
@@ -106,7 +107,7 @@ public class CssListUtils : IssListUtils
         for (int i = 0; i < array.Count; i++)
         {
             var value = GetPropertyValue(array[i]!, ssPropertyName);
-            if (value != null && MatchesCondition(value, ssTargetValue, ssComparisonOperator))
+            if (value != null && MatchesCondition(value, ssTargetValue, ssComparisonOperator, ssCaseSensitive))
             {
                 matchedNode = array[i];
                 array.RemoveAt(i);
@@ -123,6 +124,7 @@ public class CssListUtils : IssListUtils
         string ssPropertyName,
         string ssTargetValue,
         string ssComparisonOperator,
+        bool ssCaseSensitive,
         out string ssUpdatedListJson,
         out string ssPoppedElementsJson)
     {
@@ -140,14 +142,88 @@ public class CssListUtils : IssListUtils
         foreach (var item in originalArray)
         {
             var value = GetPropertyValue(item!, ssPropertyName);
-            if (value != null && MatchesCondition(value, ssTargetValue, ssComparisonOperator))
-            {
+            if (value != null && MatchesCondition(value, ssTargetValue, ssComparisonOperator, ssCaseSensitive))
                 poppedArray.Add(JsonNode.Parse(item!.ToJsonString())!);
-            }
             else
-            {
                 keptArray.Add(JsonNode.Parse(item!.ToJsonString())!);
+        }
+
+        ssUpdatedListJson = keptArray.ToJsonString(JsonOptions);
+        ssPoppedElementsJson = poppedArray.ToJsonString(JsonOptions);
+    }
+
+    public void MssList_PopByConditions(
+        string ssSourceListJson,
+        string ssConditionsJson,
+        string ssLogicalOperator,
+        out string ssUpdatedListJson,
+        out string ssPoppedElementJson)
+    {
+        if (string.IsNullOrEmpty(ssSourceListJson))
+        {
+            ssUpdatedListJson = "[]";
+            ssPoppedElementJson = "{}";
+            return;
+        }
+
+        var conditions = ParseConditions(ssConditionsJson);
+        var array = JsonNode.Parse(ssSourceListJson)!.AsArray();
+
+        if (conditions.Count == 0)
+        {
+            ssUpdatedListJson = ssSourceListJson;
+            ssPoppedElementJson = "{}";
+            return;
+        }
+
+        JsonNode? matchedNode = null;
+        for (int i = 0; i < array.Count; i++)
+        {
+            if (EvaluateConditions(array[i]!, conditions, ssLogicalOperator))
+            {
+                matchedNode = array[i];
+                array.RemoveAt(i);
+                break;
             }
+        }
+
+        ssUpdatedListJson = array.ToJsonString(JsonOptions);
+        ssPoppedElementJson = matchedNode?.ToJsonString(JsonOptions) ?? "{}";
+    }
+
+    public void MssList_PopMultipleByConditions(
+        string ssSourceListJson,
+        string ssConditionsJson,
+        string ssLogicalOperator,
+        out string ssUpdatedListJson,
+        out string ssPoppedElementsJson)
+    {
+        if (string.IsNullOrEmpty(ssSourceListJson))
+        {
+            ssUpdatedListJson = "[]";
+            ssPoppedElementsJson = "[]";
+            return;
+        }
+
+        var conditions = ParseConditions(ssConditionsJson);
+        var originalArray = JsonNode.Parse(ssSourceListJson)!.AsArray();
+
+        if (conditions.Count == 0)
+        {
+            ssUpdatedListJson = ssSourceListJson;
+            ssPoppedElementsJson = "[]";
+            return;
+        }
+
+        var keptArray = new JsonArray();
+        var poppedArray = new JsonArray();
+
+        foreach (var item in originalArray)
+        {
+            if (EvaluateConditions(item!, conditions, ssLogicalOperator))
+                poppedArray.Add(JsonNode.Parse(item!.ToJsonString())!);
+            else
+                keptArray.Add(JsonNode.Parse(item!.ToJsonString())!);
         }
 
         ssUpdatedListJson = keptArray.ToJsonString(JsonOptions);
@@ -230,6 +306,7 @@ public class CssListUtils : IssListUtils
         string ssListBJson,
         string ssMatchKey,
         string ssComparisonOperator,
+        bool ssCaseSensitive,
         out string ssDifferenceListJson)
     {
         if (string.IsNullOrEmpty(ssListAJson)) { ssDifferenceListJson = "[]"; return; }
@@ -249,11 +326,9 @@ public class CssListUtils : IssListUtils
         foreach (var item in arrA)
         {
             var key = GetPropertyValue(item!, ssMatchKey);
-            bool matchedAny = key != null && bValues.Any(bv => MatchesCondition(key, bv, ssComparisonOperator));
+            bool matchedAny = key != null && bValues.Any(bv => MatchesCondition(key, bv, ssComparisonOperator, ssCaseSensitive));
             if (!matchedAny)
-            {
                 result.Add(JsonNode.Parse(item!.ToJsonString())!);
-            }
         }
 
         ssDifferenceListJson = result.ToJsonString(JsonOptions);
@@ -266,38 +341,75 @@ public class CssListUtils : IssListUtils
         JsonNode? current = node;
         foreach (var segment in propertyPath.Split('.'))
         {
-            if (current is not JsonObject obj) return null;
-            if (obj.TryGetPropertyValue(segment, out var val) && val != null)
-            {
-                current = val;
-                continue;
-            }
-            string camel = ToCamelCase(segment);
-            if (obj.TryGetPropertyValue(camel, out val) && val != null)
-            {
-                current = val;
-                continue;
-            }
-            return null;
+            current = NavigateSegment(current, segment);
+            if (current == null) return null;
         }
-
         return current?.ToString();
     }
 
-    private static bool MatchesCondition(string actual, string target, string op)
+    private static JsonNode? NavigateSegment(JsonNode? current, string segment)
+    {
+        if (current == null || string.IsNullOrEmpty(segment)) return null;
+
+        string name = segment;
+        int? index = null;
+        var bracketStart = segment.IndexOf('[');
+        if (bracketStart >= 0)
+        {
+            var bracketEnd = segment.IndexOf(']', bracketStart);
+            if (bracketEnd > bracketStart)
+            {
+                var idxStr = segment.Substring(bracketStart + 1, bracketEnd - bracketStart - 1);
+                if (int.TryParse(idxStr, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var idx))
+                {
+                    name = segment.Substring(0, bracketStart);
+                    index = idx;
+                }
+            }
+        }
+
+        JsonNode? next = current;
+        if (!string.IsNullOrEmpty(name))
+        {
+            if (current is not JsonObject obj) return null;
+            if (obj.TryGetPropertyValue(name, out var val) && val != null)
+                next = val;
+            else
+            {
+                string camel = ToCamelCase(name);
+                if (obj.TryGetPropertyValue(camel, out val) && val != null)
+                    next = val;
+                else
+                    return null;
+            }
+        }
+
+        if (index.HasValue)
+        {
+            if (next is not JsonArray arr) return null;
+            int i = index.Value < 0 ? arr.Count + index.Value : index.Value;
+            if (i < 0 || i >= arr.Count) return null;
+            return arr[i];
+        }
+
+        return next;
+    }
+
+    private static bool MatchesCondition(string actual, string target, string op, bool caseSensitive)
     {
         var normalized = (op ?? "").Trim();
+        var cmp = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
         switch (normalized.ToUpperInvariant())
         {
             case "NOTEQUALS":
             case "!=":
-                return !actual.Equals(target, StringComparison.OrdinalIgnoreCase);
+                return !actual.Equals(target, cmp);
             case "CONTAINS":
-                return actual.IndexOf(target, StringComparison.OrdinalIgnoreCase) >= 0;
+                return actual.IndexOf(target, cmp) >= 0;
             case "STARTSWITH":
-                return actual.StartsWith(target, StringComparison.OrdinalIgnoreCase);
+                return actual.StartsWith(target, cmp);
             case "ENDSWITH":
-                return actual.EndsWith(target, StringComparison.OrdinalIgnoreCase);
+                return actual.EndsWith(target, cmp);
             case "GREATERTHAN":
             case ">":
                 return TryCompareNumeric(actual, target, out int gt) && gt > 0;
@@ -311,8 +423,49 @@ public class CssListUtils : IssListUtils
             case "<=":
                 return TryCompareNumeric(actual, target, out int le) && le <= 0;
             default:
-                return actual.Equals(target, StringComparison.OrdinalIgnoreCase);
+                return actual.Equals(target, cmp);
         }
+    }
+
+    private sealed class Condition
+    {
+        public string Path { get; set; } = "";
+        public string Operator { get; set; } = "";
+        public string Value { get; set; } = "";
+        public bool CaseSensitive { get; set; }
+    }
+
+    private static List<Condition> ParseConditions(string conditionsJson)
+    {
+        var list = new List<Condition>();
+        if (string.IsNullOrWhiteSpace(conditionsJson)) return list;
+        var arr = JsonNode.Parse(conditionsJson)!.AsArray();
+        foreach (var node in arr)
+        {
+            if (node is not JsonObject obj) continue;
+            list.Add(new Condition
+            {
+                Path = obj["path"]?.ToString() ?? obj["Path"]?.ToString() ?? "",
+                Operator = obj["operator"]?.ToString() ?? obj["Operator"]?.ToString() ?? "",
+                Value = obj["value"]?.ToString() ?? obj["Value"]?.ToString() ?? "",
+                CaseSensitive = (obj["caseSensitive"]?.GetValue<bool>() ?? obj["CaseSensitive"]?.GetValue<bool>()) ?? false,
+            });
+        }
+        return list;
+    }
+
+    private static bool EvaluateConditions(JsonNode item, List<Condition> conditions, string logicalOperator)
+    {
+        if (conditions.Count == 0) return false;
+        bool useOr = (logicalOperator ?? "").Trim().Equals("OR", StringComparison.OrdinalIgnoreCase);
+        foreach (var c in conditions)
+        {
+            var actual = GetPropertyValue(item, c.Path);
+            bool match = actual != null && MatchesCondition(actual, c.Value, c.Operator, c.CaseSensitive);
+            if (useOr && match) return true;
+            if (!useOr && !match) return false;
+        }
+        return !useOr;
     }
 
     private static bool TryCompareNumeric(string a, string b, out int result)

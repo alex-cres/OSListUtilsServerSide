@@ -13,7 +13,7 @@ public class OperatorTests
     {
         string json = """[{"Name":"Alexander"},{"Name":"Alex"},{"Name":"Bob"}]""";
 
-        _sut.List_PopByCondition(json, "Name", "lex", "Contains", out var updated, out var popped);
+        _sut.List_PopByCondition(json, "Name", "lex", "Contains", false, out var updated, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("Alexander", poppedObj["Name"]!.ToString());
@@ -24,7 +24,7 @@ public class OperatorTests
     {
         string json = """[{"Tag":"urgent-review"},{"Tag":"low"},{"Tag":"urgent-fix"}]""";
 
-        _sut.List_PopMultipleByCondition(json, "Tag", "urgent", "Contains", out var updated, out var popped);
+        _sut.List_PopMultipleByCondition(json, "Tag", "urgent", "Contains", false, out var updated, out var popped);
 
         var poppedArr = JsonNode.Parse(popped)!.AsArray();
         Assert.Equal(2, poppedArr.Count);
@@ -41,7 +41,7 @@ public class OperatorTests
     {
         string json = """[{"Email":"admin@co.com"},{"Email":"user@co.com"},{"Email":"admin@other.com"}]""";
 
-        _sut.List_PopByCondition(json, "Email", "admin", "StartsWith", out _, out var popped);
+        _sut.List_PopByCondition(json, "Email", "admin", "StartsWith", false, out _, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("admin@co.com", poppedObj["Email"]!.ToString());
@@ -52,7 +52,7 @@ public class OperatorTests
     {
         string json = """[{"File":"report.pdf"},{"File":"image.png"},{"File":"doc.pdf"}]""";
 
-        _sut.List_PopMultipleByCondition(json, "File", ".pdf", "EndsWith", out _, out var popped);
+        _sut.List_PopMultipleByCondition(json, "File", ".pdf", "EndsWith", false, out _, out var popped);
 
         var poppedArr = JsonNode.Parse(popped)!.AsArray();
         Assert.Equal(2, poppedArr.Count);
@@ -67,7 +67,7 @@ public class OperatorTests
     {
         string json = """[{"Status":"Active"},{"Status":"Inactive"},{"Status":"Active"}]""";
 
-        _sut.List_PopMultipleByCondition(json, "Status", "Active", "NotEquals", out var updated, out var popped);
+        _sut.List_PopMultipleByCondition(json, "Status", "Active", "NotEquals", false, out var updated, out var popped);
 
         var poppedArr = JsonNode.Parse(popped)!.AsArray();
         Assert.Single(poppedArr);
@@ -86,7 +86,7 @@ public class OperatorTests
     {
         string json = """[{"Name":"A","Score":95},{"Name":"B","Score":40},{"Name":"C","Score":80},{"Name":"D","Score":60}]""";
 
-        _sut.List_PopMultipleByCondition(json, "Score", "70", "GreaterThan", out var updated, out var popped);
+        _sut.List_PopMultipleByCondition(json, "Score", "70", "GreaterThan", false, out var updated, out var popped);
 
         var poppedArr = JsonNode.Parse(popped)!.AsArray();
         Assert.Equal(2, poppedArr.Count);
@@ -99,7 +99,7 @@ public class OperatorTests
     {
         string json = """[{"Price":99.99},{"Price":5.50},{"Price":25.00}]""";
 
-        _sut.List_PopByCondition(json, "Price", "10", "LessThan", out _, out var popped);
+        _sut.List_PopByCondition(json, "Price", "10", "LessThan", false, out _, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.True(decimal.Parse(poppedObj["Price"]!.ToString(), System.Globalization.CultureInfo.InvariantCulture) < 10);
@@ -110,7 +110,7 @@ public class OperatorTests
     {
         string json = """[{"Val":10},{"Val":20},{"Val":30}]""";
 
-        _sut.List_PopMultipleByCondition(json, "Val", "20", "GreaterOrEqual", out _, out var popped);
+        _sut.List_PopMultipleByCondition(json, "Val", "20", "GreaterOrEqual", false, out _, out var popped);
 
         var poppedArr = JsonNode.Parse(popped)!.AsArray();
         Assert.Equal(2, poppedArr.Count);
@@ -121,7 +121,7 @@ public class OperatorTests
     {
         string json = """[{"Val":10},{"Val":20},{"Val":30}]""";
 
-        _sut.List_PopMultipleByCondition(json, "Val", "20", "LessOrEqual", out _, out var popped);
+        _sut.List_PopMultipleByCondition(json, "Val", "20", "LessOrEqual", false, out _, out var popped);
 
         var poppedArr = JsonNode.Parse(popped)!.AsArray();
         Assert.Equal(2, poppedArr.Count);
@@ -136,7 +136,7 @@ public class OperatorTests
     {
         string json = """[{"Name":"Alice","Score":"high"},{"Name":"Bob","Score":"low"}]""";
 
-        _sut.List_PopByCondition(json, "Score", "50", "GreaterThan", out var updated, out var popped);
+        _sut.List_PopByCondition(json, "Score", "50", "GreaterThan", false, out var updated, out var popped);
 
         Assert.Equal("{}", popped);
         var updatedArr = JsonNode.Parse(updated)!.AsArray();
@@ -152,7 +152,7 @@ public class OperatorTests
     {
         string json = """[{"Age":25},{"Age":17},{"Age":30}]""";
 
-        _sut.List_PopMultipleByCondition(json, "Age", "18", ">", out _, out var popped);
+        _sut.List_PopMultipleByCondition(json, "Age", "18", ">", false, out _, out var popped);
 
         var poppedArr = JsonNode.Parse(popped)!.AsArray();
         Assert.Equal(2, poppedArr.Count);
@@ -163,7 +163,7 @@ public class OperatorTests
     {
         string json = """[{"Type":"A"},{"Type":"B"}]""";
 
-        _sut.List_PopByCondition(json, "Type", "A", "!=", out _, out var popped);
+        _sut.List_PopByCondition(json, "Type", "A", "!=", false, out _, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("B", poppedObj["Type"]!.ToString());
@@ -179,7 +179,7 @@ public class OperatorTests
         string listA = """[{"Code":"US-NY"},{"Code":"US-CA"},{"Code":"UK-LDN"}]""";
         string listB = """[{"Code":"US"}]""";
 
-        _sut.List_Difference(listA, listB, "Code", "Contains", out var diff);
+        _sut.List_Difference(listA, listB, "Code", "Contains", false, out var diff);
 
         var arr = JsonNode.Parse(diff)!.AsArray();
         Assert.Single(arr);
@@ -192,7 +192,7 @@ public class OperatorTests
         string listA = """[{"Id":"1"},{"Id":"2"},{"Id":"3"}]""";
         string listB = """[{"Id":"2"}]""";
 
-        _sut.List_Difference(listA, listB, "Id", "", out var diff);
+        _sut.List_Difference(listA, listB, "Id", "", false, out var diff);
 
         var arr = JsonNode.Parse(diff)!.AsArray();
         Assert.Equal(2, arr.Count);

@@ -45,9 +45,10 @@ Pops the first element matching a property condition from a JSON list.
 | Parameter | Type | Direction | Description |
 |-----------|------|-----------|-------------|
 | `sourceListJson` | `string` | Input | The source list serialized as a JSON string (via `JSON Serialize`). |
-| `propertyName` | `string` | Input | Property path to check. Supports nested paths with dots (e.g. `Address.City` or `Meta.Status`). CamelCase fallback applied at each segment. |
+| `propertyName` | `string` | Input | Property path to check. Supports nested paths (`Address.City`) and array indexing (`Items[0].Name`, `Tags[-1]`). |
 | `targetValue` | `string` | Input | The value to match. |
 | `comparisonOperator` | `string` | Input | `Equals` (default), `NotEquals`, `Contains`, `StartsWith`, `EndsWith`, `GreaterThan`, `LessThan`, `GreaterOrEqual`, `LessOrEqual`. Empty = `Equals`. |
+| `caseSensitive` | `bool` | Input | When `true`, string comparison is case-sensitive. When `false` (default), case-insensitive. Ignored by numeric operators. |
 | `updatedListJson` | `string` | Output | The JSON list without the matched element. |
 | `poppedElementJson` | `string` | Output | The matched JSON object, or `{}` if no match found. |
 
@@ -58,11 +59,52 @@ Pops all elements matching a property condition from a JSON list.
 | Parameter | Type | Direction | Description |
 |-----------|------|-----------|-------------|
 | `sourceListJson` | `string` | Input | The source list serialized as a JSON string. |
-| `propertyName` | `string` | Input | Property path to check. Supports nested paths with dots (e.g. `Address.City`). |
+| `propertyName` | `string` | Input | Property path to check. Supports nested paths and array indexing. |
 | `targetValue` | `string` | Input | The value to match. |
 | `comparisonOperator` | `string` | Input | Same operators as `List_PopByCondition`. |
+| `caseSensitive` | `bool` | Input | Case-sensitivity flag (default `false`). |
 | `updatedListJson` | `string` | Output | The JSON list without matched elements. |
 | `poppedElementsJson` | `string` | Output | JSON array of all matched elements, or `[]` if none. |
+
+### List_PopByConditions
+
+Pops the first element matching multiple conditions combined with AND/OR.
+
+| Parameter | Type | Direction | Description |
+|-----------|------|-----------|-------------|
+| `sourceListJson` | `string` | Input | The source list serialized as a JSON string. |
+| `conditionsJson` | `string` | Input | JSON array of conditions. Each condition has `path`, `operator`, `value`, optional `caseSensitive`. Example below. |
+| `logicalOperator` | `string` | Input | `AND` (default) — all conditions must match; `OR` — at least one must match. |
+| `updatedListJson` | `string` | Output | The JSON list without the matched element. |
+| `poppedElementJson` | `string` | Output | The matched JSON object, or `{}` if no match found. |
+
+### List_PopMultipleByConditions
+
+Pops all elements matching multiple conditions combined with AND/OR.
+
+| Parameter | Type | Direction | Description |
+|-----------|------|-----------|-------------|
+| `sourceListJson` | `string` | Input | The source list serialized as a JSON string. |
+| `conditionsJson` | `string` | Input | JSON array of conditions (same format as `List_PopByConditions`). |
+| `logicalOperator` | `string` | Input | `AND` or `OR`. |
+| `updatedListJson` | `string` | Output | The JSON list without matched elements. |
+| `poppedElementsJson` | `string` | Output | JSON array of all matched elements. |
+
+**Conditions JSON format:**
+
+```json
+[
+  {"path": "Status", "operator": "Equals", "value": "Active", "caseSensitive": false},
+  {"path": "Score", "operator": "GreaterThan", "value": "50"},
+  {"path": "Meta.Region", "operator": "Equals", "value": "EU"}
+]
+```
+
+Each condition supports:
+- `path` — property path (nested + array indexing supported)
+- `operator` — any operator from the operators table
+- `value` — target value as text
+- `caseSensitive` (optional, default `false`) — per-condition case sensitivity
 
 ### List_Zip
 
@@ -94,45 +136,81 @@ Computes the set difference (A − B) of two JSON lists on a key property.
 |-----------|------|-----------|-------------|
 | `listAJson` | `string` | Input | The base JSON list. |
 | `listBJson` | `string` | Input | The subtraction JSON list. |
-| `matchKey` | `string` | Input | Property path to match on. Supports nested paths with dots (e.g. `Ref.Code`). |
-| `comparisonOperator` | `string` | Input | `Equals` (default), `NotEquals`, `Contains`, `StartsWith`, `EndsWith`, `GreaterThan`, `LessThan`, `GreaterOrEqual`, `LessOrEqual`. Empty = `Equals`. |
+| `matchKey` | `string` | Input | Property path to match on. Supports nested paths and array indexing (`Ref.Code`, `Codes[0]`). |
+| `comparisonOperator` | `string` | Input | Any operator from the operators table below. |
+| `caseSensitive` | `bool` | Input | Case-sensitivity flag (default `false`). |
 | `differenceListJson` | `string` | Output | Elements in A whose `matchKey` has no match in B. |
 
 ---
 
 ## Comparison Operators
 
-The three condition-based actions (`List_PopByCondition`, `List_PopMultipleByCondition`, `List_Difference`) accept an operator that controls how `targetValue` is compared against the property value.
+The condition-based actions (`List_PopByCondition`, `List_PopMultipleByCondition`, `List_Difference`) accept an operator that controls how `targetValue` is compared against the property value. Multi-condition actions (`List_PopByConditions`, `List_PopMultipleByConditions`) accept the same operators inside each condition entry.
 
 | Operator | Aliases | Behaviour |
 |----------|---------|-----------|
-| `Equals` | *(default)*, `""` | Case-insensitive exact match |
+| `Equals` | *(default)*, `""` | Exact match (case-sensitive per `caseSensitive` flag) |
 | `NotEquals` | `!=` | Inverse of Equals |
-| `Contains` | | Case-insensitive substring match |
-| `StartsWith` | | Case-insensitive prefix match |
-| `EndsWith` | | Case-insensitive suffix match |
+| `Contains` | | Substring match |
+| `StartsWith` | | Prefix match |
+| `EndsWith` | | Suffix match |
 | `GreaterThan` | `>` | Numeric comparison (property value > target) |
 | `LessThan` | `<` | Numeric comparison (property value < target) |
 | `GreaterOrEqual` | `>=` | Numeric comparison including boundary |
 | `LessOrEqual` | `<=` | Numeric comparison including boundary |
 
+**Case sensitivity**: string operators (`Equals`, `NotEquals`, `Contains`, `StartsWith`, `EndsWith`) honour the `caseSensitive` flag. Numeric operators ignore it.
+
 **Numeric operators** parse both values with `InvariantCulture`. Non-numeric values evaluate as no-match.
 
 ---
 
-## Nested Property Paths
+## Property Paths
 
-`propertyName` and `matchKey` support **dot-separated paths** to reach into nested objects:
+`propertyName`, `matchKey`, and paths inside condition JSON support both **dot-separated navigation** and **array indexing**:
 
+| Path syntax | Resolves to |
+|------------|-------------|
+| `Address.City` | `obj["Address"]["City"]` |
+| `Meta.Status` | `obj["Meta"]["Status"]` |
+| `Wrapper.Data.Value` | `obj["Wrapper"]["Data"]["Value"]` |
+| `Tags[0]` | `obj["Tags"][0]` (first array element) |
+| `Tags[-1]` | last element of the array |
+| `Items[0].Name` | `obj["Items"][0]["Name"]` |
+| `Groups[0].Members[-1]` | mix of dots and indexing at multiple depths |
+
+**CamelCase fallback** is applied at each name segment — so `Address.City` also matches `address.city` in the JSON.
+
+**Negative indices** count from the end (`[-1]` is last, `[-2]` is second-to-last).
+
+If any segment is missing, the array index is out of range, or the value at any level is not an object/array where expected, the item is treated as non-matching.
+
+---
+
+## Multiple Conditions (AND/OR)
+
+`List_PopByConditions` and `List_PopMultipleByConditions` accept a JSON array of conditions and a logical operator (`AND` or `OR`).
+
+**Example — find active users over 30:**
+
+```json
+[
+  {"path": "Status", "operator": "Equals", "value": "Active"},
+  {"path": "Age", "operator": "GreaterThan", "value": "30"}
+]
 ```
-"Address.City"           → obj["Address"]["City"]
-"Meta.Status"            → obj["Meta"]["Status"]
-"Wrapper.Data.Value"     → obj["Wrapper"]["Data"]["Value"]
+Combined with `logicalOperator = "AND"`.
+
+**Example — case-sensitive per condition:**
+
+```json
+[
+  {"path": "Code", "operator": "Equals", "value": "URGENT", "caseSensitive": true},
+  {"path": "Priority", "operator": "Equals", "value": "High"}
+]
 ```
 
-CamelCase fallback is applied **at each segment** — so `Address.City` also matches `address.city` in the JSON.
-
-If any segment is missing or the value at any level is not an object, the item is treated as non-matching.
+Each condition has: `path`, `operator`, `value`, and optional `caseSensitive` (default `false`). Empty conditions array returns the original list unchanged.
 
 ---
 

@@ -69,20 +69,34 @@ List_PopMultiple
 
 List_PopByCondition
   Input:  sourceListJson (Text), propertyName (Text), targetValue (Text),
-          comparisonOperator (Text)
+          comparisonOperator (Text), caseSensitive (Boolean)
   Output: updatedListJson (Text), poppedElementJson (Text)
   Finds the first object where propertyName matches targetValue using
   the given comparisonOperator. Removes and returns it. If no match is
   found, updatedListJson is the original and poppedElementJson is "{}".
-  propertyName supports dot-separated nested paths (e.g. "Address.City").
-  CamelCase fallback is applied at each path segment.
+  propertyName supports dot-separated nested paths and array indexing
+  (e.g. "Address.City", "Items[0].Name", "Tags[-1]").
 
 List_PopMultipleByCondition
   Input:  sourceListJson (Text), propertyName (Text), targetValue (Text),
-          comparisonOperator (Text)
+          comparisonOperator (Text), caseSensitive (Boolean)
   Output: updatedListJson (Text), poppedElementsJson (Text)
   Same as PopByCondition but removes ALL matching elements.
   poppedElementsJson is a JSON array of all removed objects.
+
+List_PopByConditions
+  Input:  sourceListJson (Text), conditionsJson (Text),
+          logicalOperator (Text)
+  Output: updatedListJson (Text), poppedElementJson (Text)
+  Finds the first object matching multiple conditions combined with
+  AND (default) or OR. conditionsJson is a JSON array of objects with
+  path, operator, value, and optional caseSensitive fields.
+
+List_PopMultipleByConditions
+  Input:  sourceListJson (Text), conditionsJson (Text),
+          logicalOperator (Text)
+  Output: updatedListJson (Text), poppedElementsJson (Text)
+  Same as PopByConditions but removes ALL matching elements.
 
 List_Zip
   Input:  listAJson (Text), listBJson (Text), keyNameA (Text), keyNameB (Text)
@@ -96,15 +110,15 @@ List_GroupBy
   Groups elements by the value of propertyName. Output is a JSON
   array of objects with "Key" (the group value) and "Items" (array
   of elements in that group). Groups appear in first-seen order.
-  propertyName supports dot-separated nested paths.
+  propertyName supports nested paths and array indexing.
 
 List_Difference
   Input:  listAJson (Text), listBJson (Text), matchKey (Text),
-          comparisonOperator (Text)
+          comparisonOperator (Text), caseSensitive (Boolean)
   Output: differenceListJson (Text)
   Returns elements from list A whose matchKey value does not match
   any matchKey value in list B using the given comparisonOperator.
-  matchKey supports dot-separated nested paths.
+  matchKey supports nested paths and array indexing.
 
 
 COMPARISON OPERATORS
@@ -112,33 +126,59 @@ COMPARISON OPERATORS
 
 The condition-based actions accept an operator string:
 
-  Equals or ""              Case-insensitive exact match (default)
+  Equals or ""              Exact match (per caseSensitive flag)
   NotEquals or !=           Inverse of Equals
-  Contains                  Case-insensitive substring match
-  StartsWith                Case-insensitive prefix match
-  EndsWith                  Case-insensitive suffix match
+  Contains                  Substring match
+  StartsWith                Prefix match
+  EndsWith                  Suffix match
   GreaterThan or >          Numeric > comparison
   LessThan or <             Numeric < comparison
   GreaterOrEqual or >=      Numeric >= comparison
   LessOrEqual or <=         Numeric <= comparison
 
-Numeric operators parse both values with InvariantCulture. Non-numeric
-values evaluate as no-match.
+The caseSensitive Boolean (default False) toggles case sensitivity for
+string operators. Numeric operators ignore it.
 
 
-NESTED PROPERTY PATHS
----------------------
+PROPERTY PATHS
+--------------
 
-propertyName, matchKey, and the GroupBy property support dot-separated
-paths to reach into nested JSON objects:
+propertyName, matchKey, and paths inside condition JSON support both
+dot navigation and array indexing:
 
-  Address.City        obj["Address"]["City"]
-  Meta.Status         obj["Meta"]["Status"]
-  Wrapper.Data.Value  obj["Wrapper"]["Data"]["Value"]
+  Address.City             obj["Address"]["City"]
+  Items[0].Name            obj["Items"][0]["Name"]
+  Tags[-1]                 last element of Tags
+  Groups[0].Members[-1]    mix of dots and indexing at multiple depths
 
-CamelCase fallback is applied at each segment. If any segment is missing
-or the value at any level is not an object, the item is treated as
-non-matching.
+CamelCase fallback is applied at each name segment. Negative indices
+count from the end. If any segment is missing, the array index is out
+of range, or the value at any level is not an object or array where
+expected, the item is treated as non-matching.
+
+
+MULTIPLE CONDITIONS
+-------------------
+
+List_PopByConditions and List_PopMultipleByConditions accept a JSON
+array of conditions in conditionsJson:
+
+  [
+    {"path": "Status", "operator": "Equals", "value": "Active"},
+    {"path": "Score", "operator": "GreaterThan", "value": "50"},
+    {"path": "Code", "operator": "Equals", "value": "URGENT",
+     "caseSensitive": true}
+  ]
+
+Each condition entry supports:
+  path            property path (nested + array indexing)
+  operator        any operator from the operators list
+  value           target value as text
+  caseSensitive   optional Boolean, default false
+
+Combined with logicalOperator = "AND" (all must match) or "OR" (at
+least one must match). Empty conditions array returns the original
+list unchanged.
 
 
 SUPPORTED INPUT
