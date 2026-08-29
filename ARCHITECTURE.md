@@ -39,19 +39,17 @@ Primary class: `ListUtils`, implementing `IListUtils`.
 
 No `[OSStructure]` types — every exposed parameter is a primitive (`string`, `int`, `bool`). All list data is passed as JSON strings (`Text`), which keeps the interface generic across any consumer Structure.
 
-### Implementation file
+### Implementation files (partial class)
+
+`ListUtils` is a `public partial class` split across five files by action group. The shell holds the class declaration + `IListUtils` implementation marker; each partial contributes one concern.
 
 | File | Responsibility |
 |------|---------------|
-| [ListUtils.cs](ListUtils/ListUtils.cs) | All 9 action implementations, `GetPropertyValue` + `NavigateSegment` path walker (dot navigation + array indexing), `MatchesCondition` operator evaluator, `ParseConditions` + `EvaluateConditions` multi-condition engine, `TryCompareNumeric` numeric comparator, `ToCamelCase` fallback, shared `JsonSerializerOptions` |
-
-The file is at ~530 lines (just over the ~500-line split threshold). If more
-actions are added, split into partials:
-
-- `ListUtils.cs`           — shell + index-based pops (`List_Pop`, `List_PopMultiple`)
-- `ListUtils.Condition.cs` — condition-based actions (`PopByCondition`, `PopMultipleByCondition`, `PopByConditions`, `PopMultipleByConditions`)
-- `ListUtils.Relational.cs` — `List_Zip`, `List_GroupBy`, `List_Difference`
-- `ListUtils.Helpers.cs`   — `GetPropertyValue`, `NavigateSegment`, `MatchesCondition`, `ParseConditions`, `EvaluateConditions`, `TryCompareNumeric`, `ToCamelCase`, `JsonOptions`
+| [ListUtils.cs](ListUtils/ListUtils.cs) | Partial-class shell — declares `public partial class ListUtils : IListUtils`, no members |
+| [ListUtils.Index.cs](ListUtils/ListUtils.Index.cs) | Index-based pops: `List_Pop`, `List_PopMultiple` |
+| [ListUtils.Condition.cs](ListUtils/ListUtils.Condition.cs) | Condition-based actions: `List_PopByCondition`, `List_PopMultipleByCondition`, `List_PopByConditions`, `List_PopMultipleByConditions` |
+| [ListUtils.Relational.cs](ListUtils/ListUtils.Relational.cs) | Relational / set actions: `List_Zip`, `List_GroupBy`, `List_Difference` (including all fast-path branches) |
+| [ListUtils.Helpers.cs](ListUtils/ListUtils.Helpers.cs) | `GetPropertyValue` + `NavigateSegment` path walker, `MatchesCondition` operator evaluator, `ParseConditions` + `EvaluateConditions` multi-condition engine, `TryCompareNumeric` numeric comparator, `ToCamelCase` fallback, nested `Condition` type, shared `JsonSerializerOptions` |
 
 ### Runtime dependencies
 
@@ -144,19 +142,27 @@ Target framework: **`net48`**, `LangVersion=10`. Namespace: `OutSystems.NssListU
 |------|------|---------|
 | [IssListUtils.cs](ListUtils.O11/IssListUtils.cs) | Interface | Declares `MssList_Pop`, `MssList_PopMultiple`, `MssList_PopByCondition`, `MssList_PopMultipleByCondition`, `MssList_PopByConditions`, `MssList_PopMultipleByConditions`, `MssList_Zip`, `MssList_GroupBy`, `MssList_Difference` |
 
-No record types — all parameters use `string`, `int`, `List<string>`, `List<int>` (OutSystems-compatible primitives on both platforms).
+No record types — every exposed parameter is a primitive (`string`, `int`, `bool`). Lists cross the boundary as JSON strings, identical to the ODC surface.
 
-### Implementation
+### Implementation files (partial class)
+
+`CssListUtils` is a `public partial class` split in the same shape as the ODC side. Every partial mirrors its ODC counterpart line-for-line except for the platform-specific tweaks listed below.
 
 | File | Responsibility |
 |------|---------------|
-| [Actions/ListUtilsActions.cs](ListUtils.O11/Actions/ListUtilsActions.cs) | `CssListUtils : IssListUtils` — all 7 actions, `GetPropertyValue`, `ToCamelCase`, `JsonSerializerOptions` |
+| [Actions/ListUtilsActions.cs](ListUtils.O11/Actions/ListUtilsActions.cs) | Partial-class shell — declares `public partial class CssListUtils : IssListUtils`, no members |
+| [Actions/ListUtilsActions.Index.cs](ListUtils.O11/Actions/ListUtilsActions.Index.cs) | `MssList_Pop`, `MssList_PopMultiple` |
+| [Actions/ListUtilsActions.Condition.cs](ListUtils.O11/Actions/ListUtilsActions.Condition.cs) | `MssList_PopByCondition`, `MssList_PopMultipleByCondition`, `MssList_PopByConditions`, `MssList_PopMultipleByConditions` |
+| [Actions/ListUtilsActions.Relational.cs](ListUtils.O11/Actions/ListUtilsActions.Relational.cs) | `MssList_Zip`, `MssList_GroupBy`, `MssList_Difference` (including all fast-path branches) |
+| [Actions/ListUtilsActions.Helpers.cs](ListUtils.O11/Actions/ListUtilsActions.Helpers.cs) | Path walker, condition evaluator, multi-condition engine, `TryCompareNumeric`, `ToCamelCase`, nested `Condition` type, shared `JsonSerializerOptions` |
 
-Logic is functionally identical to the ODC implementation. Only differences are:
+Logic is functionally identical to the ODC implementation. Platform-specific differences:
 - `ss`-prefixed parameter names
 - `Mss` method prefix
 - `str.Substring(1)` instead of `str[1..]` (net48 C# 10 lacks range syntax)
 - Explicit `new JsonSerializerOptions { ... }` instead of target-typed `new()`
+- `actual.IndexOf(target, cmp) >= 0` instead of `actual.Contains(target, cmp)` (net48 `String.Contains` has no `StringComparison` overload)
+- Explicit `using System;`, `using System.Collections.Generic;`, `using System.Linq;`, `using System.Text.Json;`, `using System.Text.Json.Nodes;` on each partial (O11 project sets `<ImplicitUsings>disable</ImplicitUsings>`)
 
 ### Runtime dependencies
 
@@ -173,8 +179,6 @@ Declared in [ListUtils.O11.csproj](ListUtils.O11/ListUtils.O11.csproj).
 125 functional tests + 95 load tests per platform × 2 = **440 tests total**. 11 test files per project.
 
 Load tests use a shared 10,000-element complex JSON structure (nested objects, arrays, mixed types) and assert each Server Action completes in under **300 ms** in Release. Every load test also verifies the **result correctness** (expected element count or the invariant `updated + popped = source`) parsed outside the stopwatch so it does not count against the timing budget. `List_Difference` with `Contains` uses a 1,000-element pair because the substring operator is inherently O(A×B).
-
-Load tests use a shared 10,000-element complex JSON structure (nested objects, arrays, mixed types) and assert each Server Action completes in under **300 ms** in Release. `List_Difference` with `Contains` uses a 1,000-element pair because the substring operator is inherently O(A×B).
 
 `List_Difference` fast paths cover every operator except `Contains`:
 

@@ -8,7 +8,7 @@ Advanced list manipulation utilities — index-based pops, condition-based pops,
 
 ## Objective
 
-OutSystems lists lack common collection operations found in general-purpose languages (pop by index, pop by condition, zip, group-by, set difference). Implementing these natively requires verbose nested `For Each` loops with manual index tracking. This component provides seven server-side actions that cover the most common gaps in a single call each.
+OutSystems lists lack common collection operations found in general-purpose languages (pop by index, pop by condition, zip, group-by, set difference). Implementing these natively requires verbose nested `For Each` loops with manual index tracking. This component provides nine server-side actions that cover the most common gaps in a single call each.
 
 The JSON-based actions work with **any OutSystems Structure** — the caller serializes the list with `JSON Serialize`, passes it to the action, and deserializes the result. This generic approach eliminates the need for per-structure custom extensions.
 
@@ -22,10 +22,10 @@ Removes an element at a specific index. Returns the removed element and the upda
 
 | Parameter | Type | Direction | Description |
 |-----------|------|-----------|-------------|
-| `sourceList` | `List<string>` | Input | The source list to manipulate. |
-| `index` | `int` | Input | The 0-based index of the element to remove. |
-| `updatedList` | `List<string>` | Output | The list without the popped element. |
-| `poppedElement` | `string` | Output | The element that was removed (empty string if index is out of range). |
+| `SourceListJson` | `string` (JSON array) | Input | The source list serialized as a JSON array (via `JSON Serialize`). |
+| `Index` | `int` | Input | The 0-based index of the element to remove. |
+| `UpdatedListJson` | `string` (JSON array) | Output | The JSON array without the popped element. Empty input returns `"[]"`; out-of-range index returns the source unchanged. |
+| `PoppedElementJson` | `string` (JSON) | Output | The removed element serialized as JSON, or `"null"` when no element was removed. |
 
 ### List_PopMultiple
 
@@ -33,10 +33,10 @@ Removes multiple elements at specified indices. Returns the removed elements and
 
 | Parameter | Type | Direction | Description |
 |-----------|------|-----------|-------------|
-| `sourceList` | `List<string>` | Input | The source list to manipulate. |
-| `IndicesToPop` | `List<int>` | Input | The list of 0-based indices to remove. |
-| `updatedList` | `List<string>` | Output | The list without the popped elements. |
-| `poppedElements` | `List<string>` | Output | The elements that were removed, in their original order. |
+| `SourceListJson` | `string` (JSON array) | Input | The source list serialized as a JSON array. |
+| `IndicesToPop` | `string` | Input | Comma-separated 0-based indices to remove (e.g. `"1,3,5"`). Whitespace is trimmed. |
+| `UpdatedListJson` | `string` (JSON array) | Output | The JSON array without the popped elements. |
+| `PoppedElementsJson` | `string` (JSON array) | Output | JSON array of removed elements, in their original order. Out-of-range indices are silently ignored. |
 
 ### List_PopByCondition
 
@@ -243,7 +243,7 @@ All actions are **stateless** and **in-memory**. There is no file I/O, no networ
 
 | Action category | Mechanism | Complexity |
 |-----------------|-----------|------------|
-| Index-based pops (`List_Pop`, `List_PopMultiple`) | Direct `List<string>` manipulation using `RemoveAt`. Multiple indices are reverse-sorted before removal to avoid index shifting. | O(N) |
+| Index-based pops (`List_Pop`, `List_PopMultiple`) | Parse the JSON string into a `JsonArray`, `RemoveAt` by index. `List_PopMultiple` reverse-sorts and dedupes the comma-separated indices before removal to avoid index shifting. | O(N) |
 | Condition-based pops (`PopByCondition`, `PopMultipleByCondition`) | Parse the JSON string into a `JsonArray`, linear scan matching `propertyName == targetValue`, return modified arrays serialized back to JSON. | O(N) |
 | `List_Zip` | Parse both JSON arrays, iterate to `Min(A.Count, B.Count)`, construct paired `JsonObject`s. | O(min(A,B)) |
 | `List_GroupBy` | Single-pass scan building a `Dictionary<string, JsonArray>` keyed by property value. Preserves insertion order via a parallel list. | O(N) |
@@ -313,7 +313,7 @@ All packages are MIT or OutSystems proprietary (SDK only).
    cd ListUtils.O11
    dotnet build -c Release
    ```
-2. Create an extension in **Integration Studio** with the same action signatures (7 actions, all parameters as Text, Integer Text List, or Integer List).
+2. Create an extension in **Integration Studio** with the same action signatures (9 actions, all parameters as Text, Integer, or Boolean).
 3. Click **Edit Source Code**, paste the implementation from `Actions/ListUtilsActions.cs` into the generated file.
 4. Add the `System.Text.Json` NuGet package (8.0.5) to the IS-generated `.csproj`.
 5. Build in Visual Studio, return to Integration Studio → **1-Click Publish**.

@@ -14,21 +14,26 @@ ADDING THE LIBRARY TO YOUR APP
 USAGE
 -----
 
-Index-based actions (List_Pop, List_PopMultiple) operate directly on
-List of Text inputs. Use them when your data is already a text list.
+All nine actions consume and return JSON strings. Use JSON Serialize to
+convert any Structure List (including a plain List of Text) to a JSON
+string before calling the action, then JSON Deserialize the output back
+to your target Structure List.
 
-JSON-based actions (List_PopByCondition, List_PopMultipleByCondition,
-List_Zip, List_GroupBy, List_Difference) operate on serialized JSON
-strings. Use JSON Serialize to convert any Structure List to a JSON
-string before calling these actions, then JSON Deserialize the output
-back to your target Structure List.
+Index-based actions (List_Pop, List_PopMultiple) take a JSON array
+string plus positional information (an index, or a comma-separated
+list of indices).
+
+Condition-based actions (List_PopByCondition, List_PopMultipleByCondition,
+List_PopByConditions, List_PopMultipleByConditions), relational actions
+(List_Zip), grouping (List_GroupBy) and set difference (List_Difference)
+all follow the same JSON-in / JSON-out contract.
 
 Recommended pattern in a Server Action:
 
 1. Receive or fetch the source list.
-2. For JSON actions: call JSON Serialize on the source list.
+2. Call JSON Serialize on the source list.
 3. Call the appropriate ListUtils action.
-4. Use the output list (or JSON Deserialize the output string).
+4. JSON Deserialize the output string back to your Structure List.
 5. Continue with your business logic using the modified list.
 
 
@@ -36,18 +41,23 @@ SERVER ACTIONS
 --------------
 
 List_Pop
-  Input:  sourceList (List of Text), index (Integer)
-  Output: updatedList (List of Text), poppedElement (Text)
-  Removes the element at the given 0-based index. Returns the
-  removed element and the list without it. Out-of-range indices
-  return the original list unchanged with an empty poppedElement.
+  Input:  sourceListJson (Text), index (Integer)
+  Output: updatedListJson (Text), poppedElementJson (Text)
+  Removes the element at the given 0-based index from a JSON array.
+  Returns the removed element (as JSON) and the list without it.
+  Out-of-range indices return the original list unchanged and
+  poppedElementJson = "null". Empty input returns updatedListJson = "[]"
+  and poppedElementJson = "null".
 
 List_PopMultiple
-  Input:  sourceList (List of Text), indicesToPop (List of Integer)
-  Output: updatedList (List of Text), poppedElements (List of Text)
-  Removes multiple elements by index. Indices are processed in
-  reverse-sorted order so removals do not shift remaining positions.
-  Out-of-range indices are silently ignored.
+  Input:  sourceListJson (Text), indicesToPop (Text)
+  Output: updatedListJson (Text), poppedElementsJson (Text)
+  Removes multiple elements by index. indicesToPop is a comma-separated
+  list of 0-based indices (e.g. "1,3,5"). Whitespace is trimmed and
+  duplicates ignored. Indices are processed in reverse-sorted order so
+  removals do not shift remaining positions. Out-of-range indices are
+  silently ignored. poppedElementsJson is a JSON array of the removed
+  elements in their original order.
 
 List_PopByCondition
   Input:  sourceListJson (Text), propertyName (Text), targetValue (Text),

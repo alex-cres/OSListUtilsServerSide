@@ -16,7 +16,7 @@ Advanced list manipulation utilities — pop by index, pop by condition, zip, gr
 
 ### What This Component Does
 
-**ListUtilsServerSide** is a Library that provides seven high-utility list manipulation actions that are absent or cumbersome to implement natively in OutSystems. It covers index-based removal, condition-based filtering, list pairing (zip), grouping, and set difference — all in single server-side calls.
+**ListUtilsServerSide** is a Library that provides nine high-utility list manipulation actions that are absent or cumbersome to implement natively in OutSystems. It covers index-based removal, condition-based filtering (single and multi-condition with AND/OR), list pairing (zip), grouping, and set difference — all in single server-side calls.
 
 For generic structure support, the JSON-based actions accept any Structure List serialized with `JSON Serialize` and return JSON strings that can be deserialized back with `JSON Deserialize`. This eliminates the need to build separate extensions for each data structure.
 
@@ -134,7 +134,7 @@ Combined with `logicalOperator = "AND"` (all must match) or `"OR"` (at least one
        └───► [poppedElementJson] ──► JSON Deserialize → Structure Record
 ```
 
-4. For index-based actions (`List_Pop`, `List_PopMultiple`), pass `List of Text` directly — no JSON serialization needed.
+4. For index-based actions (`List_Pop`, `List_PopMultiple`), serialize your `List of Text` (or any Structure List) with `JSON Serialize` first — all nine actions consume and return JSON strings.
 
 ---
 
