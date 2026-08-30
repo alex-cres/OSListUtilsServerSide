@@ -1,9 +1,9 @@
 # OSListUtilsServerSide — Architecture
 
 Structural reference for the solution, the runtime component, and the test
-projects. Keep this file in sync with the code — the `documentation-updater`
-agent updates it as part of the change cycle whenever the solution layout,
-Server Action surface, dependency set, or project structure changes.
+projects. Keep this file in sync with the code — update it whenever the
+solution layout, Server Action surface, dependency set, or project structure
+changes.
 
 > **Runtime behaviour** and **Server Action signatures** live in
 > [README.md](./README.md) and the [docs/platform/](./docs/platform) Forge
