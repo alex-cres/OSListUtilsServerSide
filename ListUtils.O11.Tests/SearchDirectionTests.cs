@@ -68,9 +68,12 @@ public class SearchDirectionTests
     public void PopByConditions_SearchFromBeginning_PopsFirstMatch()
     {
         string json = """[{"Id":1,"A":"x","B":"y"},{"Id":2,"A":"x","B":"y"},{"Id":3,"A":"x","B":"y"}]""";
-        string conditions = """[{"path":"A","operator":"Equals","value":"x"},{"path":"B","operator":"Equals","value":"y"}]""";
+        var conditions = new List<Condition> {
+            new() { Path = "A", Operator = Operators.Equals, Value = "x" },
+            new() { Path = "B", Operator = Operators.Equals, Value = "y" },
+        };
 
-        _sut.List_PopByConditions(json, conditions, "AND", false, out _, out var popped);
+        _sut.List_PopByConditions(json, conditions, LogicalOperators.AND, false, out _, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("1", poppedObj["Id"]!.ToString());
@@ -80,9 +83,12 @@ public class SearchDirectionTests
     public void PopByConditions_SearchFromEnd_PopsLastMatch()
     {
         string json = """[{"Id":1,"A":"x","B":"y"},{"Id":2,"A":"x","B":"y"},{"Id":3,"A":"x","B":"y"}]""";
-        string conditions = """[{"path":"A","operator":"Equals","value":"x"},{"path":"B","operator":"Equals","value":"y"}]""";
+        var conditions = new List<Condition> {
+            new() { Path = "A", Operator = Operators.Equals, Value = "x" },
+            new() { Path = "B", Operator = Operators.Equals, Value = "y" },
+        };
 
-        _sut.List_PopByConditions(json, conditions, "AND", true, out _, out var popped);
+        _sut.List_PopByConditions(json, conditions, LogicalOperators.AND, true, out _, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("3", poppedObj["Id"]!.ToString());
@@ -99,14 +105,12 @@ public class SearchDirectionTests
                 {"Id":4,"Status":"Deleted","Score":10}
             ]
             """;
-        string conditions = """
-            [
-                {"path":"Status","operator":"Equals","value":"Active"},
-                {"path":"Score","operator":"GreaterThan","value":"80"}
-            ]
-            """;
+        var conditions = new List<Condition> {
+            new() { Path = "Status", Operator = Operators.Equals, Value = "Active" },
+            new() { Path = "Score", Operator = Operators.GreaterThan, Value = "80" },
+        };
 
-        _sut.List_PopByConditions(json, conditions, "OR", true, out _, out var popped);
+        _sut.List_PopByConditions(json, conditions, LogicalOperators.OR, true, out _, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("3", poppedObj["Id"]!.ToString());

@@ -95,7 +95,7 @@ public partial class ListUtils
 
     public void List_PopByConditions(
         string SourceListJson,
-        string ConditionsJson,
+        List<Condition> Conditions,
         string LogicalOperator,
         bool SearchFromEnd,
         out string UpdatedListJson,
@@ -108,10 +108,9 @@ public partial class ListUtils
             return;
         }
 
-        var conditions = ParseConditions(ConditionsJson);
         var array = JsonNode.Parse(SourceListJson)!.AsArray();
 
-        if (conditions.Count == 0)
+        if (Conditions == null || Conditions.Count == 0)
         {
             UpdatedListJson = SourceListJson;
             PoppedElementJson = "{}";
@@ -123,7 +122,7 @@ public partial class ListUtils
         {
             for (int i = array.Count - 1; i >= 0; i--)
             {
-                if (EvaluateConditions(array[i]!, conditions, LogicalOperator))
+                if (EvaluateConditions(array[i]!, Conditions, LogicalOperator))
                 {
                     matchedIndex = i;
                     break;
@@ -134,7 +133,7 @@ public partial class ListUtils
         {
             for (int i = 0; i < array.Count; i++)
             {
-                if (EvaluateConditions(array[i]!, conditions, LogicalOperator))
+                if (EvaluateConditions(array[i]!, Conditions, LogicalOperator))
                 {
                     matchedIndex = i;
                     break;
@@ -155,7 +154,7 @@ public partial class ListUtils
 
     public void List_PopMultipleByConditions(
         string SourceListJson,
-        string ConditionsJson,
+        List<Condition> Conditions,
         string LogicalOperator,
         out string UpdatedListJson,
         out string PoppedElementsJson)
@@ -167,10 +166,9 @@ public partial class ListUtils
             return;
         }
 
-        var conditions = ParseConditions(ConditionsJson);
         var originalArray = JsonNode.Parse(SourceListJson)!.AsArray();
 
-        if (conditions.Count == 0)
+        if (Conditions == null || Conditions.Count == 0)
         {
             UpdatedListJson = SourceListJson;
             PoppedElementsJson = "[]";
@@ -182,7 +180,7 @@ public partial class ListUtils
 
         foreach (var item in originalArray)
         {
-            if (EvaluateConditions(item!, conditions, LogicalOperator))
+            if (EvaluateConditions(item!, Conditions, LogicalOperator))
                 poppedArray.Add(item!.DeepClone());
             else
                 keptArray.Add(item!.DeepClone());
@@ -190,5 +188,68 @@ public partial class ListUtils
 
         UpdatedListJson = keptArray.ToJsonString(JsonOptions);
         PoppedElementsJson = poppedArray.ToJsonString(JsonOptions);
+    }
+
+    public void List_Partition(
+        string SourceListJson,
+        string PropertyName,
+        string TargetValue,
+        string ComparisonOperator,
+        bool CaseSensitive,
+        out string MatchingListJson,
+        out string NonMatchingListJson)
+    {
+        MatchingListJson = "[]";
+        NonMatchingListJson = "[]";
+        if (string.IsNullOrEmpty(SourceListJson)) return;
+
+        var array = JsonNode.Parse(SourceListJson)!.AsArray();
+        if (string.IsNullOrEmpty(PropertyName))
+        {
+            NonMatchingListJson = SourceListJson;
+            return;
+        }
+
+        var matching = new JsonArray();
+        var nonMatching = new JsonArray();
+        foreach (var item in array)
+        {
+            var value = GetPropertyValue(item!, PropertyName);
+            bool match = value != null && MatchesCondition(value, TargetValue, ComparisonOperator, CaseSensitive);
+            (match ? matching : nonMatching).Add(item!.DeepClone());
+        }
+
+        MatchingListJson = matching.ToJsonString(JsonOptions);
+        NonMatchingListJson = nonMatching.ToJsonString(JsonOptions);
+    }
+
+    public void List_PartitionByConditions(
+        string SourceListJson,
+        List<Condition> Conditions,
+        string LogicalOperator,
+        out string MatchingListJson,
+        out string NonMatchingListJson)
+    {
+        MatchingListJson = "[]";
+        NonMatchingListJson = "[]";
+        if (string.IsNullOrEmpty(SourceListJson)) return;
+
+        var array = JsonNode.Parse(SourceListJson)!.AsArray();
+        if (Conditions == null || Conditions.Count == 0)
+        {
+            NonMatchingListJson = SourceListJson;
+            return;
+        }
+
+        var matching = new JsonArray();
+        var nonMatching = new JsonArray();
+        foreach (var item in array)
+        {
+            bool match = EvaluateConditions(item!, Conditions, LogicalOperator);
+            (match ? matching : nonMatching).Add(item!.DeepClone());
+        }
+
+        MatchingListJson = matching.ToJsonString(JsonOptions);
+        NonMatchingListJson = nonMatching.ToJsonString(JsonOptions);
     }
 }

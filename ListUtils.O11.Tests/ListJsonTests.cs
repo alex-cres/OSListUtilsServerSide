@@ -149,6 +149,169 @@ public class ListJsonTests
 
     #endregion
 
+    #region ZipGroupBy
+
+    [Fact]
+    public void List_ZipGroupBy_TwoListsSharedKey_GroupsBothSides()
+    {
+        string orders = """[{"CustomerId":"1","OrderId":101},{"CustomerId":"2","OrderId":102},{"CustomerId":"1","OrderId":103}]""";
+        string payments = """[{"CustomerId":"1","PaymentId":201},{"CustomerId":"2","PaymentId":202},{"CustomerId":"2","PaymentId":203}]""";
+
+        _sut.List_ZipGroupBy(orders, payments, "CustomerId", "CustomerId", "Orders", "Payments", false, out var grouped);
+
+        var arr = JsonNode.Parse(grouped)!.AsArray();
+        Assert.Equal(2, arr.Count);
+
+        var g1 = arr[0]!.AsObject();
+        Assert.Equal("1", g1["Key"]!.ToString());
+        Assert.Equal(2, g1["Orders"]!.AsArray().Count);
+        Assert.Single(g1["Payments"]!.AsArray());
+
+        var g2 = arr[1]!.AsObject();
+        Assert.Equal("2", g2["Key"]!.ToString());
+        Assert.Single(g2["Orders"]!.AsArray());
+        Assert.Equal(2, g2["Payments"]!.AsArray().Count);
+    }
+
+    [Fact]
+    public void List_ZipGroupBy_KeyOnlyInListA_ListBArrayIsEmpty()
+    {
+        string a = """[{"K":"x","V":1}]""";
+        string b = """[{"K":"y","V":2}]""";
+
+        _sut.List_ZipGroupBy(a, b, "K", "K", "A", "B", false, out var grouped);
+
+        var arr = JsonNode.Parse(grouped)!.AsArray();
+        Assert.Equal(2, arr.Count);
+        // Key "x" comes from A → its B array is empty.
+        Assert.Equal("x", arr[0]!["Key"]!.ToString());
+        Assert.Single(arr[0]!["A"]!.AsArray());
+        Assert.Empty(arr[0]!["B"]!.AsArray());
+        // Key "y" only exists in B → its A array is empty.
+        Assert.Equal("y", arr[1]!["Key"]!.ToString());
+        Assert.Empty(arr[1]!["A"]!.AsArray());
+        Assert.Single(arr[1]!["B"]!.AsArray());
+    }
+
+    [Fact]
+    public void List_ZipGroupBy_DifferentKeyPropertiesPerSide()
+    {
+        // Common scenario: ListA uses "CustomerId", ListB uses "customer_id".
+        string a = """[{"CustomerId":"42","OrderId":1}]""";
+        string b = """[{"customer_id":"42","Method":"Card"}]""";
+
+        _sut.List_ZipGroupBy(a, b, "CustomerId", "customer_id", "Orders", "Payments", false, out var grouped);
+
+        var arr = JsonNode.Parse(grouped)!.AsArray();
+        Assert.Single(arr);
+        Assert.Equal("42", arr[0]!["Key"]!.ToString());
+        Assert.Single(arr[0]!["Orders"]!.AsArray());
+        Assert.Single(arr[0]!["Payments"]!.AsArray());
+    }
+
+    [Fact]
+    public void List_ZipGroupBy_NestedKeyPath_Works()
+    {
+        string a = """[{"Meta":{"CustomerId":"1"},"V":"a"}]""";
+        string b = """[{"Meta":{"CustomerId":"1"},"V":"b"}]""";
+
+        _sut.List_ZipGroupBy(a, b, "Meta.CustomerId", "Meta.CustomerId", "L1", "L2", false, out var grouped);
+
+        var arr = JsonNode.Parse(grouped)!.AsArray();
+        Assert.Single(arr);
+        Assert.Equal("1", arr[0]!["Key"]!.ToString());
+    }
+
+    [Fact]
+    public void List_ZipGroupBy_CaseInsensitiveByDefault()
+    {
+        string a = """[{"K":"ABC"},{"K":"abc"}]""";
+        string b = """[{"K":"AbC"}]""";
+
+        _sut.List_ZipGroupBy(a, b, "K", "K", "A", "B", false, out var grouped);
+
+        var arr = JsonNode.Parse(grouped)!.AsArray();
+        // "ABC", "abc", "AbC" all collapse into one bucket keyed by the first-seen "ABC".
+        Assert.Single(arr);
+        Assert.Equal("ABC", arr[0]!["Key"]!.ToString());
+        Assert.Equal(2, arr[0]!["A"]!.AsArray().Count);
+        Assert.Single(arr[0]!["B"]!.AsArray());
+    }
+
+    [Fact]
+    public void List_ZipGroupBy_CaseSensitiveKeepsSeparate()
+    {
+        string a = """[{"K":"X"}]""";
+        string b = """[{"K":"x"}]""";
+
+        _sut.List_ZipGroupBy(a, b, "K", "K", "A", "B", true, out var grouped);
+
+        var arr = JsonNode.Parse(grouped)!.AsArray();
+        Assert.Equal(2, arr.Count);
+    }
+
+    [Fact]
+    public void List_ZipGroupBy_MissingKeyGoesToUnknownBucket()
+    {
+        string a = """[{"NoK":"1"}]""";
+        string b = """[{"K":"real"},{"NotK":"x"}]""";
+
+        _sut.List_ZipGroupBy(a, b, "K", "K", "A", "B", false, out var grouped);
+
+        var arr = JsonNode.Parse(grouped)!.AsArray();
+        // Union order: "Unknown" from A → then "real" from B.
+        Assert.Equal(2, arr.Count);
+        Assert.Equal("Unknown", arr[0]!["Key"]!.ToString());
+        // Unknown bucket contains the A item and the B item without the key.
+        Assert.Single(arr[0]!["A"]!.AsArray());
+        Assert.Single(arr[0]!["B"]!.AsArray());
+        Assert.Equal("real", arr[1]!["Key"]!.ToString());
+    }
+
+    [Fact]
+    public void List_ZipGroupBy_EmptyLists_ReturnsEmpty()
+    {
+        _sut.List_ZipGroupBy("", "", "K", "K", "A", "B", false, out var bothEmpty);
+        _sut.List_ZipGroupBy("[]", "[]", "K", "K", "A", "B", false, out var bothEmptyArr);
+
+        Assert.Equal("[]", bothEmpty);
+        Assert.Equal("[]", bothEmptyArr);
+    }
+
+    [Fact]
+    public void List_ZipGroupBy_EmptyKeyNames_FallBackToDefaults()
+    {
+        string a = """[{"K":"1"}]""";
+        string b = """[{"K":"1"}]""";
+
+        _sut.List_ZipGroupBy(a, b, "K", "K", "", "", false, out var grouped);
+
+        var arr = JsonNode.Parse(grouped)!.AsArray();
+        Assert.Single(arr);
+        Assert.NotNull(arr[0]!["ItemsA"]);
+        Assert.NotNull(arr[0]!["ItemsB"]);
+    }
+
+    [Fact]
+    public void List_ZipGroupBy_PreservesFirstSeenOrder()
+    {
+        // A order: "b", "c". B order: "a", "b", "d". Expected union order:
+        // b (A), c (A), a (B, new), d (B, new).
+        string a = """[{"K":"b"},{"K":"c"}]""";
+        string b = """[{"K":"a"},{"K":"b"},{"K":"d"}]""";
+
+        _sut.List_ZipGroupBy(a, b, "K", "K", "A", "B", false, out var grouped);
+
+        var arr = JsonNode.Parse(grouped)!.AsArray();
+        Assert.Equal(4, arr.Count);
+        Assert.Equal("b", arr[0]!["Key"]!.ToString());
+        Assert.Equal("c", arr[1]!["Key"]!.ToString());
+        Assert.Equal("a", arr[2]!["Key"]!.ToString());
+        Assert.Equal("d", arr[3]!["Key"]!.ToString());
+    }
+
+    #endregion
+
     #region Difference
 
     [Fact]

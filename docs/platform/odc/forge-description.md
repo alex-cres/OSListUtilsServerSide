@@ -36,7 +36,7 @@ For generic structure support, the JSON-based actions accept any Structure List 
 
 **List_PopMultipleByCondition** — Same as above but removes ALL matching elements. Returns the list of removed elements as a JSON array.
 
-**List_PopByConditions** — Multi-condition version. Accepts a JSON array of conditions with per-condition path, operator, value, and caseSensitive fields; combines them with AND (default) or OR logical operator.
+**List_PopByConditions** — Multi-condition version. Accepts a list of `Condition` Structures (each with `Path`, `Operator`, `Value`, `CaseSensitive`) and combines them with AND (default) or OR logical operator. No JSON hand-authoring — build the list in your Server Action.
 
 **List_PopMultipleByConditions** — Multi-condition version that removes ALL matching elements.
 
@@ -81,7 +81,7 @@ The `caseSensitive` boolean (default `false`) toggles case sensitivity for strin
 
 ### Property Paths
 
-`PropertyName`, `MatchKey`, and paths inside condition JSON support both dot navigation and array indexing:
+`PropertyName`, `MatchKey`, and every `Condition.Path` support both dot navigation and array indexing:
 
 ```
 Address.City             →  obj["Address"]["City"]
@@ -96,17 +96,28 @@ CamelCase fallback is applied at each segment. Negative indices count from the e
 
 ### Multiple Conditions
 
-`List_PopByConditions` and `List_PopMultipleByConditions` accept a JSON array of conditions:
+`List_PopByConditions`, `List_PopMultipleByConditions`, `List_PartitionByConditions`, and `List_ReplaceWhere` accept a `Condition` Structure list. Each entry:
 
 ```
-[
-  {"path": "Status", "operator": "Equals", "value": "Active"},
-  {"path": "Score", "operator": "GreaterThan", "value": "50"},
-  {"path": "Meta.Region", "operator": "Equals", "value": "EU", "caseSensitive": true}
-]
+Condition {
+  Path          = "Status"       // property path (nested + array indexing)
+  Operator      = Operators.Equals
+  Value         = "Active"       // target value as text
+  CaseSensitive = false          // optional, default false
+}
 ```
 
-Combined with `logicalOperator = "AND"` (all must match) or `"OR"` (at least one).
+Combine any number of entries and pass `LogicalOperator = LogicalOperators.AND` (all must match) or `LogicalOperators.OR` (at least one). Passing an empty list returns the source unchanged.
+
+### Constant classes
+
+Operator strings are exposed as compile-time constants — no more magic strings:
+
+- `Operators` — `Equals`, `NotEquals`, `Contains`, `StartsWith`, `EndsWith`, `GreaterThan`, `LessThan`, `GreaterOrEqual`, `LessOrEqual`
+- `LogicalOperators` — `AND`, `OR`
+- `AggregateOperations` — `Sum`, `Avg`, `Min`, `Max`, `Count`, `CountDistinct` (used by `List_Aggregate`)
+
+Symbol aliases (`!=`, `>`, `<`, `>=`, `<=`) are still accepted for backwards compatibility.
 
 ---
 
@@ -154,7 +165,9 @@ Combined with `logicalOperator = "AND"` (all must match) or `"OR"` (at least one
 
 - **14 server-side actions** covering the most common list manipulation gaps
 - **Generic structure support** via JSON serialization — works with any OutSystems Structure
+- **First-class `Condition` Structure** for multi-condition filtering — no hand-authored JSON
 - **9 comparison operators** (Equals, NotEquals, Contains, StartsWith, EndsWith, GreaterThan, LessThan, GreaterOrEqual, LessOrEqual) with symbol aliases
+- **`Operators`, `LogicalOperators`, `AggregateOperations` constant classes** — IDE autocomplete and compile-time typo detection instead of magic strings
 - **Multiple conditions with AND/OR** — combine any number of conditions per query
 - **Case sensitivity toggle** — per-action flag or per-condition field in multi-condition mode
 - **Nested property paths + array indexing** — dot navigation, positive/negative indices, mixed at any depth

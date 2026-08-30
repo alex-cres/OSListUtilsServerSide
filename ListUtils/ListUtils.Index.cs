@@ -80,4 +80,34 @@ public partial class ListUtils
         UpdatedListJson = array.ToJsonString(JsonOptions);
         PoppedElementsJson = ordered.ToJsonString(JsonOptions);
     }
+
+    public void List_SplitAt(
+        string SourceListJson,
+        int Index,
+        out string LeftListJson,
+        out string RightListJson)
+    {
+        if (string.IsNullOrEmpty(SourceListJson))
+        {
+            LeftListJson = "[]";
+            RightListJson = "[]";
+            return;
+        }
+
+        var array = JsonNode.Parse(SourceListJson)!.AsArray();
+        int n = array.Count;
+        int split = Index < 0 ? n + Index : Index;
+        if (split < 0) split = 0;
+        if (split > n) split = n;
+
+        var left = new JsonArray();
+        var right = new JsonArray();
+        for (int i = 0; i < n; i++)
+        {
+            (i < split ? left : right).Add(array[i]!.DeepClone());
+        }
+
+        LeftListJson = left.ToJsonString(JsonOptions);
+        RightListJson = right.ToJsonString(JsonOptions);
+    }
 }

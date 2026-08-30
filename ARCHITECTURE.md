@@ -35,21 +35,23 @@ Primary class: `ListUtils`, implementing `IListUtils`.
 
 | File | Type | Purpose |
 |------|------|---------|
-| [IListUtils.cs](ListUtils/IListUtils.cs) | `[OSInterface]` | Declares 14 actions: `List_Pop`, `List_PopMultiple`, `List_PopByCondition`, `List_PopMultipleByCondition`, `List_PopByConditions`, `List_PopMultipleByConditions`, `List_Zip`, `List_GroupBy`, `List_Difference`, `List_Chunk`, `List_DistinctBy`, `List_Slice`, `List_Shuffle`, `List_UpdateAt` |
+| [IListUtils.cs](ListUtils/IListUtils.cs) | `[OSInterface]` | Declares 29 actions: `List_Pop`, `List_PopMultiple`, `List_SplitAt`, `List_PopByCondition`, `List_PopMultipleByCondition`, `List_PopByConditions`, `List_PopMultipleByConditions`, `List_Partition`, `List_PartitionByConditions`, `List_Zip`, `List_GroupBy`, `List_ZipGroupBy`, `List_Difference`, `List_Intersect`, `List_Union`, `List_Chunk`, `List_DistinctBy`, `List_Slice`, `List_Shuffle`, `List_UpdateAt`, `List_Reverse`, `List_Flatten`, `List_Sample`, `List_ReplaceWhere`, `List_UpdateMultipleAt`, `List_MinBy`, `List_MaxBy`, `List_Aggregate`, `List_ZipMany`, `List_ZipManyGroupBy` |
 
 No `[OSStructure]` types — every exposed parameter is a primitive (`string`, `int`, `bool`). All list data is passed as JSON strings (`Text`), which keeps the interface generic across any consumer Structure.
 
 ### Implementation files (partial class)
 
-`ListUtils` is a `public partial class` split across six files by action group. The shell holds the class declaration + `IListUtils` implementation marker; each partial contributes one concern.
+`ListUtils` is a `public partial class` split across eight files by action group. The shell holds the class declaration + `IListUtils` implementation marker; each partial contributes one concern.
 
 | File | Responsibility |
 |------|---------------|
 | [ListUtils.cs](ListUtils/ListUtils.cs) | Partial-class shell — declares `public partial class ListUtils : IListUtils`, no members |
 | [ListUtils.Index.cs](ListUtils/ListUtils.Index.cs) | Index-based pops: `List_Pop`, `List_PopMultiple` |
 | [ListUtils.Condition.cs](ListUtils/ListUtils.Condition.cs) | Condition-based actions: `List_PopByCondition`, `List_PopMultipleByCondition`, `List_PopByConditions`, `List_PopMultipleByConditions` |
-| [ListUtils.Relational.cs](ListUtils/ListUtils.Relational.cs) | Relational / set actions: `List_Zip`, `List_GroupBy`, `List_Difference` (including all fast-path branches) |
-| [ListUtils.Transform.cs](ListUtils/ListUtils.Transform.cs) | Transformation / randomization actions: `List_Chunk`, `List_DistinctBy`, `List_Slice`, `List_Shuffle`, `List_UpdateAt` (plus private helpers for slice normalization, CSPRNG-vs-seeded shuffle, and nested-path write-back with object-only auto-creation) |
+| [ListUtils.Relational.cs](ListUtils/ListUtils.Relational.cs) | Relational / set actions: `List_Zip`, `List_GroupBy`, `List_ZipGroupBy` (two-list cogroup), `List_Difference` (including all fast-path branches) |
+| [ListUtils.Transform.cs](ListUtils/ListUtils.Transform.cs) | Transformation / randomization actions: `List_Chunk`, `List_DistinctBy`, `List_Slice`, `List_Shuffle`, `List_UpdateAt`, `List_Reverse`, `List_Flatten`, `List_Sample`, `List_ReplaceWhere`, `List_UpdateMultipleAt` (plus private helpers for slice normalization, CSPRNG-vs-seeded RNG shared by Shuffle and Sample, and nested-path write-back with object-only auto-creation) |
+| [ListUtils.Aggregate.cs](ListUtils/ListUtils.Aggregate.cs) | Aggregations: `List_MinBy`, `List_MaxBy`, `List_Aggregate` (Sum / Avg / Min / Max / Count / CountDistinct over a property path) |
+| [ListUtils.ZipMany.cs](ListUtils/ListUtils.ZipMany.cs) | Multi-list zip: `List_ZipMany`, `List_ZipManyGroupBy` (N-list generalisations of `List_Zip` and `List_ZipGroupBy`). Accepts `List<string>` inputs so callers pass a Text List directly. |
 | [ListUtils.Helpers.cs](ListUtils/ListUtils.Helpers.cs) | `GetPropertyValue` + `NavigateSegment` path walker, `MatchesCondition` operator evaluator, `ParseConditions` + `EvaluateConditions` multi-condition engine, `TryCompareNumeric` numeric comparator, `ToCamelCase` fallback, nested `Condition` type, shared `JsonSerializerOptions` |
 
 ### Runtime dependencies
@@ -64,56 +66,121 @@ Declared in [ListUtils.csproj](ListUtils/ListUtils.csproj).
 
 ### ODC processing flow
 
+The implementation is split across six action-family partials; each partial has
+its own dispatch and data-flow diagram below. All partials share the two
+helpers `GetPropertyValue` / `MatchesCondition` shown at the end.
+
+#### `ListUtils.Index.cs` — index-based actions
+
 ```mermaid
 flowchart LR
-    In[inputs] --> Type{Action type?}
+    In[inputs] --> Type{Action?}
+    Type -->|List_Pop| Pop["JsonNode.Parse → JsonArray<br/>Normalize Index (negative counts from end)<br/>RemoveAt(index)"]
+    Type -->|List_PopMultiple| PopMany["Parse IndicesToPop CSV<br/>Normalize + dedupe<br/>Reverse-sort<br/>RemoveAt(each)"]
+    Type -->|List_SplitAt| Split["Parse source array<br/>Normalize Index (clamped)<br/>Emit head [0..idx) + tail [idx..N)"]
+    Pop --> Serialize["ToJsonString(JsonOptions)"]
+    PopMany --> Serialize
+    Split --> Serialize
+    Serialize --> Out[Output parameters]
+```
 
-    Type -->|List_Pop / List_PopMultiple| IndexOp["JsonNode.Parse → JsonArray<br/>RemoveAt by index<br/>(reverse-sorted for PopMultiple)"]
+#### `ListUtils.Condition.cs` — filter / partition / replace by condition(s)
 
-    Type -->|PopByCondition /<br/>PopMultipleByCondition| ParseSingle[JsonNode.Parse → JsonArray]
-    ParseSingle --> SingleScan{Search from end?}
-    SingleScan -->|"false / N/A for Multiple"| ScanFwd[Forward scan i = 0..N]
-    SingleScan -->|"true (Pop only)"| ScanBwd[Backward scan i = N-1..0]
-    ScanFwd --> Eval1["For each item:<br/>GetPropertyValue(path) via NavigateSegment<br/>then MatchesCondition(value, target, op, caseSensitive)"]
-    ScanBwd --> Eval1
+```mermaid
+flowchart LR
+    In[inputs] --> Type{Action?}
 
-    Type -->|PopByConditions /<br/>PopMultipleByConditions| ParseMulti["ParseConditions(conditionsJson)<br/>→ List&lt;Condition&gt;<br/>+ JsonNode.Parse → JsonArray"]
-    ParseMulti --> MultiScan{Search from end?}
-    MultiScan -->|"false / N/A for Multiple"| ScanFwdM[Forward scan]
-    MultiScan -->|"true (Pop only)"| ScanBwdM[Backward scan]
-    ScanFwdM --> Eval2["EvaluateConditions(item, conditions, AND/OR)<br/>AND: all must match<br/>OR: any must match"]
-    ScanBwdM --> Eval2
+    Type -->|PopByCondition /<br/>PopMultipleByCondition| Single[JsonNode.Parse → JsonArray]
+    Single --> SingleScan{Search from end?}
+    SingleScan -->|"false / N/A for Multiple"| Fwd[Forward scan]
+    SingleScan -->|"true (Pop only)"| Bwd[Backward scan]
+    Fwd --> Eval1["For each item:<br/>GetPropertyValue(path)<br/>MatchesCondition(value, target, op)"]
+    Bwd --> Eval1
 
-    Type -->|List_Zip| Zip[Parse both arrays<br/>→ index-paired JsonObjects<br/>truncate to shorter]
-
-    Type -->|List_GroupBy| GroupBy["Parse source array<br/>→ Dictionary&lt;string, JsonArray&gt;<br/>keyed by GetPropertyValue(path)<br/>preserves first-seen order"]
-
-    Type -->|List_Difference| Diff["Parse both arrays<br/>Build B-value list once<br/>Equals / NotEquals: HashSet lookup - O(A+B)<br/>StartsWith / EndsWith: HashSet + prefix/suffix scan - O(A·L)<br/>Numeric ops: precompute min(B) / max(B) - O(A+B)<br/>Contains: linear scan via MatchesCondition - O(A*B)"]
-
-    Type -->|List_Chunk| Chunk["Parse source array<br/>Slide window of ChunkSize<br/>ChunkSize &lt;= 0 or empty source returns '[]'"]
-
-    Type -->|List_DistinctBy| Distinct["Parse source array<br/>Key = GetPropertyValue(PropertyName) or full-item JSON<br/>HashSet dedupe (Ordinal / OrdinalIgnoreCase)<br/>Missing keys share one 'null-key' bucket<br/>First occurrence wins"]
-
-    Type -->|List_Slice| Slice["Parse source array<br/>Normalize Start/End (negative counts from end, clamped)<br/>End == 0 sentinel: forward = end of list, backward = past beginning<br/>Step == 0 treated as 1; negative Step reverses"]
-
-    Type -->|List_Shuffle| Shuffle["Parse source array (DeepClone, source not mutated)<br/>Fisher-Yates in-place<br/>Seed == 0: RandomNumberGenerator per swap (CSPRNG)<br/>Seed != 0: System.Random(Seed) for reproducibility"]
-
-    Type -->|List_UpdateAt| UpdateAt["Parse source array<br/>Normalize Index (negative counts from end)<br/>Walk PropertyName path; auto-create missing objects<br/>(arrays are NOT auto-created \u2014 missing/non-array short-circuits)<br/>Parse NewValueJson; fallback to raw string on JsonException<br/>Emit PreviousValueJson = 'null' when index OOB, empty PropertyName,<br/>non-object item, missing property, or existing JSON null"]
+    Type -->|PopByConditions /<br/>PopMultipleByConditions /<br/>PartitionByConditions /<br/>ReplaceWhere| Multi["JsonNode.Parse → JsonArray<br/>List&lt;Condition&gt; already typed<br/>(no JSON parse needed)"]
+    Multi --> MultiScan{Direction?}
+    MultiScan -->|"forward / Partition / ReplaceWhere"| FwdM[Forward scan]
+    MultiScan -->|"reverse (Pop only)"| BwdM[Backward scan]
+    FwdM --> Eval2["EvaluateConditions(item, conditions, AND/OR)<br/>AND: all must match<br/>OR: any must match"]
+    BwdM --> Eval2
 
     Eval1 --> Serialize["ToJsonString(JsonOptions)"]
     Eval2 --> Serialize
-    Zip --> Serialize
+    Serialize --> Out[Output parameters]
+```
+
+#### `ListUtils.Relational.cs` — zip / group / set operations
+
+```mermaid
+flowchart LR
+    In[inputs] --> Type{Action?}
+    Type -->|List_Zip| Zip["Parse both arrays<br/>Index-pair JsonObjects<br/>Truncate to shorter"]
+    Type -->|List_GroupBy| GroupBy["Parse source<br/>Dictionary&lt;string, JsonArray&gt;<br/>keyed by GetPropertyValue(path)<br/>preserves first-seen order"]
+    Type -->|List_ZipGroupBy| ZipGroup["Parse two arrays<br/>Pair + group by key"]
+    Type -->|List_Difference /<br/>Intersect / Union| SetOp["Parse both arrays<br/>Build B-value HashSet once<br/>Equals / NotEquals: O(A+B) HashSet<br/>StartsWith / EndsWith: O(A·L) prefix/suffix scan<br/>Numeric: precompute min/max(B) — O(A+B)<br/>Contains: linear scan — O(A·B)"]
+    Zip --> Serialize["ToJsonString(JsonOptions)"]
     GroupBy --> Serialize
-    Diff --> Serialize
-    IndexOp --> Serialize
-    Chunk --> Serialize
+    ZipGroup --> Serialize
+    SetOp --> Serialize
+    Serialize --> Out[Output parameters]
+```
+
+#### `ListUtils.Transform.cs` — chunk / distinct / slice / shuffle / update / partition / replace / reverse / flatten / sample
+
+```mermaid
+flowchart LR
+    In[inputs] --> Type{Action?}
+    Type -->|List_Chunk| Chunk["Parse source array<br/>Slide window of ChunkSize<br/>Emit each chunk's ToJsonString()<br/>ChunkSize &lt;= 0 → empty list"]
+    Type -->|List_DistinctBy| Distinct["Parse source array<br/>Key = GetPropertyValue(PropertyName) or full-item JSON<br/>HashSet dedupe (Ordinal / OrdinalIgnoreCase)<br/>First occurrence wins"]
+    Type -->|List_Slice| Slice["Parse source array<br/>Normalize Start/End (negatives from end, clamped)<br/>End == 0 sentinel: end of list (fwd) / past beginning (bwd)<br/>Step == 0 treated as 1; negative Step reverses"]
+    Type -->|List_Shuffle| Shuffle["Parse source (DeepClone; source not mutated)<br/>Fisher-Yates in-place<br/>Seed == 0: RandomNumberGenerator per swap (CSPRNG)<br/>Seed != 0: System.Random(Seed) for reproducibility"]
+    Type -->|List_UpdateAt /<br/>UpdateMultipleAt| Update["Parse source array<br/>Normalize Index (negative counts from end)<br/>Walk PropertyName path; auto-create missing objects<br/>Parse NewValueJson (fallback to raw string on JsonException)"]
+    Type -->|List_Reverse| Reverse["Parse source array<br/>In-place reverse of a DeepClone"]
+    Type -->|List_Flatten| Flatten["Parse source of arrays<br/>Concatenate one level"]
+    Type -->|List_Sample| Sample["Parse source array<br/>Reservoir sampling with Seed<br/>(same PRNG rules as Shuffle)"]
+    Type -->|List_Partition /<br/>PartitionByConditions| Partition["Parse source array<br/>Bucket into matching / non-matching<br/>(condition partial reuses EvaluateConditions)"]
+    Type -->|List_ReplaceWhere| Replace["Parse source array<br/>Walk items; when EvaluateConditions is true,<br/>set PropertyName = NewValueJson<br/>Emit count of updates"]
+    Chunk --> Serialize["ToJsonString(JsonOptions)"]
     Distinct --> Serialize
     Slice --> Serialize
     Shuffle --> Serialize
-    UpdateAt --> Serialize
-
+    Update --> Serialize
+    Reverse --> Serialize
+    Flatten --> Serialize
+    Sample --> Serialize
+    Partition --> Serialize
+    Replace --> Serialize
     Serialize --> Out[Output parameters]
+```
 
+#### `ListUtils.Aggregate.cs` — MinBy / MaxBy / Aggregate
+
+```mermaid
+flowchart LR
+    In[inputs] --> Type{Action?}
+    Type -->|List_MinBy /<br/>List_MaxBy| MinMax["Parse source array<br/>For each item: GetPropertyValue(path)<br/>TryCompareNumeric to running best<br/>Emit winner (or empty on tie / empty source)"]
+    Type -->|List_Aggregate| Agg["Parse source array<br/>Extract path via GetPropertyValue<br/>Dispatch on AggregateOperations:<br/>Sum / Avg / Min / Max / Count / CountDistinct"]
+    MinMax --> Serialize["ToJsonString(JsonOptions)"]
+    Agg --> Serialize
+    Serialize --> Out[Output parameters]
+```
+
+#### `ListUtils.ZipMany.cs` — variadic zip / group
+
+```mermaid
+flowchart LR
+    In["List&lt;string&gt; SourceListsJson<br/>List&lt;string&gt; KeyNames"] --> Type{Action?}
+    Type -->|List_ZipMany| Zip["Parse each list once<br/>Index-pair across all N lists<br/>Truncate to shortest<br/>Emit JsonObject per row"]
+    Type -->|List_ZipManyGroupBy| ZipGroup["Zip as above<br/>Group by GroupByPath value<br/>Dictionary&lt;string, JsonArray&gt;"]
+    Zip --> Serialize["ToJsonString(JsonOptions)"]
+    ZipGroup --> Serialize
+    Serialize --> Out[Output parameters]
+```
+
+#### Shared helpers (used by every partial above)
+
+```mermaid
+flowchart TB
     subgraph PathNav[GetPropertyValue / NavigateSegment]
         direction TB
         Path["Split path on '.'"] --> Seg["Per segment:<br/>parse 'Name[index]' or 'Name'"]
@@ -125,19 +192,18 @@ flowchart LR
 
     subgraph OpMatch[MatchesCondition]
         direction TB
-        Op[Normalize operator] --> Cmp{Operator type?}
+        Op[Normalize operator via Operators constants] --> Cmp{Operator?}
         Cmp -->|Equals / NotEquals| StrEq[String cmp<br/>Ordinal / OrdinalIgnoreCase]
         Cmp -->|Contains / StartsWith / EndsWith| StrPat[String match<br/>per caseSensitive]
         Cmp -->|GreaterThan / LessThan / GreaterOrEqual / LessOrEqual| Num[TryCompareNumeric<br/>decimal / InvariantCulture]
     end
 ```
 
-Helper flow (used by all condition-based and grouping actions):
+Helper contracts:
 
-- **`GetPropertyValue(node, path)`** — splits `path` on `.`, then for each segment calls `NavigateSegment`. Each segment can be `Name` or `Name[index]`. Falls back to camelCase at every step. Returns `null` if any hop fails.
-- **`MatchesCondition(actual, target, op, caseSensitive)`** — case-insensitive by default. Numeric operators parse with `InvariantCulture`; non-numeric input returns `false`.
-- **`ParseConditions(json)`** — reads `[{path, operator, value, caseSensitive?}]` array. Missing fields default to empty strings / `false`.
-- **`EvaluateConditions(item, conditions, logicalOp)`** — AND short-circuits on first miss; OR short-circuits on first hit.
+- **`GetPropertyValue(node, path)`** — splits `path` on `.`, per-segment calls `NavigateSegment`. Falls back to camelCase at every step. Returns `null` if any hop fails.
+- **`MatchesCondition(actual, target, op, caseSensitive)`** — case-insensitive by default. Numeric operators parse with `InvariantCulture`; non-numeric input returns `false`. Operator strings are compared against the `Operators` constants (backwards-compatible with the legacy `!=`, `>=`, `<=` symbols).
+- **`EvaluateConditions(item, conditions, logicalOp)`** — AND short-circuits on first miss; OR short-circuits on first hit. `conditions` is the typed `List<Condition>` from the interface (no per-call JSON parse).
 
 ### Build & package
 
@@ -156,7 +222,7 @@ Target framework: **`net48`**, `LangVersion=10`. Namespace: `OutSystems.NssListU
 
 | File | Type | Purpose |
 |------|------|---------|
-| [IssListUtils.cs](ListUtils.O11/IssListUtils.cs) | Interface | Declares `MssList_Pop`, `MssList_PopMultiple`, `MssList_PopByCondition`, `MssList_PopMultipleByCondition`, `MssList_PopByConditions`, `MssList_PopMultipleByConditions`, `MssList_Zip`, `MssList_GroupBy`, `MssList_Difference`, `MssList_Chunk`, `MssList_DistinctBy`, `MssList_Slice`, `MssList_Shuffle`, `MssList_UpdateAt` |
+| [IssListUtils.cs](ListUtils.O11/IssListUtils.cs) | Interface | Declares 29 `Mss` methods mirroring the ODC surface (Pop family, SplitAt, Partition family, Zip / GroupBy / ZipGroupBy / Difference / Intersect / Union, Chunk / DistinctBy / Slice / Shuffle / UpdateAt / Reverse / Flatten / Sample / ReplaceWhere / UpdateMultipleAt, MinBy / MaxBy / Aggregate, ZipMany / ZipManyGroupBy) |
 
 No record types — every exposed parameter is a primitive (`string`, `int`, `bool`). Lists cross the boundary as JSON strings, identical to the ODC surface.
 
@@ -169,9 +235,11 @@ No record types — every exposed parameter is a primitive (`string`, `int`, `bo
 | [Actions/ListUtilsActions.cs](ListUtils.O11/Actions/ListUtilsActions.cs) | Partial-class shell — declares `public partial class CssListUtils : IssListUtils`, no members |
 | [Actions/ListUtilsActions.Index.cs](ListUtils.O11/Actions/ListUtilsActions.Index.cs) | `MssList_Pop`, `MssList_PopMultiple` |
 | [Actions/ListUtilsActions.Condition.cs](ListUtils.O11/Actions/ListUtilsActions.Condition.cs) | `MssList_PopByCondition`, `MssList_PopMultipleByCondition`, `MssList_PopByConditions`, `MssList_PopMultipleByConditions` |
-| [Actions/ListUtilsActions.Relational.cs](ListUtils.O11/Actions/ListUtilsActions.Relational.cs) | `MssList_Zip`, `MssList_GroupBy`, `MssList_Difference` (including all fast-path branches) |
-| [Actions/ListUtilsActions.Transform.cs](ListUtils.O11/Actions/ListUtilsActions.Transform.cs) | `MssList_Chunk`, `MssList_DistinctBy`, `MssList_Slice`, `MssList_Shuffle`, `MssList_UpdateAt` — mirrors the ODC `ListUtils.Transform.cs` |
-| [Actions/ListUtilsActions.Helpers.cs](ListUtils.O11/Actions/ListUtilsActions.Helpers.cs) | Path walker, condition evaluator, multi-condition engine, `TryCompareNumeric`, `ToCamelCase`, nested `Condition` type, shared `JsonSerializerOptions` |
+| [Actions/ListUtilsActions.Relational.cs](ListUtils.O11/Actions/ListUtilsActions.Relational.cs) | `MssList_Zip`, `MssList_GroupBy`, `MssList_ZipGroupBy`, `MssList_Difference` (including all fast-path branches) |
+| [Actions/ListUtilsActions.Transform.cs](ListUtils.O11/Actions/ListUtilsActions.Transform.cs) | `MssList_Chunk`, `MssList_DistinctBy`, `MssList_Slice`, `MssList_Shuffle`, `MssList_UpdateAt`, `MssList_Reverse`, `MssList_Flatten`, `MssList_Sample`, `MssList_ReplaceWhere`, `MssList_UpdateMultipleAt` — mirrors the ODC `ListUtils.Transform.cs` |
+| [Actions/ListUtilsActions.Aggregate.cs](ListUtils.O11/Actions/ListUtilsActions.Aggregate.cs) | `MssList_MinBy`, `MssList_MaxBy`, `MssList_Aggregate` |
+| [Actions/ListUtilsActions.ZipMany.cs](ListUtils.O11/Actions/ListUtilsActions.ZipMany.cs) | `MssList_ZipMany`, `MssList_ZipManyGroupBy` — `List<string>` inputs matching the ODC side |
+| [Actions/ListUtilsActions.Helpers.cs](ListUtils.O11/Actions/ListUtilsActions.Helpers.cs) | Path walker, condition evaluator (`List<Condition>` typed input), multi-condition engine, `TryCompareNumeric`, `ToCamelCase`, shared `JsonSerializerOptions` |
 
 Logic is functionally identical to the ODC implementation. Platform-specific differences:
 - `ss`-prefixed parameter names
@@ -193,7 +261,7 @@ Declared in [ListUtils.O11.csproj](ListUtils.O11/ListUtils.O11.csproj).
 
 ## 4. Test projects
 
-145 functional tests + 165 load tests per platform × 2 = **620 tests total**. 12 test files per project.
+228 functional tests + 245 load tests per platform × 2 = **906 tests total**. 13 test files per project.
 
 Load tests use a shared 10,000-element complex JSON structure (nested objects, arrays, mixed types) and assert each Server Action completes in under **300 ms** in Release. Every load test also verifies the **result correctness** (expected element count or the invariant `updated + popped = source`) parsed outside the stopwatch so it does not count against the timing budget. `List_Difference` with `Contains` uses a 1,000-element pair because the substring operator is inherently O(A×B).
 
@@ -325,7 +393,7 @@ The `PopMultiple*` variants always iterate the whole list (they pop every match)
 
 ### Transform semantics
 
-`List_Chunk` walks the source array with a rolling `JsonArray` buffer, emitting each buffer when it reaches `ChunkSize` and one final smaller buffer for the remainder. Empty source or `ChunkSize <= 0` short-circuits to `"[]"`.
+`List_Chunk` walks the source array with a rolling `JsonArray` buffer, and every time the buffer reaches `ChunkSize` it emits `buffer.ToJsonString()` as a new entry in the output `List<string>` (each entry is a standalone JSON array). A final smaller buffer is emitted for the remainder. Empty source or `ChunkSize <= 0` short-circuits to an empty list. The action returns `List<string>` (mapped to OutSystems `List<Text>`), NOT a single nested-JSON string — this lets callers `JSON Deserialize` each entry directly into their Structure List.
 
 `List_DistinctBy` uses the shared `GetPropertyValue` walker so nested paths (`Address.City`) and array indexing (`Tags[0]`) both work as uniqueness keys. Empty `PropertyName` dedupes on the entire item's serialised JSON. Missing keys collapse into a single "null-key" bucket so that at most one keyless item survives. First occurrence wins; source order is preserved.
 

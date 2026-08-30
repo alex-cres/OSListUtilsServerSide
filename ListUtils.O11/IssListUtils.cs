@@ -37,7 +37,7 @@ public interface IssListUtils
 
     void MssList_PopByConditions(
         string ssSourceListJson,
-        string ssConditionsJson,
+        List<Condition> ssConditions,
         string ssLogicalOperator,
         bool ssSearchFromEnd,
         out string ssUpdatedListJson,
@@ -45,7 +45,7 @@ public interface IssListUtils
 
     void MssList_PopMultipleByConditions(
         string ssSourceListJson,
-        string ssConditionsJson,
+        List<Condition> ssConditions,
         string ssLogicalOperator,
         out string ssUpdatedListJson,
         out string ssPoppedElementsJson);
@@ -62,6 +62,16 @@ public interface IssListUtils
         string ssPropertyName,
         out string ssGroupedListJson);
 
+    void MssList_ZipGroupBy(
+        string ssListAJson,
+        string ssListBJson,
+        string ssKeyPropertyA,
+        string ssKeyPropertyB,
+        string ssKeyNameA,
+        string ssKeyNameB,
+        bool ssCaseSensitive,
+        out string ssGroupedListJson);
+
     void MssList_Difference(
         string ssListAJson,
         string ssListBJson,
@@ -73,7 +83,7 @@ public interface IssListUtils
     void MssList_Chunk(
         string ssSourceListJson,
         int ssChunkSize,
-        out string ssChunksListJson);
+        out List<string> ssChunksListJson);
 
     void MssList_DistinctBy(
         string ssSourceListJson,
@@ -100,4 +110,107 @@ public interface IssListUtils
         string ssNewValueJson,
         out string ssUpdatedListJson,
         out string ssPreviousValueJson);
+
+    void MssList_MinBy(
+        string ssSourceListJson,
+        string ssPropertyName,
+        bool ssNumericMode,
+        out string ssElementJson,
+        out string ssMinValue,
+        out int ssMinIndex);
+
+    void MssList_MaxBy(
+        string ssSourceListJson,
+        string ssPropertyName,
+        bool ssNumericMode,
+        out string ssElementJson,
+        out string ssMaxValue,
+        out int ssMaxIndex);
+
+    void MssList_Aggregate(
+        string ssSourceListJson,
+        string ssPropertyName,
+        string ssOperation,
+        out string ssResultValue,
+        out int ssMatchedCount);
+
+    void MssList_Intersect(
+        string ssListAJson,
+        string ssListBJson,
+        string ssMatchKey,
+        string ssComparisonOperator,
+        bool ssCaseSensitive,
+        out string ssIntersectionListJson);
+
+    void MssList_Union(
+        string ssListAJson,
+        string ssListBJson,
+        string ssMatchKey,
+        bool ssCaseSensitive,
+        out string ssUnionListJson);
+
+    void MssList_SplitAt(
+        string ssSourceListJson,
+        int ssIndex,
+        out string ssLeftListJson,
+        out string ssRightListJson);
+
+    void MssList_Partition(
+        string ssSourceListJson,
+        string ssPropertyName,
+        string ssTargetValue,
+        string ssComparisonOperator,
+        bool ssCaseSensitive,
+        out string ssMatchingListJson,
+        out string ssNonMatchingListJson);
+
+    void MssList_PartitionByConditions(
+        string ssSourceListJson,
+        List<Condition> ssConditions,
+        string ssLogicalOperator,
+        out string ssMatchingListJson,
+        out string ssNonMatchingListJson);
+
+    void MssList_Reverse(
+        string ssSourceListJson,
+        out string ssReversedListJson);
+
+    void MssList_Flatten(
+        List<string> ssChunksListJson,
+        out string ssFlatListJson);
+
+    void MssList_Sample(
+        string ssSourceListJson,
+        int ssSampleSize,
+        int ssSeed,
+        out string ssSampleListJson);
+
+    void MssList_ReplaceWhere(
+        string ssSourceListJson,
+        List<Condition> ssConditions,
+        string ssLogicalOperator,
+        string ssUpdateProperty,
+        string ssNewValueJson,
+        out string ssUpdatedListJson,
+        out int ssMatchCount);
+
+    void MssList_UpdateMultipleAt(
+        string ssSourceListJson,
+        string ssIndicesToUpdate,
+        string ssPropertyName,
+        string ssNewValueJson,
+        out string ssUpdatedListJson,
+        out int ssUpdatedCount);
+
+    void MssList_ZipMany(
+        List<string> ssListsJson,
+        List<string> ssKeyNamesJson,
+        out string ssZippedListJson);
+
+    void MssList_ZipManyGroupBy(
+        List<string> ssListsJson,
+        List<string> ssKeyPropertiesJson,
+        List<string> ssKeyNamesJson,
+        bool ssCaseSensitive,
+        out string ssGroupedListJson);
 }

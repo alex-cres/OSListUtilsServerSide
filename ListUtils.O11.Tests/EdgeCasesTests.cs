@@ -167,7 +167,10 @@ public class EdgeCasesTests
     public void List_PopByConditions_EmptyLogicalOperator_DefaultsToAnd()
     {
         string listJson = """[{"S":"A","C":"X"},{"S":"A","C":"Y"},{"S":"B","C":"X"}]""";
-        string conds = """[{"path":"S","operator":"Equals","value":"A"},{"path":"C","operator":"Equals","value":"X"}]""";
+        var conds = new List<Condition> {
+            new() { Path = "S", Operator = Operators.Equals, Value = "A" },
+            new() { Path = "C", Operator = Operators.Equals, Value = "X" },
+        };
         _sut.List_PopByConditions(listJson, conds, "", false, out var updated, out var popped);
         var arr = JsonNode.Parse(updated)!.AsArray();
         Assert.Equal(2, arr.Count);
@@ -179,8 +182,8 @@ public class EdgeCasesTests
     public void List_PopMultipleByConditions_SingleCondition_MatchesAsExpected()
     {
         string listJson = """[{"S":"A"},{"S":"B"},{"S":"A"}]""";
-        string conds = """[{"path":"S","operator":"Equals","value":"A"}]""";
-        _sut.List_PopMultipleByConditions(listJson, conds, "AND", out var updated, out var popped);
+        var conds = new List<Condition> { new() { Path = "S", Operator = Operators.Equals, Value = "A" } };
+        _sut.List_PopMultipleByConditions(listJson, conds, LogicalOperators.AND, out var updated, out var popped);
         var upArr = JsonNode.Parse(updated)!.AsArray();
         var poArr = JsonNode.Parse(popped)!.AsArray();
         Assert.Single(upArr);

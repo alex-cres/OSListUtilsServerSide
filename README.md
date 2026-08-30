@@ -8,9 +8,11 @@ Advanced list manipulation utilities — index-based pops, condition-based pops,
 
 ## Objective
 
-OutSystems lists lack common collection operations found in general-purpose languages (pop by index, pop by condition, zip, group-by, set difference, chunk, distinct-by, slice, shuffle, in-place update). Implementing these natively requires verbose nested `For Each` loops with manual index tracking. This component provides fourteen server-side actions that cover the most common gaps in a single call each.
+OutSystems lists lack common collection operations found in general-purpose languages (pop by index, pop by condition, zip, cogroup, group-by, set difference / intersection / union, chunk, distinct-by, slice, shuffle, sample, sort by property, min / max by property, aggregation, partition, mass update). Implementing these natively requires verbose nested `For Each` loops with manual index tracking. This component provides **twenty-nine** server-side actions that cover the most common gaps in a single call each — grouped into pop-by-index / pop-by-condition, relational (zip / group-by / cogroup / set ops), transformations, aggregations, split / partition, mass update, and multi-list zip.
 
 The JSON-based actions work with **any OutSystems Structure** — the caller serializes the list with `JSON Serialize`, passes it to the action, and deserializes the result. This generic approach eliminates the need for per-structure custom extensions.
+
+Multi-condition actions (`List_PopByConditions`, `List_PopMultipleByConditions`, `List_PartitionByConditions`, `List_ReplaceWhere`) accept a first-class **`Condition` Structure list** (`Path`, `Operator`, `Value`, `CaseSensitive`) — no hand-authored JSON. Operator strings, logical operators, and aggregate operations are also exposed as compile-time constants under `Operators`, `LogicalOperators`, and `AggregateOperations` so consumers get IDE autocomplete instead of magic strings.
 
 ---
 
@@ -74,8 +76,8 @@ Pops the first element matching multiple conditions combined with AND/OR.
 | Parameter | Type | Direction | Description |
 |-----------|------|-----------|-------------|
 | `SourceListJson` | `string` | Input | The source list serialized as a JSON string. |
-| `ConditionsJson` | `string` | Input | JSON array of conditions. Each condition has `path`, `operator`, `value`, optional `CaseSensitive`. Example below. |
-| `LogicalOperator` | `string` | Input | `AND` (default) — all conditions must match; `OR` — at least one must match. |
+| `Conditions` | `List<Condition>` | Input | List of `Condition` Structures. Each entry has `Path`, `Operator`, `Value`, `CaseSensitive`. Empty list = source returned unchanged. |
+| `LogicalOperator` | `string` | Input | `AND` (default) — all conditions must match; `OR` — at least one must match. Use `LogicalOperators.AND` / `LogicalOperators.OR`. |
 | `SearchFromEnd` | `bool` | Input | When `true`, searches from the end backwards (pops the LAST match). When `false` (default), searches from the beginning. |
 | `UpdatedListJson` | `string` | Output | The JSON list without the matched element. |
 | `PoppedElementJson` | `string` | Output | The matched JSON object, or `{}` if no match found. |
@@ -87,26 +89,21 @@ Pops all elements matching multiple conditions combined with AND/OR.
 | Parameter | Type | Direction | Description |
 |-----------|------|-----------|-------------|
 | `SourceListJson` | `string` | Input | The source list serialized as a JSON string. |
-| `ConditionsJson` | `string` | Input | JSON array of conditions (same format as `List_PopByConditions`). |
+| `Conditions` | `List<Condition>` | Input | List of `Condition` Structures (same shape as `List_PopByConditions`). |
 | `LogicalOperator` | `string` | Input | `AND` or `OR`. |
 | `UpdatedListJson` | `string` | Output | The JSON list without matched elements. |
 | `PoppedElementsJson` | `string` | Output | JSON array of all matched elements. |
 
-**Conditions JSON format:**
+**Condition Structure:**
 
-```json
-[
-  {"path": "Status", "operator": "Equals", "value": "Active", "caseSensitive": false},
-  {"path": "Score", "operator": "GreaterThan", "value": "50"},
-  {"path": "Meta.Region", "operator": "Equals", "value": "EU"}
-]
-```
+| Field | Type | Description |
+|-------|------|-------------|
+| `Path` | `string` | Property path (nested + array indexing supported). |
+| `Operator` | `string` | Any operator from the operators table. Prefer `Operators.Equals`, `Operators.GreaterThan`, … Empty = `Equals`. |
+| `Value` | `string` | Target value as text. Numeric operators parse it as `decimal` with `InvariantCulture`. |
+| `CaseSensitive` | `bool` | Per-condition case sensitivity (default `false`). Ignored by numeric operators. |
 
-Each condition supports:
-- `path` — property path (nested + array indexing supported)
-- `operator` — any operator from the operators table
-- `value` — target value as text
-- `CaseSensitive` (optional, default `false`) — per-condition case sensitivity
+The same `List<Condition>` shape is reused by `List_PartitionByConditions` and `List_ReplaceWhere`.
 
 ### List_Zip
 
@@ -130,6 +127,41 @@ Groups a flat JSON list by a property value.
 | `PropertyName` | `string` | Input | Property path to group by. Supports nested paths with dots (e.g. `Customer.Country`). CamelCase fallback applied at each segment. |
 | `GroupedListJson` | `string` | Output | JSON array of `{"Key": "value", "Items": [...]}` groups. Groups appear in first-seen order. |
 
+### List_ZipGroupBy
+
+Cogroup / two-list join by a shared key. For every distinct key value across two lists, produces a group object containing the key plus two named arrays — one holding items from `ListA` that share the key, one holding items from `ListB`. Perfect for scenarios like "orders + payments per customer" or "employees + timesheets per department" that would otherwise need nested `For Each` loops.
+
+| Parameter | Type | Direction | Description |
+|-----------|------|-----------|-------------|
+| `ListAJson` | `string` (JSON array) | Input | The first JSON list. |
+| `ListBJson` | `string` (JSON array) | Input | The second JSON list. |
+| `KeyPropertyA` | `string` | Input | Property path in `ListA` that supplies the group key. Supports nested paths and array indexing. |
+| `KeyPropertyB` | `string` | Input | Property path in `ListB` that supplies the group key. Supports nested paths and array indexing. |
+| `KeyNameA` | `string` | Input | Output field name for the `ListA` items array within each group (e.g. `"Orders"`). Blank falls back to `"ItemsA"`. |
+| `KeyNameB` | `string` | Input | Output field name for the `ListB` items array (e.g. `"Payments"`). Blank falls back to `"ItemsB"`. |
+| `CaseSensitive` | `bool` | Input | Key comparison flag (default `false`). |
+| `GroupedListJson` | `string` | Output | JSON array of `{"Key": <keyValue>, <KeyNameA>: [...], <KeyNameB>: [...]}` groups. Ordering: A's keys first (in A's order), then any B-only keys (in B's order). Items with no key value fall into a single `"Unknown"` bucket. |
+
+**Example:**
+
+```
+ListA (Orders)   → [{"CustomerId":"1","OrderId":101},
+                    {"CustomerId":"2","OrderId":102},
+                    {"CustomerId":"1","OrderId":103}]
+ListB (Payments) → [{"CustomerId":"1","PaymentId":201},
+                    {"CustomerId":"2","PaymentId":202},
+                    {"CustomerId":"2","PaymentId":203}]
+
+List_ZipGroupBy(..., "CustomerId", "CustomerId", "Orders", "Payments", false)
+→
+[
+  {"Key":"1", "Orders":[{...OrderId:101},{...OrderId:103}], "Payments":[{...PaymentId:201}]},
+  {"Key":"2", "Orders":[{...OrderId:102}],                    "Payments":[{...PaymentId:202},{...PaymentId:203}]}
+]
+```
+
+A key that appears only on one side still produces a group — the other array is empty. The two `KeyProperty*` parameters can differ (e.g. `CustomerId` on ListA vs `customer_id` on ListB) which is handy for joining data from two systems with different naming conventions.
+
 ### List_Difference
 
 Computes the set difference (A − B) of two JSON lists on a key property.
@@ -145,13 +177,13 @@ Computes the set difference (A − B) of two JSON lists on a key property.
 
 ### List_Chunk
 
-Splits a JSON list into an array of sublists of a fixed size. The last chunk may be smaller than `ChunkSize`. Useful for batching API payloads and throttled loops.
+Splits a JSON list into a **List of Text** where each entry is a standalone JSON array (one chunk). The last chunk may be smaller than `ChunkSize`. Useful for batching API payloads and throttled loops — each entry is directly consumable by `JSON Deserialize` targeting the caller's Structure List, so there is no nested `List of List` to unwrap.
 
 | Parameter | Type | Direction | Description |
 |-----------|------|-----------|-------------|
 | `SourceListJson` | `string` (JSON array) | Input | The source list serialized as a JSON array. |
-| `ChunkSize` | `int` | Input | Maximum number of elements per chunk. `<= 0` (or empty source) returns `"[]"`. |
-| `ChunksListJson` | `string` (JSON array of arrays) | Output | Nested JSON array: `[[..first N..], [..next N..], ...]`. The last inner array may hold fewer elements than `ChunkSize`. |
+| `ChunkSize` | `int` | Input | Maximum number of elements per chunk. `<= 0` (or empty source) returns an empty list. |
+| `ChunksListJson` | `List<string>` (Text List — each entry a JSON array) | Output | One entry per chunk. Each entry is a self-contained JSON array string (e.g. `"[{...},{...}]"`) ready for `JSON Deserialize` into the caller's Structure List. The last entry may hold fewer elements than `ChunkSize`. |
 
 ### List_DistinctBy
 
@@ -203,7 +235,7 @@ Sets a single property of the item at a given `Index`. Returns the modified list
 
 ## Comparison Operators
 
-The condition-based actions (`List_PopByCondition`, `List_PopMultipleByCondition`, `List_Difference`) accept an operator that controls how `TargetValue` is compared against the property value. Multi-condition actions (`List_PopByConditions`, `List_PopMultipleByConditions`) accept the same operators inside each condition entry.
+The condition-based actions (`List_PopByCondition`, `List_PopMultipleByCondition`, `List_Difference`) accept an operator that controls how `TargetValue` is compared against the property value. Multi-condition actions (`List_PopByConditions`, `List_PopMultipleByConditions`, `List_PartitionByConditions`, `List_ReplaceWhere`) accept the same operators inside each `Condition` Structure's `Operator` field.
 
 | Operator | Aliases | Behaviour |
 |----------|---------|-----------|
@@ -217,6 +249,8 @@ The condition-based actions (`List_PopByCondition`, `List_PopMultipleByCondition
 | `GreaterOrEqual` | `>=` | Numeric comparison including boundary |
 | `LessOrEqual` | `<=` | Numeric comparison including boundary |
 
+All nine names are also exposed as compile-time constants on the `Operators` helper class — prefer `Operators.Equals`, `Operators.GreaterThan`, … over raw string literals so typos are caught at build time.
+
 **Case sensitivity**: string operators (`Equals`, `NotEquals`, `Contains`, `StartsWith`, `EndsWith`) honour the `CaseSensitive` flag. Numeric operators ignore it.
 
 **Numeric operators** parse both values with `InvariantCulture`. Non-numeric values evaluate as no-match.
@@ -225,7 +259,7 @@ The condition-based actions (`List_PopByCondition`, `List_PopMultipleByCondition
 
 ## Property Paths
 
-`PropertyName`, `MatchKey`, and paths inside condition JSON support both **dot-separated navigation** and **array indexing**:
+`PropertyName`, `MatchKey`, and every `Condition.Path` support both **dot-separated navigation** and **array indexing**:
 
 | Path syntax | Resolves to |
 |------------|-------------|
@@ -247,28 +281,38 @@ If any segment is missing, the array index is out of range, or the value at any 
 
 ## Multiple Conditions (AND/OR)
 
-`List_PopByConditions` and `List_PopMultipleByConditions` accept a JSON array of conditions and a logical operator (`AND` or `OR`).
+`List_PopByConditions`, `List_PopMultipleByConditions`, `List_PartitionByConditions`, and `List_ReplaceWhere` all accept a `List<Condition>` and a `LogicalOperator` (`AND` or `OR`). Build the list once in your Server Action — no JSON hand-authoring required.
 
-**Example — find active users over 30:**
+**Example — find active users over 30 (pseudocode):**
 
-```json
-[
-  {"path": "Status", "operator": "Equals", "value": "Active"},
-  {"path": "Age", "operator": "GreaterThan", "value": "30"}
-]
 ```
-Combined with `logicalOperator = "AND"`.
+conditions = new List<Condition> {
+    new Condition { Path = "Status", Operator = Operators.Equals,      Value = "Active" },
+    new Condition { Path = "Age",    Operator = Operators.GreaterThan, Value = "30"     }
+};
+List_PopByConditions(usersJson, conditions, LogicalOperators.AND, false, out ..., out ...);
+```
 
 **Example — case-sensitive per condition:**
 
-```json
-[
-  {"path": "Code", "operator": "Equals", "value": "URGENT", "caseSensitive": true},
-  {"path": "Priority", "operator": "Equals", "value": "High"}
-]
+```
+conditions = new List<Condition> {
+    new Condition { Path = "Code",     Operator = Operators.Equals, Value = "URGENT", CaseSensitive = true },
+    new Condition { Path = "Priority", Operator = Operators.Equals, Value = "High"                        }
+};
 ```
 
-Each condition has: `path`, `operator`, `value`, and optional `CaseSensitive` (default `false`). Empty conditions array returns the original list unchanged.
+Each `Condition` has: `Path`, `Operator`, `Value`, and `CaseSensitive` (default `false`). An empty `Conditions` list returns the source unchanged — byte-for-byte identical output.
+
+### Constants classes
+
+| Class | Constants | Use for |
+|-------|-----------|---------|
+| `Operators` | `Equals`, `NotEquals`, `Contains`, `StartsWith`, `EndsWith`, `GreaterThan`, `LessThan`, `GreaterOrEqual`, `LessOrEqual` | `Condition.Operator`, `ComparisonOperator` parameters on the single-condition actions. |
+| `LogicalOperators` | `AND`, `OR` | `LogicalOperator` parameter on the multi-condition actions. |
+| `AggregateOperations` | `Sum`, `Avg`, `Min`, `Max`, `Count`, `CountDistinct` | `Operation` parameter on `List_Aggregate`. |
+
+Symbol aliases (`!=`, `>`, `<`, `>=`, `<=`) are still accepted at runtime for backwards compatibility.
 
 ---
 
@@ -303,6 +347,7 @@ All actions are **stateless** and **in-memory**. There is no file I/O, no networ
 | Condition-based pops (`PopByCondition`, `PopMultipleByCondition`) | Parse the JSON string into a `JsonArray`, linear scan matching `propertyName == targetValue`, return modified arrays serialized back to JSON. | O(N) |
 | `List_Zip` | Parse both JSON arrays, iterate to `Min(A.Count, B.Count)`, construct paired `JsonObject`s. | O(min(A,B)) |
 | `List_GroupBy` | Single-pass scan building a `Dictionary<string, JsonArray>` keyed by property value. Preserves insertion order via a parallel list. | O(N) |
+| `List_ZipGroupBy` | Two single-pass scans (A then B) into per-side `Dictionary<string, JsonArray>` buckets sharing the same key order. Union of first-seen keys drives the output. | O(A + B) |
 | `List_Difference` | Build a `HashSet<string>` from B's key values, then filter A against it (except for `Contains`, which stays O(A×B)). | O(A + B) |
 | `List_Chunk` | Single pass over the source, sliding a `JsonArray` buffer of `ChunkSize` elements. | O(N) |
 | `List_DistinctBy` | Single pass building a `HashSet<string>` on the property-derived key (or full-item JSON when `PropertyName` is empty). First occurrence wins. | O(N) |
@@ -363,7 +408,7 @@ All packages are MIT or OutSystems proprietary (SDK only).
 2. In **ODC Portal** → **External Logic** → **Upload** the ZIP.
 3. Create and publish an External Library.
 4. In your ODC app, add `ListUtilsServerSide` as a dependency.
-5. In any Server Action, call `JSON Serialize` on your Structure List, pass the result to the desired ListUtils action, then `JSON Deserialize` the output back to your target Structure List. `List_Chunk` returns a nested JSON array; `List_UpdateAt` returns a `PreviousValueJson` that may need a separate `JSON Deserialize` targeting the property's Structure or basic type.
+5. In any Server Action, call `JSON Serialize` on your Structure List, pass the result to the desired ListUtils action, then `JSON Deserialize` the output back to your target Structure List. `List_Chunk` returns a **Text List** where each entry is a standalone JSON-array string ready for a per-entry `JSON Deserialize`. `List_UpdateAt` returns a `PreviousValueJson` that may need a separate `JSON Deserialize` targeting the property's Structure or basic type.
 
 ---
 
@@ -397,7 +442,7 @@ Builds all four projects: ODC library, O11 library, ODC tests, O11 tests.
 dotnet test ListUtils.sln
 ```
 
-Runs 620 tests (310 ODC net10.0 + 310 O11 net48) — 145 functional + 165 load tests per platform.
+Runs 906 tests (453 ODC net10.0 + 453 O11 net48) — 228 functional + 245 load tests per platform.
 
 ### Package (ODC)
 

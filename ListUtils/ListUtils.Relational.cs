@@ -75,6 +75,67 @@ public partial class ListUtils
         GroupedListJson = result.ToJsonString(JsonOptions);
     }
 
+    public void List_ZipGroupBy(
+        string ListAJson,
+        string ListBJson,
+        string KeyPropertyA,
+        string KeyPropertyB,
+        string KeyNameA,
+        string KeyNameB,
+        bool CaseSensitive,
+        out string GroupedListJson)
+    {
+        var cmp = CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
+        var groupsA = new Dictionary<string, JsonArray>(cmp);
+        var groupsB = new Dictionary<string, JsonArray>(cmp);
+        var groupOrder = new List<string>();
+        var seen = new HashSet<string>(cmp);
+
+        if (!string.IsNullOrEmpty(ListAJson))
+        {
+            var arrA = JsonNode.Parse(ListAJson)!.AsArray();
+            foreach (var item in arrA)
+            {
+                string key = GetPropertyValue(item!, KeyPropertyA) ?? "Unknown";
+                if (!groupsA.TryGetValue(key, out var bucket))
+                    groupsA[key] = bucket = new JsonArray();
+                bucket.Add(item!.DeepClone());
+                if (seen.Add(key)) groupOrder.Add(key);
+            }
+        }
+
+        if (!string.IsNullOrEmpty(ListBJson))
+        {
+            var arrB = JsonNode.Parse(ListBJson)!.AsArray();
+            foreach (var item in arrB)
+            {
+                string key = GetPropertyValue(item!, KeyPropertyB) ?? "Unknown";
+                if (!groupsB.TryGetValue(key, out var bucket))
+                    groupsB[key] = bucket = new JsonArray();
+                bucket.Add(item!.DeepClone());
+                if (seen.Add(key)) groupOrder.Add(key);
+            }
+        }
+
+        // Fall back to sensible names when the caller passes blank labels.
+        string nameA = string.IsNullOrEmpty(KeyNameA) ? "ItemsA" : KeyNameA;
+        string nameB = string.IsNullOrEmpty(KeyNameB) ? "ItemsB" : KeyNameB;
+
+        var result = new JsonArray();
+        foreach (var key in groupOrder)
+        {
+            var groupObj = new JsonObject
+            {
+                ["Key"] = key,
+                [nameA] = groupsA.TryGetValue(key, out var listA) ? listA : new JsonArray(),
+                [nameB] = groupsB.TryGetValue(key, out var listB) ? listB : new JsonArray(),
+            };
+            result.Add(groupObj);
+        }
+
+        GroupedListJson = result.ToJsonString(JsonOptions);
+    }
+
     public void List_Difference(
         string ListAJson,
         string ListBJson,
@@ -186,5 +247,90 @@ public partial class ListUtils
         }
 
         DifferenceListJson = result.ToJsonString(JsonOptions);
+    }
+
+    public void List_Intersect(
+        string ListAJson,
+        string ListBJson,
+        string MatchKey,
+        string ComparisonOperator,
+        bool CaseSensitive,
+        out string IntersectionListJson)
+    {
+        if (string.IsNullOrEmpty(ListAJson)) { IntersectionListJson = "[]"; return; }
+        if (string.IsNullOrEmpty(ListBJson)) { IntersectionListJson = "[]"; return; }
+
+        var arrA = JsonNode.Parse(ListAJson)!.AsArray();
+        var arrB = JsonNode.Parse(ListBJson)!.AsArray();
+        var normalizedOp = (ComparisonOperator ?? "").Trim().ToUpperInvariant();
+        bool isEquals = normalizedOp.Length == 0 || normalizedOp == "EQUALS";
+        var strCmp = CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
+
+        var bValues = new List<string>();
+        foreach (var b in arrB)
+        {
+            var k = GetPropertyValue(b!, MatchKey);
+            if (k != null) bValues.Add(k);
+        }
+
+        HashSet<string>? bSet = isEquals ? new HashSet<string>(bValues, strCmp) : null;
+
+        var result = new JsonArray();
+        foreach (var item in arrA)
+        {
+            var key = GetPropertyValue(item!, MatchKey);
+            if (key == null) continue;
+            bool match = isEquals
+                ? bSet!.Contains(key)
+                : bValues.Any(bv => MatchesCondition(key, bv, ComparisonOperator, CaseSensitive));
+            if (match) result.Add(item!.DeepClone());
+        }
+
+        IntersectionListJson = result.ToJsonString(JsonOptions);
+    }
+
+    public void List_Union(
+        string ListAJson,
+        string ListBJson,
+        string MatchKey,
+        bool CaseSensitive,
+        out string UnionListJson)
+    {
+        if (string.IsNullOrEmpty(ListAJson) && string.IsNullOrEmpty(ListBJson)) { UnionListJson = "[]"; return; }
+
+        var arrA = string.IsNullOrEmpty(ListAJson) ? new JsonArray() : JsonNode.Parse(ListAJson)!.AsArray();
+        var arrB = string.IsNullOrEmpty(ListBJson) ? new JsonArray() : JsonNode.Parse(ListBJson)!.AsArray();
+        var cmp = CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
+        var seen = new HashSet<string>(cmp);
+        bool nullKeySeen = false;
+        var result = new JsonArray();
+
+        void Consume(JsonArray src)
+        {
+            foreach (var item in src)
+            {
+                string? key;
+                if (string.IsNullOrEmpty(MatchKey))
+                    key = item?.ToJsonString(JsonOptions) ?? "null";
+                else
+                    key = GetPropertyValue(item!, MatchKey);
+
+                if (key == null)
+                {
+                    if (nullKeySeen) continue;
+                    nullKeySeen = true;
+                    result.Add(item!.DeepClone());
+                }
+                else if (seen.Add(key))
+                {
+                    result.Add(item!.DeepClone());
+                }
+            }
+        }
+
+        Consume(arrA);
+        Consume(arrB);
+
+        UnionListJson = result.ToJsonString(JsonOptions);
     }
 }

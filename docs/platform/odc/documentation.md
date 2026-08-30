@@ -85,16 +85,19 @@ List_PopMultipleByCondition
   poppedElementsJson is a JSON array of all removed objects.
 
 List_PopByConditions
-  Input:  sourceListJson (Text), conditionsJson (Text),
+  Input:  sourceListJson (Text), conditions (List<Condition>),
           logicalOperator (Text), searchFromEnd (Boolean)
   Output: updatedListJson (Text), poppedElementJson (Text)
   Finds the first (or last, if searchFromEnd = True) object matching
-  multiple conditions combined with AND (default) or OR. conditionsJson
-  is a JSON array of objects with path, operator, value, and optional
-  caseSensitive fields.
+  multiple conditions combined with AND (default) or OR. conditions is
+  a List of Condition Structures (Path, Operator, Value, CaseSensitive)
+  built directly in your Server Action - no JSON hand-authoring.
+  Prefer the ListUtils.Operators constants (Operators.Equals, etc.) and
+  ListUtils.LogicalOperators (LogicalOperators.AND / LogicalOperators.OR).
+  Empty conditions list returns the source unchanged.
 
 List_PopMultipleByConditions
-  Input:  sourceListJson (Text), conditionsJson (Text),
+  Input:  sourceListJson (Text), conditions (List<Condition>),
           logicalOperator (Text)
   Output: updatedListJson (Text), poppedElementsJson (Text)
   Same as PopByConditions but removes ALL matching elements.
@@ -196,7 +199,7 @@ values evaluate as no-match.
 PROPERTY PATHS
 --------------
 
-propertyName, matchKey, and paths inside condition JSON support both
+propertyName, matchKey, and every Condition.Path support both
 dot navigation and array indexing:
 
   Address.City             obj["Address"]["City"]
@@ -216,25 +219,34 @@ is treated as non-matching.
 MULTIPLE CONDITIONS
 -------------------
 
-List_PopByConditions and List_PopMultipleByConditions accept a JSON
-array of conditions in conditionsJson:
+List_PopByConditions, List_PopMultipleByConditions,
+List_PartitionByConditions, and List_ReplaceWhere accept a List of
+Condition Structures. Each Condition entry has four fields:
 
-  [
-    {"path": "Status", "operator": "Equals", "value": "Active"},
-    {"path": "Score", "operator": "GreaterThan", "value": "50"},
-    {"path": "Code", "operator": "Equals", "value": "URGENT",
-     "caseSensitive": true}
-  ]
-
-Each condition entry supports:
-  path            property path (nested + array indexing)
-  operator        any operator from the operators list
-  value           target value as text
-  caseSensitive   optional Boolean, default false
+  Path            property path (nested + array indexing)
+  Operator        any operator name from the operators list; prefer the
+                  ListUtils.Operators constants for compile-time safety
+  Value           target value as text
+  CaseSensitive   Boolean, default false
 
 Combined with logicalOperator = "AND" (all must match) or "OR" (at
-least one must match). Empty conditions array returns the original
-list unchanged.
+least one must match). Prefer the ListUtils.LogicalOperators constants
+(LogicalOperators.AND / LogicalOperators.OR). Empty conditions list
+returns the source unchanged.
+
+All operator names are also exposed as constants on three helper
+classes so consumers get IDE autocomplete and compile-time typo
+detection instead of magic strings:
+
+  Operators           Equals, NotEquals, Contains, StartsWith,
+                      EndsWith, GreaterThan, LessThan,
+                      GreaterOrEqual, LessOrEqual
+  LogicalOperators    AND, OR
+  AggregateOperations Sum, Avg, Min, Max, Count, CountDistinct
+                      (used by List_Aggregate)
+
+Symbol aliases (!=, >, <, >=, <=) are still accepted for backwards
+compatibility.
 
 
 SEARCH DIRECTION

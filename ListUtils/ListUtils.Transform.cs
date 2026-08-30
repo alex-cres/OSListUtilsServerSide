@@ -9,30 +9,25 @@ public partial class ListUtils
     public void List_Chunk(
         string SourceListJson,
         int ChunkSize,
-        out string ChunksListJson)
+        out List<string> ChunksListJson)
     {
+        ChunksListJson = new List<string>();
         if (string.IsNullOrEmpty(SourceListJson) || ChunkSize <= 0)
-        {
-            ChunksListJson = "[]";
             return;
-        }
 
         var array = JsonNode.Parse(SourceListJson)!.AsArray();
-        var chunks = new JsonArray();
         JsonArray current = new();
         for (int i = 0; i < array.Count; i++)
         {
             if (current.Count == ChunkSize)
             {
-                chunks.Add(current);
+                ChunksListJson.Add(current.ToJsonString(JsonOptions));
                 current = new JsonArray();
             }
             current.Add(array[i]!.DeepClone());
         }
         if (current.Count > 0)
-            chunks.Add(current);
-
-        ChunksListJson = chunks.ToJsonString(JsonOptions);
+            ChunksListJson.Add(current.ToJsonString(JsonOptions));
     }
 
     public void List_DistinctBy(
@@ -383,5 +378,159 @@ public partial class ListUtils
         if (!int.TryParse(idxStr, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var idx))
             return (segment, null);
         return (segment.Substring(0, bracketStart), idx);
+    }
+
+    public void List_Reverse(
+        string SourceListJson,
+        out string ReversedListJson)
+    {
+        if (string.IsNullOrEmpty(SourceListJson))
+        {
+            ReversedListJson = "[]";
+            return;
+        }
+
+        var array = JsonNode.Parse(SourceListJson)!.AsArray();
+        var result = new JsonArray();
+        for (int i = array.Count - 1; i >= 0; i--)
+            result.Add(array[i]!.DeepClone());
+
+        ReversedListJson = result.ToJsonString(JsonOptions);
+    }
+
+    public void List_Flatten(
+        List<string> ChunksListJson,
+        out string FlatListJson)
+    {
+        var result = new JsonArray();
+        if (ChunksListJson != null)
+        {
+            foreach (var entry in ChunksListJson)
+            {
+                if (string.IsNullOrEmpty(entry)) continue;
+                JsonNode? parsed;
+                try { parsed = JsonNode.Parse(entry); }
+                catch (JsonException) { continue; }
+                if (parsed is not JsonArray inner) continue;
+                foreach (var item in inner)
+                    result.Add(item?.DeepClone());
+            }
+        }
+        FlatListJson = result.ToJsonString(JsonOptions);
+    }
+
+    public void List_Sample(
+        string SourceListJson,
+        int SampleSize,
+        int Seed,
+        out string SampleListJson)
+    {
+        if (string.IsNullOrEmpty(SourceListJson) || SampleSize <= 0)
+        {
+            SampleListJson = "[]";
+            return;
+        }
+
+        var source = JsonNode.Parse(SourceListJson)!.AsArray();
+        int n = source.Count;
+        if (n == 0)
+        {
+            SampleListJson = "[]";
+            return;
+        }
+
+        int take = SampleSize > n ? n : SampleSize;
+        var buffer = new JsonNode?[n];
+        for (int i = 0; i < n; i++) buffer[i] = source[i]!.DeepClone();
+
+        // Partial Fisher-Yates: shuffle just the first `take` slots.
+        if (Seed != 0)
+        {
+            var rng = new Random(Seed);
+            for (int i = 0; i < take; i++)
+            {
+                int j = i + rng.Next(n - i);
+                (buffer[i], buffer[j]) = (buffer[j], buffer[i]);
+            }
+        }
+        else
+        {
+            using var crypto = System.Security.Cryptography.RandomNumberGenerator.Create();
+            var word = new byte[4];
+            for (int i = 0; i < take; i++)
+            {
+                crypto.GetBytes(word);
+                uint rand = System.BitConverter.ToUInt32(word, 0);
+                int j = i + (int)(rand % (uint)(n - i));
+                (buffer[i], buffer[j]) = (buffer[j], buffer[i]);
+            }
+        }
+
+        var result = new JsonArray();
+        for (int i = 0; i < take; i++) result.Add(buffer[i]);
+
+        SampleListJson = result.ToJsonString(JsonOptions);
+    }
+
+    public void List_ReplaceWhere(
+        string SourceListJson,
+        List<Condition> Conditions,
+        string LogicalOperator,
+        string UpdateProperty,
+        string NewValueJson,
+        out string UpdatedListJson,
+        out int MatchCount)
+    {
+        UpdatedListJson = SourceListJson ?? "[]";
+        MatchCount = 0;
+        if (string.IsNullOrEmpty(SourceListJson) || string.IsNullOrEmpty(UpdateProperty))
+            return;
+
+        if (Conditions == null || Conditions.Count == 0) return;
+
+        var array = JsonNode.Parse(SourceListJson)!.AsArray();
+        var newValue = ParseValueOrString(NewValueJson);
+
+        foreach (var item in array)
+        {
+            if (!EvaluateConditions(item!, Conditions, LogicalOperator)) continue;
+            if (item is not JsonObject) continue;
+            SetPropertyValue(item!, UpdateProperty, newValue);
+            MatchCount++;
+        }
+
+        UpdatedListJson = array.ToJsonString(JsonOptions);
+    }
+
+    public void List_UpdateMultipleAt(
+        string SourceListJson,
+        string IndicesToUpdate,
+        string PropertyName,
+        string NewValueJson,
+        out string UpdatedListJson,
+        out int UpdatedCount)
+    {
+        UpdatedListJson = SourceListJson ?? "[]";
+        UpdatedCount = 0;
+        if (string.IsNullOrEmpty(SourceListJson) || string.IsNullOrEmpty(PropertyName) || string.IsNullOrEmpty(IndicesToUpdate))
+            return;
+
+        var array = JsonNode.Parse(SourceListJson)!.AsArray();
+        int n = array.Count;
+        var newValue = ParseValueOrString(NewValueJson);
+
+        var seen = new HashSet<int>();
+        foreach (var raw in IndicesToUpdate.Split(','))
+        {
+            if (!int.TryParse(raw.Trim(), out var idx)) continue;
+            int actual = idx < 0 ? n + idx : idx;
+            if (actual < 0 || actual >= n) continue;
+            if (!seen.Add(actual)) continue;
+            if (array[actual] is not JsonObject) continue;
+            SetPropertyValue(array[actual]!, PropertyName, newValue);
+            UpdatedCount++;
+        }
+
+        UpdatedListJson = array.ToJsonString(JsonOptions);
     }
 }

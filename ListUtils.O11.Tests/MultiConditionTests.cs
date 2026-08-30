@@ -16,14 +16,12 @@ public class MultiConditionTests
                 {"Name":"Carol","Age":25,"Status":"Inactive"}
             ]
             """;
-        string conditions = """
-            [
-                {"path":"Age","operator":"Equals","value":"25"},
-                {"path":"Status","operator":"Equals","value":"Active"}
-            ]
-            """;
+        var conditions = new List<Condition> {
+            new() { Path = "Age", Operator = Operators.Equals, Value = "25" },
+            new() { Path = "Status", Operator = Operators.Equals, Value = "Active" },
+        };
 
-        _sut.List_PopByConditions(json, conditions, "AND", false, out _, out var popped);
+        _sut.List_PopByConditions(json, conditions, LogicalOperators.AND, false, out _, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("Alice", poppedObj["Name"]!.ToString());
@@ -39,14 +37,12 @@ public class MultiConditionTests
                 {"Id":3,"Status":"Inactive","Score":30}
             ]
             """;
-        string conditions = """
-            [
-                {"path":"Status","operator":"Equals","value":"Active"},
-                {"path":"Score","operator":"GreaterThan","value":"80"}
-            ]
-            """;
+        var conditions = new List<Condition> {
+            new() { Path = "Status", Operator = Operators.Equals, Value = "Active" },
+            new() { Path = "Score", Operator = Operators.GreaterThan, Value = "80" },
+        };
 
-        _sut.List_PopMultipleByConditions(json, conditions, "OR", out _, out var popped);
+        _sut.List_PopMultipleByConditions(json, conditions, LogicalOperators.OR, out _, out var popped);
 
         var arr = JsonNode.Parse(popped)!.AsArray();
         Assert.Equal(2, arr.Count);
@@ -56,8 +52,12 @@ public class MultiConditionTests
     public void PopByConditions_AND_DefaultMode()
     {
         string json = """[{"A":"x","B":"y"},{"A":"x","B":"z"}]""";
-        string conditions = """[{"path":"A","operator":"Equals","value":"x"},{"path":"B","operator":"Equals","value":"z"}]""";
+        var conditions = new List<Condition> {
+            new() { Path = "A", Operator = Operators.Equals, Value = "x" },
+            new() { Path = "B", Operator = Operators.Equals, Value = "z" },
+        };
 
+        // Empty LogicalOperator defaults to AND.
         _sut.List_PopByConditions(json, conditions, "", false, out _, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
@@ -69,7 +69,7 @@ public class MultiConditionTests
     {
         string json = """[{"Id":1}]""";
 
-        _sut.List_PopByConditions(json, "[]", "AND", false, out var updated, out var popped);
+        _sut.List_PopByConditions(json, new List<Condition>(), LogicalOperators.AND, false, out var updated, out var popped);
 
         Assert.Equal(json, updated);
         Assert.Equal("{}", popped);
@@ -86,15 +86,13 @@ public class MultiConditionTests
                 {"Category":"Electronics","Price":30.00,"InStock":true}
             ]
             """;
-        string conditions = """
-            [
-                {"path":"Category","operator":"Equals","value":"Books"},
-                {"path":"Price","operator":"GreaterOrEqual","value":"20"},
-                {"path":"InStock","operator":"Equals","value":"true"}
-            ]
-            """;
+        var conditions = new List<Condition> {
+            new() { Path = "Category", Operator = Operators.Equals, Value = "Books" },
+            new() { Path = "Price", Operator = Operators.GreaterOrEqual, Value = "20" },
+            new() { Path = "InStock", Operator = Operators.Equals, Value = "true" },
+        };
 
-        _sut.List_PopMultipleByConditions(json, conditions, "AND", out _, out var popped);
+        _sut.List_PopMultipleByConditions(json, conditions, LogicalOperators.AND, out _, out var popped);
 
         var arr = JsonNode.Parse(popped)!.AsArray();
         Assert.Equal(2, arr.Count);
@@ -110,14 +108,12 @@ public class MultiConditionTests
                 {"Id":3,"Meta":{"Region":"EU","Priority":"Low"}}
             ]
             """;
-        string conditions = """
-            [
-                {"path":"Meta.Region","operator":"Equals","value":"EU"},
-                {"path":"Meta.Priority","operator":"Equals","value":"High"}
-            ]
-            """;
+        var conditions = new List<Condition> {
+            new() { Path = "Meta.Region", Operator = Operators.Equals, Value = "EU" },
+            new() { Path = "Meta.Priority", Operator = Operators.Equals, Value = "High" },
+        };
 
-        _sut.List_PopByConditions(json, conditions, "AND", false, out _, out var popped);
+        _sut.List_PopByConditions(json, conditions, LogicalOperators.AND, false, out _, out var popped);
 
         var poppedObj = JsonNode.Parse(popped)!.AsObject();
         Assert.Equal("1", poppedObj["Id"]!.ToString());
@@ -127,9 +123,11 @@ public class MultiConditionTests
     public void PopMultipleByConditions_CaseSensitivePerCondition()
     {
         string json = """[{"Tag":"URGENT"},{"Tag":"urgent"},{"Tag":"low"}]""";
-        string conditions = """[{"path":"Tag","operator":"Equals","value":"URGENT","caseSensitive":true}]""";
+        var conditions = new List<Condition> {
+            new() { Path = "Tag", Operator = Operators.Equals, Value = "URGENT", CaseSensitive = true },
+        };
 
-        _sut.List_PopMultipleByConditions(json, conditions, "AND", out _, out var popped);
+        _sut.List_PopMultipleByConditions(json, conditions, LogicalOperators.AND, out _, out var popped);
 
         var arr = JsonNode.Parse(popped)!.AsArray();
         Assert.Single(arr);
@@ -139,7 +137,9 @@ public class MultiConditionTests
     [Fact]
     public void PopByConditions_NullSource_ReturnsDefaults()
     {
-        _sut.List_PopByConditions(null!, """[{"path":"X","operator":"Equals","value":"y"}]""", "AND", false, out var updated, out var popped);
+        var conditions = new List<Condition> { new() { Path = "X", Operator = Operators.Equals, Value = "y" } };
+
+        _sut.List_PopByConditions(null!, conditions, LogicalOperators.AND, false, out var updated, out var popped);
 
         Assert.Equal("[]", updated);
         Assert.Equal("{}", popped);
@@ -149,9 +149,9 @@ public class MultiConditionTests
     public void PopMultipleByConditions_NoMatch_ReturnsEmpty()
     {
         string json = """[{"X":"a"},{"X":"b"}]""";
-        string conditions = """[{"path":"X","operator":"Equals","value":"z"}]""";
+        var conditions = new List<Condition> { new() { Path = "X", Operator = Operators.Equals, Value = "z" } };
 
-        _sut.List_PopMultipleByConditions(json, conditions, "AND", out var updated, out var popped);
+        _sut.List_PopMultipleByConditions(json, conditions, LogicalOperators.AND, out var updated, out var popped);
 
         Assert.Equal("[]", popped);
         var arr = JsonNode.Parse(updated)!.AsArray();

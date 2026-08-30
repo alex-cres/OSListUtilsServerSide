@@ -81,4 +81,34 @@ public partial class CssListUtils
         ssUpdatedListJson = array.ToJsonString(JsonOptions);
         ssPoppedElementsJson = ordered.ToJsonString(JsonOptions);
     }
+
+    public void MssList_SplitAt(
+        string ssSourceListJson,
+        int ssIndex,
+        out string ssLeftListJson,
+        out string ssRightListJson)
+    {
+        if (string.IsNullOrEmpty(ssSourceListJson))
+        {
+            ssLeftListJson = "[]";
+            ssRightListJson = "[]";
+            return;
+        }
+
+        var array = JsonNode.Parse(ssSourceListJson)!.AsArray();
+        int n = array.Count;
+        int split = ssIndex < 0 ? n + ssIndex : ssIndex;
+        if (split < 0) split = 0;
+        if (split > n) split = n;
+
+        var left = new JsonArray();
+        var right = new JsonArray();
+        for (int i = 0; i < n; i++)
+        {
+            (i < split ? left : right).Add(array[i]!.DeepClone());
+        }
+
+        ssLeftListJson = left.ToJsonString(JsonOptions);
+        ssRightListJson = right.ToJsonString(JsonOptions);
+    }
 }

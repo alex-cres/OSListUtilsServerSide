@@ -15,11 +15,12 @@ public class TransformTests
 
         _sut.List_Chunk(json, 2, out var chunks);
 
-        var arr = JsonNode.Parse(chunks)!.AsArray();
-        Assert.Equal(3, arr.Count);
-        Assert.Equal(2, arr[0]!.AsArray().Count);
-        Assert.Equal("1", arr[0]![0]!.ToString());
-        Assert.Equal("6", arr[2]![1]!.ToString());
+        Assert.Equal(3, chunks.Count);
+        var first = JsonNode.Parse(chunks[0])!.AsArray();
+        var last = JsonNode.Parse(chunks[2])!.AsArray();
+        Assert.Equal(2, first.Count);
+        Assert.Equal("1", first[0]!.ToString());
+        Assert.Equal("6", last[1]!.ToString());
     }
 
     [Fact]
@@ -29,12 +30,12 @@ public class TransformTests
 
         _sut.List_Chunk(json, 2, out var chunks);
 
-        var arr = JsonNode.Parse(chunks)!.AsArray();
-        Assert.Equal(3, arr.Count);
-        Assert.Equal(2, arr[0]!.AsArray().Count);
-        Assert.Equal(2, arr[1]!.AsArray().Count);
-        Assert.Single(arr[2]!.AsArray());
-        Assert.Equal("e", arr[2]![0]!.ToString());
+        Assert.Equal(3, chunks.Count);
+        Assert.Equal(2, JsonNode.Parse(chunks[0])!.AsArray().Count);
+        Assert.Equal(2, JsonNode.Parse(chunks[1])!.AsArray().Count);
+        var tail = JsonNode.Parse(chunks[2])!.AsArray();
+        Assert.Single(tail);
+        Assert.Equal("e", tail[0]!.ToString());
     }
 
     [Fact]
@@ -44,9 +45,8 @@ public class TransformTests
 
         _sut.List_Chunk(json, 10, out var chunks);
 
-        var arr = JsonNode.Parse(chunks)!.AsArray();
-        Assert.Single(arr);
-        Assert.Equal(3, arr[0]!.AsArray().Count);
+        Assert.Single(chunks);
+        Assert.Equal(3, JsonNode.Parse(chunks[0])!.AsArray().Count);
     }
 
     [Fact]
@@ -57,8 +57,8 @@ public class TransformTests
         _sut.List_Chunk(json, 0, out var zero);
         _sut.List_Chunk(json, -5, out var negative);
 
-        Assert.Equal("[]", zero);
-        Assert.Equal("[]", negative);
+        Assert.Empty(zero);
+        Assert.Empty(negative);
     }
 
     [Fact]
@@ -68,9 +68,9 @@ public class TransformTests
         _sut.List_Chunk(null!, 3, out var nullSrc);
         _sut.List_Chunk("[]", 3, out var emptyArr);
 
-        Assert.Equal("[]", empty);
-        Assert.Equal("[]", nullSrc);
-        Assert.Equal("[]", emptyArr);
+        Assert.Empty(empty);
+        Assert.Empty(nullSrc);
+        Assert.Empty(emptyArr);
     }
 
     [Fact]
@@ -80,10 +80,32 @@ public class TransformTests
 
         _sut.List_Chunk(json, 2, out var chunks);
 
-        var arr = JsonNode.Parse(chunks)!.AsArray();
-        Assert.Equal(2, arr.Count);
-        Assert.Equal("1", arr[0]![0]!["Id"]!.ToString());
-        Assert.Equal("4", arr[1]![1]!["Id"]!.ToString());
+        Assert.Equal(2, chunks.Count);
+        var first = JsonNode.Parse(chunks[0])!.AsArray();
+        var second = JsonNode.Parse(chunks[1])!.AsArray();
+        Assert.Equal("1", first[0]!["Id"]!.ToString());
+        Assert.Equal("4", second[1]!["Id"]!.ToString());
+    }
+
+    [Fact]
+    public void List_Chunk_EachEntryIsStandaloneJsonArray_ReadyForDeserialize()
+    {
+        // Contract: every entry in the output list is a self-contained JSON
+        // array string that the OutSystems caller can JSON Deserialize into
+        // their target Structure List without any pre-processing.
+        string json = """[{"Id":1,"Name":"A"},{"Id":2,"Name":"B"},{"Id":3,"Name":"C"}]""";
+
+        _sut.List_Chunk(json, 2, out var chunks);
+
+        Assert.Equal(2, chunks.Count);
+        foreach (var entry in chunks)
+        {
+            Assert.StartsWith("[", entry);
+            Assert.EndsWith("]", entry);
+            var parsed = JsonNode.Parse(entry);
+            Assert.NotNull(parsed);
+            Assert.IsType<JsonArray>(parsed);
+        }
     }
 
     // ── List_DistinctBy ───────────────────────────────────────────────────────

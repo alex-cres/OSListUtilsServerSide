@@ -72,65 +72,32 @@ public partial class CssListUtils
     {
         var normalized = (op ?? "").Trim();
         var cmp = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-        switch (normalized.ToUpperInvariant())
-        {
-            case "NOTEQUALS":
-            case "!=":
-                return !actual.Equals(target, cmp);
-            case "CONTAINS":
-                return actual.IndexOf(target, cmp) >= 0;
-            case "STARTSWITH":
-                return actual.StartsWith(target, cmp);
-            case "ENDSWITH":
-                return actual.EndsWith(target, cmp);
-            case "GREATERTHAN":
-            case ">":
-                return TryCompareNumeric(actual, target, out int gt) && gt > 0;
-            case "LESSTHAN":
-            case "<":
-                return TryCompareNumeric(actual, target, out int lt) && lt < 0;
-            case "GREATEROREQUAL":
-            case ">=":
-                return TryCompareNumeric(actual, target, out int ge) && ge >= 0;
-            case "LESSOREQUAL":
-            case "<=":
-                return TryCompareNumeric(actual, target, out int le) && le <= 0;
-            default:
-                return actual.Equals(target, cmp);
-        }
-    }
+        var oc = StringComparison.OrdinalIgnoreCase;
 
-    private sealed class Condition
-    {
-        public string Path { get; set; } = "";
-        public string Operator { get; set; } = "";
-        public string Value { get; set; } = "";
-        public bool CaseSensitive { get; set; }
-    }
-
-    private static List<Condition> ParseConditions(string conditionsJson)
-    {
-        var list = new List<Condition>();
-        if (string.IsNullOrWhiteSpace(conditionsJson)) return list;
-        var arr = JsonNode.Parse(conditionsJson)!.AsArray();
-        foreach (var node in arr)
-        {
-            if (node is not JsonObject obj) continue;
-            list.Add(new Condition
-            {
-                Path = obj["path"]?.ToString() ?? obj["Path"]?.ToString() ?? "",
-                Operator = obj["operator"]?.ToString() ?? obj["Operator"]?.ToString() ?? "",
-                Value = obj["value"]?.ToString() ?? obj["Value"]?.ToString() ?? "",
-                CaseSensitive = (obj["caseSensitive"]?.GetValue<bool>() ?? obj["CaseSensitive"]?.GetValue<bool>()) ?? false,
-            });
-        }
-        return list;
+        if (normalized.Equals(Operators.NotEquals, oc) || normalized == "!=")
+            return !actual.Equals(target, cmp);
+        if (normalized.Equals(Operators.Contains, oc))
+            return actual.IndexOf(target, cmp) >= 0;
+        if (normalized.Equals(Operators.StartsWith, oc))
+            return actual.StartsWith(target, cmp);
+        if (normalized.Equals(Operators.EndsWith, oc))
+            return actual.EndsWith(target, cmp);
+        if (normalized.Equals(Operators.GreaterThan, oc) || normalized == ">")
+            return TryCompareNumeric(actual, target, out int gt) && gt > 0;
+        if (normalized.Equals(Operators.LessThan, oc) || normalized == "<")
+            return TryCompareNumeric(actual, target, out int lt) && lt < 0;
+        if (normalized.Equals(Operators.GreaterOrEqual, oc) || normalized == ">=")
+            return TryCompareNumeric(actual, target, out int ge) && ge >= 0;
+        if (normalized.Equals(Operators.LessOrEqual, oc) || normalized == "<=")
+            return TryCompareNumeric(actual, target, out int le) && le <= 0;
+        // Empty / unknown → Equals (documented default).
+        return actual.Equals(target, cmp);
     }
 
     private static bool EvaluateConditions(JsonNode item, List<Condition> conditions, string logicalOperator)
     {
-        if (conditions.Count == 0) return false;
-        bool useOr = (logicalOperator ?? "").Trim().Equals("OR", StringComparison.OrdinalIgnoreCase);
+        if (conditions == null || conditions.Count == 0) return false;
+        bool useOr = (logicalOperator ?? "").Trim().Equals(LogicalOperators.OR, StringComparison.OrdinalIgnoreCase);
         foreach (var c in conditions)
         {
             var actual = GetPropertyValue(item, c.Path);
