@@ -16,7 +16,7 @@ Advanced list manipulation utilities — pop by index, pop by condition, zip, gr
 
 ### What This Component Does
 
-**ListUtilsServerSide** is a Library that provides nine high-utility list manipulation actions that are absent or cumbersome to implement natively in OutSystems. It covers index-based removal, condition-based filtering (single and multi-condition with AND/OR), list pairing (zip), grouping, and set difference — all in single server-side calls.
+**ListUtilsServerSide** is a Library that provides fourteen high-utility list manipulation actions that are absent or cumbersome to implement natively in OutSystems. It covers index-based removal, condition-based filtering (single and multi-condition with AND/OR), list pairing (zip), grouping, set difference, chunking, distinct-by, Python-style slicing, shuffling, and in-place property updates — all in single server-side calls.
 
 For generic structure support, the JSON-based actions accept any Structure List serialized with `JSON Serialize` and return JSON strings that can be deserialized back with `JSON Deserialize`. This eliminates the need to build separate extensions for each data structure.
 
@@ -47,6 +47,18 @@ For generic structure support, the JSON-based actions accept any Structure List 
 **List_GroupBy** — Groups a flat JSON list by a property value (nested paths + array indexing supported). Returns an array of `{Key, Items}` objects in first-seen order.
 
 **List_Difference** — Computes the set difference (A − B) matching on a key property. Supports nested paths, array indexing, comparison operators, and case sensitivity.
+
+#### Transformation & Randomization Actions (JSON)
+
+**List_Chunk** — Splits a JSON list into an array of fixed-size sublists. The last chunk may be smaller. `ChunkSize <= 0` or an empty source returns `[]`. Ideal for batching API payloads.
+
+**List_DistinctBy** — Filters to unique elements by a property key (first occurrence wins). Empty property dedupes on the entire item. Works on structures — native ODC `Distinct` only supports basic types.
+
+**List_Slice** — Python/JavaScript-style slicing with `Start`, `End`, `Step`. Negative indices count from the end. `End == 0` is a sentinel meaning "to end of list" (forward step) or "past the beginning" (backward step). Negative `Step` reverses the walk.
+
+**List_Shuffle** — Randomises order via Fisher-Yates. `Seed == 0` uses a cryptographically-seeded RNG (`RandomNumberGenerator`); any non-zero seed produces a reproducible permutation. Source list is not mutated.
+
+**List_UpdateAt** — Sets a property of the item at a given index and returns the previous value. Negative indices count from the end. Nested paths are supported; missing intermediate objects are created (arrays are not auto-created).
 
 ---
 
@@ -134,13 +146,13 @@ Combined with `logicalOperator = "AND"` (all must match) or `"OR"` (at least one
        └───► [poppedElementJson] ──► JSON Deserialize → Structure Record
 ```
 
-4. For index-based actions (`List_Pop`, `List_PopMultiple`), serialize your `List of Text` (or any Structure List) with `JSON Serialize` first — all nine actions consume and return JSON strings.
+4. For index-based actions (`List_Pop`, `List_PopMultiple`), serialize your `List of Text` (or any Structure List) with `JSON Serialize` first — all fourteen actions consume and return JSON strings.
 
 ---
 
 ### Features
 
-- **9 server-side actions** covering the most common list manipulation gaps
+- **14 server-side actions** covering the most common list manipulation gaps
 - **Generic structure support** via JSON serialization — works with any OutSystems Structure
 - **9 comparison operators** (Equals, NotEquals, Contains, StartsWith, EndsWith, GreaterThan, LessThan, GreaterOrEqual, LessOrEqual) with symbol aliases
 - **Multiple conditions with AND/OR** — combine any number of conditions per query

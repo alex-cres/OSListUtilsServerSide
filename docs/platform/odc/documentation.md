@@ -14,7 +14,7 @@ ADDING THE LIBRARY TO YOUR APP
 USAGE
 -----
 
-All nine actions consume and return JSON strings. Use JSON Serialize to
+All fourteen actions consume and return JSON strings. Use JSON Serialize to
 convert any Structure List (including a plain List of Text) to a JSON
 string before calling the action, then JSON Deserialize the output back
 to your target Structure List.
@@ -27,6 +27,12 @@ Condition-based actions (List_PopByCondition, List_PopMultipleByCondition,
 List_PopByConditions, List_PopMultipleByConditions), relational actions
 (List_Zip), grouping (List_GroupBy) and set difference (List_Difference)
 all follow the same JSON-in / JSON-out contract.
+
+Transformation actions (List_Chunk, List_DistinctBy, List_Slice,
+List_Shuffle, List_UpdateAt) also consume and return JSON strings.
+List_Chunk returns a nested JSON array of arrays. List_UpdateAt also
+returns the previous value of the updated property as a separate JSON
+string.
 
 Recommended pattern in a Server Action:
 
@@ -114,6 +120,55 @@ List_Difference
   Returns elements from list A whose matchKey value does not match
   any matchKey value in list B using the given comparisonOperator.
   matchKey supports nested paths and array indexing.
+
+List_Chunk
+  Input:  sourceListJson (Text), chunkSize (Integer)
+  Output: chunksListJson (Text)
+  Splits a JSON list into an array of sublists of a fixed size. The
+  last chunk may be smaller than chunkSize. chunkSize <= 0 or an empty
+  source returns "[]". Useful for batching API payloads.
+
+List_DistinctBy
+  Input:  sourceListJson (Text), propertyName (Text),
+          caseSensitive (Boolean)
+  Output: distinctListJson (Text)
+  Filters a JSON list to unique elements by a property value (first
+  occurrence wins). Empty propertyName dedupes on the entire item's
+  JSON. Missing keys share a single null-key bucket. propertyName
+  supports nested paths and array indexing.
+
+List_Slice
+  Input:  sourceListJson (Text), start (Integer), end (Integer),
+          step (Integer)
+  Output: sliceListJson (Text)
+  Extracts a subset using Python/JavaScript-style Start, End, Step.
+  Negative start/end count from the end. Sentinel: end == 0 means
+  "unspecified" - for positive step it is "to end of list", for
+  negative step it is "past the beginning". step == 0 is treated as 1;
+  negative step reverses the walk.
+
+List_Shuffle
+  Input:  sourceListJson (Text), seed (Integer)
+  Output: shuffledListJson (Text)
+  Randomises the order of a JSON list using Fisher-Yates. seed == 0
+  uses a cryptographically-seeded RNG (RandomNumberGenerator per swap)
+  and produces a different permutation each call. Any non-zero seed
+  uses System.Random(seed) and produces the same permutation every
+  call (useful for reproducible tests). Source list is not mutated.
+
+List_UpdateAt
+  Input:  sourceListJson (Text), index (Integer), propertyName (Text),
+          newValueJson (Text)
+  Output: updatedListJson (Text), previousValueJson (Text)
+  Sets a single property of the item at index. Negative index counts
+  from the end. propertyName supports nested paths and array indexing.
+  Missing intermediate objects are auto-created; arrays are NOT auto-
+  created (a missing or non-array indexing step returns the source
+  unchanged). newValueJson is parsed as JSON; if it is not valid JSON
+  it is stored as a raw string. previousValueJson is "null" when: the
+  index was out of range, propertyName was empty, the item was not an
+  object, the property did not exist, OR the property existed with a
+  JSON null value (the last two cases are indistinguishable).
 
 
 COMPARISON OPERATORS

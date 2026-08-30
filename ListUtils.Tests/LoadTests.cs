@@ -1190,4 +1190,1113 @@ public class LoadTests
     }
 
     #endregion
+
+    #region List_Chunk (10)
+
+    private static void AssertChunks(string chunks, int sourceCount, int chunkSize)
+    {
+        var arr = ParseArray(chunks);
+        int expectedFull = sourceCount / chunkSize;
+        int remainder = sourceCount % chunkSize;
+        int expectedCount = expectedFull + (remainder > 0 ? 1 : 0);
+        Assert.Equal(expectedCount, arr.Count);
+        int total = 0;
+        for (int i = 0; i < arr.Count; i++)
+            total += arr[i]!.AsArray().Count;
+        Assert.Equal(sourceCount, total);
+    }
+
+    [Fact]
+    public void Load_Chunk_100()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_Chunk(LargeJsonList, 100, out var chunks);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_Chunk_100));
+        AssertChunks(chunks, TargetSize, 100);
+    }
+
+    [Fact]
+    public void Load_Chunk_500()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_Chunk(LargeJsonList, 500, out var chunks);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_Chunk_500));
+        AssertChunks(chunks, TargetSize, 500);
+    }
+
+    [Fact]
+    public void Load_Chunk_1000()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_Chunk(LargeJsonList, 1000, out var chunks);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_Chunk_1000));
+        AssertChunks(chunks, TargetSize, 1000);
+    }
+
+    [Fact]
+    public void Load_Chunk_50()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_Chunk(LargeJsonList, 50, out var chunks);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_Chunk_50));
+        AssertChunks(chunks, TargetSize, 50);
+    }
+
+    [Fact]
+    public void Load_Chunk_10()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_Chunk(LargeJsonList, 10, out var chunks);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_Chunk_10));
+        AssertChunks(chunks, TargetSize, 10);
+    }
+
+    [Fact]
+    public void Load_Chunk_3_UnevenTail()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_Chunk(LargeJsonList, 3, out var chunks);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_Chunk_3_UnevenTail));
+        AssertChunks(chunks, TargetSize, 3);
+    }
+
+    [Fact]
+    public void Load_Chunk_OneMakesEachElementItsOwnChunk()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_Chunk(LargeJsonList, 1, out var chunks);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_Chunk_OneMakesEachElementItsOwnChunk));
+        AssertChunks(chunks, TargetSize, 1);
+    }
+
+    [Fact]
+    public void Load_Chunk_LargerThanList_SingleChunk()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_Chunk(LargeJsonList, TargetSize * 2, out var chunks);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_Chunk_LargerThanList_SingleChunk));
+        var arr = ParseArray(chunks);
+        Assert.Single(arr);
+        Assert.Equal(TargetSize, arr[0]!.AsArray().Count);
+    }
+
+    [Fact]
+    public void Load_Chunk_HalfList()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_Chunk(LargeJsonListHalf, 250, out var chunks);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_Chunk_HalfList));
+        AssertChunks(chunks, TargetSize / 2, 250);
+    }
+
+    [Fact]
+    public void Load_Chunk_ZeroSize_ReturnsEmpty()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_Chunk(LargeJsonList, 0, out var chunks);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_Chunk_ZeroSize_ReturnsEmpty));
+        Assert.Equal("[]", chunks);
+    }
+
+    #endregion
+
+    #region List_DistinctBy (10)
+
+    [Fact]
+    public void Load_DistinctBy_Status()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_DistinctBy(LargeJsonList, "Status", false, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_DistinctBy_Status));
+        Assert.Equal(4, ParseArray(result).Count);
+    }
+
+    [Fact]
+    public void Load_DistinctBy_Category()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_DistinctBy(LargeJsonList, "Category", false, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_DistinctBy_Category));
+        Assert.Equal(5, ParseArray(result).Count);
+    }
+
+    [Fact]
+    public void Load_DistinctBy_NestedRegion()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_DistinctBy(LargeJsonList, "Meta.Region", false, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_DistinctBy_NestedRegion));
+        Assert.Equal(4, ParseArray(result).Count);
+    }
+
+    [Fact]
+    public void Load_DistinctBy_NestedPriority()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_DistinctBy(LargeJsonList, "Meta.Priority", false, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_DistinctBy_NestedPriority));
+        Assert.Equal(3, ParseArray(result).Count);
+    }
+
+    [Fact]
+    public void Load_DistinctBy_Id_AllUnique()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_DistinctBy(LargeJsonList, "Id", false, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_DistinctBy_Id_AllUnique));
+        Assert.Equal(TargetSize, ParseArray(result).Count);
+    }
+
+    [Fact]
+    public void Load_DistinctBy_Name_AllUnique()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_DistinctBy(LargeJsonList, "Name", false, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_DistinctBy_Name_AllUnique));
+        Assert.Equal(TargetSize, ParseArray(result).Count);
+    }
+
+    [Fact]
+    public void Load_DistinctBy_ArrayIndex()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_DistinctBy(LargeJsonList, "Meta.Tags[0]", false, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_DistinctBy_ArrayIndex));
+        // Tags[0] = $"tag{i%20}" → 20 distinct.
+        Assert.Equal(20, ParseArray(result).Count);
+    }
+
+    [Fact]
+    public void Load_DistinctBy_MissingKey_SingleBucket()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_DistinctBy(LargeJsonList, "DoesNotExist", false, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_DistinctBy_MissingKey_SingleBucket));
+        // All items share the "null key" bucket → one representative kept.
+        Assert.Single(ParseArray(result));
+    }
+
+    [Fact]
+    public void Load_DistinctBy_HalfList_Status()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_DistinctBy(LargeJsonListHalf, "Status", false, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_DistinctBy_HalfList_Status));
+        Assert.Equal(4, ParseArray(result).Count);
+    }
+
+    [Fact]
+    public void Load_DistinctBy_CaseSensitive_Category()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_DistinctBy(LargeJsonList, "Category", true, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_DistinctBy_CaseSensitive_Category));
+        Assert.Equal(5, ParseArray(result).Count);
+    }
+
+    #endregion
+
+    #region List_Slice (10)
+
+    [Fact]
+    public void Load_Slice_FirstThousand()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_Slice(LargeJsonList, 0, 1000, 1, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_Slice_FirstThousand));
+        Assert.Equal(1000, ParseArray(result).Count);
+    }
+
+    [Fact]
+    public void Load_Slice_LastThousand_NegativeStart()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_Slice(LargeJsonList, -1000, 0, 1, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_Slice_LastThousand_NegativeStart));
+        Assert.Equal(1000, ParseArray(result).Count);
+    }
+
+    [Fact]
+    public void Load_Slice_MiddleFiveThousand()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_Slice(LargeJsonList, 2500, 7500, 1, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_Slice_MiddleFiveThousand));
+        Assert.Equal(5000, ParseArray(result).Count);
+    }
+
+    [Fact]
+    public void Load_Slice_EveryOther_FullList()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_Slice(LargeJsonList, 0, 0, 2, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_Slice_EveryOther_FullList));
+        Assert.Equal(TargetSize / 2, ParseArray(result).Count);
+    }
+
+    [Fact]
+    public void Load_Slice_EveryTenth()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_Slice(LargeJsonList, 0, 0, 10, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_Slice_EveryTenth));
+        Assert.Equal(TargetSize / 10, ParseArray(result).Count);
+    }
+
+    [Fact]
+    public void Load_Slice_ReverseAll()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_Slice(LargeJsonList, -1, 0, -1, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_Slice_ReverseAll));
+        Assert.Equal(TargetSize, ParseArray(result).Count);
+    }
+
+    [Fact]
+    public void Load_Slice_ReverseMiddle()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_Slice(LargeJsonList, 7500, 2500, -1, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_Slice_ReverseMiddle));
+        Assert.Equal(5000, ParseArray(result).Count);
+    }
+
+    [Fact]
+    public void Load_Slice_ExcludeFirstAndLast()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_Slice(LargeJsonList, 1, -1, 1, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_Slice_ExcludeFirstAndLast));
+        Assert.Equal(TargetSize - 2, ParseArray(result).Count);
+    }
+
+    [Fact]
+    public void Load_Slice_OutOfBoundsClamped()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_Slice(LargeJsonList, -100_000, 100_000, 1, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_Slice_OutOfBoundsClamped));
+        Assert.Equal(TargetSize, ParseArray(result).Count);
+    }
+
+    [Fact]
+    public void Load_Slice_FullListDefaults()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_Slice(LargeJsonList, 0, 0, 1, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_Slice_FullListDefaults));
+        Assert.Equal(TargetSize, ParseArray(result).Count);
+    }
+
+    #endregion
+
+    #region List_Shuffle (10)
+
+    private static void AssertShufflePreservesElements(string shuffled, int sourceCount)
+    {
+        var arr = ParseArray(shuffled);
+        Assert.Equal(sourceCount, arr.Count);
+    }
+
+    [Fact]
+    public void Load_Shuffle_Seed_1()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_Shuffle(LargeJsonList, 1, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_Shuffle_Seed_1));
+        AssertShufflePreservesElements(result, TargetSize);
+    }
+
+    [Fact]
+    public void Load_Shuffle_Seed_42()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_Shuffle(LargeJsonList, 42, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_Shuffle_Seed_42));
+        AssertShufflePreservesElements(result, TargetSize);
+    }
+
+    [Fact]
+    public void Load_Shuffle_Seed_1000()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_Shuffle(LargeJsonList, 1000, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_Shuffle_Seed_1000));
+        AssertShufflePreservesElements(result, TargetSize);
+    }
+
+    [Fact]
+    public void Load_Shuffle_Seed_MaxValue()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_Shuffle(LargeJsonList, int.MaxValue, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_Shuffle_Seed_MaxValue));
+        AssertShufflePreservesElements(result, TargetSize);
+    }
+
+    [Fact]
+    public void Load_Shuffle_Seed_MinValue()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_Shuffle(LargeJsonList, int.MinValue, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_Shuffle_Seed_MinValue));
+        AssertShufflePreservesElements(result, TargetSize);
+    }
+
+    [Fact]
+    public void Load_Shuffle_CryptoSeed_Zero()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_Shuffle(LargeJsonList, 0, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_Shuffle_CryptoSeed_Zero));
+        AssertShufflePreservesElements(result, TargetSize);
+    }
+
+    [Fact]
+    public void Load_Shuffle_HalfList()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_Shuffle(LargeJsonListHalf, 7, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_Shuffle_HalfList));
+        AssertShufflePreservesElements(result, TargetSize / 2);
+    }
+
+    [Fact]
+    public void Load_Shuffle_ListB()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_Shuffle(LargeJsonListB, 7, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_Shuffle_ListB));
+        AssertShufflePreservesElements(result, TargetSize);
+    }
+
+    [Fact]
+    public void Load_Shuffle_Determinism_SameSeedSameOutput()
+    {
+        _sut.List_Shuffle(LargeJsonList, 12345, out var first);
+        var sw = Stopwatch.StartNew();
+        _sut.List_Shuffle(LargeJsonList, 12345, out var second);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_Shuffle_Determinism_SameSeedSameOutput));
+        Assert.Equal(first, second);
+    }
+
+    [Fact]
+    public void Load_Shuffle_ActuallyReorders_Seed99()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_Shuffle(LargeJsonList, 99, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_Shuffle_ActuallyReorders_Seed99));
+        Assert.NotEqual(LargeJsonList, result);
+        AssertShufflePreservesElements(result, TargetSize);
+    }
+
+    #endregion
+
+    #region List_UpdateAt (10)
+
+    [Fact]
+    public void Load_UpdateAt_First()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_UpdateAt(LargeJsonList, 0, "Status", "\"Active\"", out var updated, out var previous);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_UpdateAt_First));
+        Assert.NotEqual("null", previous);
+        var arr = ParseArray(updated);
+        Assert.Equal(TargetSize, arr.Count);
+        Assert.Equal("Active", arr[0]!["Status"]!.ToString());
+    }
+
+    [Fact]
+    public void Load_UpdateAt_Last()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_UpdateAt(LargeJsonList, TargetSize - 1, "Status", "\"Done\"", out var updated, out var previous);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_UpdateAt_Last));
+        Assert.NotEqual("null", previous);
+        var arr = ParseArray(updated);
+        Assert.Equal("Done", arr[TargetSize - 1]!["Status"]!.ToString());
+    }
+
+    [Fact]
+    public void Load_UpdateAt_Middle()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_UpdateAt(LargeJsonList, TargetSize / 2, "Status", "\"Mid\"", out var updated, out var previous);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_UpdateAt_Middle));
+        Assert.NotEqual("null", previous);
+        var arr = ParseArray(updated);
+        Assert.Equal("Mid", arr[TargetSize / 2]!["Status"]!.ToString());
+    }
+
+    [Fact]
+    public void Load_UpdateAt_NegativeIndex()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_UpdateAt(LargeJsonList, -1, "Status", "\"Tail\"", out var updated, out var previous);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_UpdateAt_NegativeIndex));
+        Assert.NotEqual("null", previous);
+        var arr = ParseArray(updated);
+        Assert.Equal("Tail", arr[TargetSize - 1]!["Status"]!.ToString());
+    }
+
+    [Fact]
+    public void Load_UpdateAt_NewProperty()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_UpdateAt(LargeJsonList, 100, "NewField", "true", out var updated, out var previous);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_UpdateAt_NewProperty));
+        Assert.Equal("null", previous);
+        var arr = ParseArray(updated);
+        Assert.True(arr[100]!["NewField"]!.GetValue<bool>());
+    }
+
+    [Fact]
+    public void Load_UpdateAt_NestedPath()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_UpdateAt(LargeJsonList, 500, "Meta.Region", "\"ZZ\"", out var updated, out var previous);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_UpdateAt_NestedPath));
+        Assert.NotEqual("null", previous);
+        var arr = ParseArray(updated);
+        Assert.Equal("ZZ", arr[500]!["Meta"]!["Region"]!.ToString());
+    }
+
+    [Fact]
+    public void Load_UpdateAt_OutOfRange()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_UpdateAt(LargeJsonList, TargetSize * 10, "Status", "\"X\"", out var updated, out var previous);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_UpdateAt_OutOfRange));
+        Assert.Equal("null", previous);
+        Assert.Equal(LargeJsonList, updated);
+    }
+
+    [Fact]
+    public void Load_UpdateAt_ReplaceObject()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_UpdateAt(LargeJsonList, 200, "Meta", """{"Region":"NZ","Priority":"Top"}""", out var updated, out var previous);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_UpdateAt_ReplaceObject));
+        Assert.NotEqual("null", previous);
+        var arr = ParseArray(updated);
+        Assert.Equal("NZ", arr[200]!["Meta"]!["Region"]!.ToString());
+        Assert.Equal("Top", arr[200]!["Meta"]!["Priority"]!.ToString());
+    }
+
+    [Fact]
+    public void Load_UpdateAt_HalfList()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_UpdateAt(LargeJsonListHalf, 10, "Score", "0", out var updated, out var previous);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_UpdateAt_HalfList));
+        Assert.NotEqual("null", previous);
+        var arr = ParseArray(updated);
+        Assert.Equal("0", arr[10]!["Score"]!.ToString());
+    }
+
+    [Fact]
+    public void Load_UpdateAt_ArrayIndexPath()
+    {
+        var sw = Stopwatch.StartNew();
+        _sut.List_UpdateAt(LargeJsonList, 300, "Meta.Tags[0]", "\"tagOverride\"", out var updated, out var previous);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_UpdateAt_ArrayIndexPath));
+        Assert.NotEqual("null", previous);
+        var arr = ParseArray(updated);
+        Assert.Equal("tagOverride", arr[300]!["Meta"]!["Tags"]!.AsArray()[0]!.ToString());
+    }
+
+    #endregion
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  InPlace variants — 3 load tests per action × 14 variants = 42 tests.
+    //  Each grabs a local string (an O(1) reference copy of the shared static
+    //  input) and passes it to the InPlace action. Timing budget is the same
+    //  300 ms cap — InPlace adds one ref assignment on top of the delegate.
+    // ═══════════════════════════════════════════════════════════════════════
+
+    #region List_PopInPlace (3)
+
+    [Fact]
+    public void LoadInPlace_PopInPlace_FirstIndex()
+    {
+        string list = LargeJsonList;
+        var sw = Stopwatch.StartNew();
+        _sut.List_PopInPlace(ref list, 0, out var popped);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_PopInPlace_FirstIndex));
+        AssertPopSingle(list, popped, TargetSize, expectedRemoved: 1);
+    }
+
+    [Fact]
+    public void LoadInPlace_PopInPlace_MiddleIndex()
+    {
+        string list = LargeJsonList;
+        var sw = Stopwatch.StartNew();
+        _sut.List_PopInPlace(ref list, TargetSize / 2, out var popped);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_PopInPlace_MiddleIndex));
+        AssertPopSingle(list, popped, TargetSize, expectedRemoved: 1);
+    }
+
+    [Fact]
+    public void LoadInPlace_PopInPlace_OutOfRange()
+    {
+        string list = LargeJsonList;
+        var sw = Stopwatch.StartNew();
+        _sut.List_PopInPlace(ref list, 999_999, out var popped);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_PopInPlace_OutOfRange));
+        AssertPopSingle(list, popped, TargetSize, expectedRemoved: 0);
+    }
+
+    #endregion
+
+    #region List_PopMultipleInPlace (3)
+
+    [Fact]
+    public void LoadInPlace_PopMultipleInPlace_TenSpread()
+    {
+        string list = LargeJsonList;
+        var sw = Stopwatch.StartNew();
+        _sut.List_PopMultipleInPlace(ref list, "0,1000,2000,3000,4000,5000,6000,7000,8000,9000", out var popped);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_PopMultipleInPlace_TenSpread));
+        AssertPopMany(list, popped, TargetSize, expectedRemoved: 10);
+    }
+
+    [Fact]
+    public void LoadInPlace_PopMultipleInPlace_HundredEvenlySpaced()
+    {
+        string list = LargeJsonList;
+        var indices = string.Join(",", Enumerable.Range(0, 100).Select(i => i * 100));
+        var sw = Stopwatch.StartNew();
+        _sut.List_PopMultipleInPlace(ref list, indices, out var popped);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_PopMultipleInPlace_HundredEvenlySpaced));
+        AssertPopManyInvariant(list, popped, TargetSize);
+    }
+
+    [Fact]
+    public void LoadInPlace_PopMultipleInPlace_ThousandIndices()
+    {
+        string list = LargeJsonList;
+        var indices = string.Join(",", Enumerable.Range(0, 1000).Select(i => i * 9));
+        var sw = Stopwatch.StartNew();
+        _sut.List_PopMultipleInPlace(ref list, indices, out var popped);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_PopMultipleInPlace_ThousandIndices));
+        AssertPopManyInvariant(list, popped, TargetSize);
+    }
+
+    #endregion
+
+    #region List_PopByConditionInPlace (3)
+
+    [Fact]
+    public void LoadInPlace_PopByConditionInPlace_TopLevel()
+    {
+        string list = LargeJsonList;
+        var sw = Stopwatch.StartNew();
+        _sut.List_PopByConditionInPlace(ref list, "Status", "Active", "Equals", false, false, out var popped);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_PopByConditionInPlace_TopLevel));
+        AssertPopSingle(list, popped, TargetSize, expectedRemoved: 1);
+    }
+
+    [Fact]
+    public void LoadInPlace_PopByConditionInPlace_NestedPath()
+    {
+        string list = LargeJsonList;
+        var sw = Stopwatch.StartNew();
+        _sut.List_PopByConditionInPlace(ref list, "Meta.Region", "EU", "Equals", false, false, out var popped);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_PopByConditionInPlace_NestedPath));
+        AssertPopSingle(list, popped, TargetSize, expectedRemoved: 1);
+    }
+
+    [Fact]
+    public void LoadInPlace_PopByConditionInPlace_SearchFromEnd()
+    {
+        string list = LargeJsonList;
+        var sw = Stopwatch.StartNew();
+        _sut.List_PopByConditionInPlace(ref list, "Status", "Active", "Equals", false, true, out var popped);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_PopByConditionInPlace_SearchFromEnd));
+        AssertPopSingle(list, popped, TargetSize, expectedRemoved: 1);
+    }
+
+    #endregion
+
+    #region List_PopMultipleByConditionInPlace (3)
+
+    [Fact]
+    public void LoadInPlace_PopMultipleByConditionInPlace_QuarterMatch()
+    {
+        string list = LargeJsonList;
+        var sw = Stopwatch.StartNew();
+        _sut.List_PopMultipleByConditionInPlace(ref list, "Status", "Active", "Equals", false, out var popped);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_PopMultipleByConditionInPlace_QuarterMatch));
+        // Status cycles through 4 values → 25% of items match "Active".
+        AssertPopMany(list, popped, TargetSize, expectedRemoved: TargetSize / 4);
+    }
+
+    [Fact]
+    public void LoadInPlace_PopMultipleByConditionInPlace_NestedPath()
+    {
+        string list = LargeJsonList;
+        var sw = Stopwatch.StartNew();
+        _sut.List_PopMultipleByConditionInPlace(ref list, "Meta.Region", "US", "Equals", false, out var popped);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_PopMultipleByConditionInPlace_NestedPath));
+        AssertPopMany(list, popped, TargetSize, expectedRemoved: TargetSize / 4);
+    }
+
+    [Fact]
+    public void LoadInPlace_PopMultipleByConditionInPlace_NoMatch()
+    {
+        string list = LargeJsonList;
+        var sw = Stopwatch.StartNew();
+        _sut.List_PopMultipleByConditionInPlace(ref list, "Status", "NoSuchValue", "Equals", false, out var popped);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_PopMultipleByConditionInPlace_NoMatch));
+        AssertPopMany(list, popped, TargetSize, expectedRemoved: 0);
+    }
+
+    #endregion
+
+    #region List_PopByConditionsInPlace (3)
+
+    [Fact]
+    public void LoadInPlace_PopByConditionsInPlace_And()
+    {
+        string list = LargeJsonList;
+        string cond = """[{"path":"Status","operator":"Equals","value":"Active"},{"path":"Meta.Region","operator":"Equals","value":"EU"}]""";
+        var sw = Stopwatch.StartNew();
+        _sut.List_PopByConditionsInPlace(ref list, cond, "AND", false, out var popped);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_PopByConditionsInPlace_And));
+        AssertPopSingle(list, popped, TargetSize, expectedRemoved: 1);
+    }
+
+    [Fact]
+    public void LoadInPlace_PopByConditionsInPlace_Or()
+    {
+        string list = LargeJsonList;
+        string cond = """[{"path":"Status","operator":"Equals","value":"Nope"},{"path":"Category","operator":"Equals","value":"Books"}]""";
+        var sw = Stopwatch.StartNew();
+        _sut.List_PopByConditionsInPlace(ref list, cond, "OR", false, out var popped);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_PopByConditionsInPlace_Or));
+        AssertPopSingle(list, popped, TargetSize, expectedRemoved: 1);
+    }
+
+    [Fact]
+    public void LoadInPlace_PopByConditionsInPlace_SearchFromEnd()
+    {
+        string list = LargeJsonList;
+        string cond = """[{"path":"Category","operator":"Equals","value":"Toys"}]""";
+        var sw = Stopwatch.StartNew();
+        _sut.List_PopByConditionsInPlace(ref list, cond, "AND", true, out var popped);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_PopByConditionsInPlace_SearchFromEnd));
+        AssertPopSingle(list, popped, TargetSize, expectedRemoved: 1);
+    }
+
+    #endregion
+
+    #region List_PopMultipleByConditionsInPlace (3)
+
+    [Fact]
+    public void LoadInPlace_PopMultipleByConditionsInPlace_AndAcrossFields()
+    {
+        string list = LargeJsonList;
+        string cond = """[{"path":"Status","operator":"Equals","value":"Active"},{"path":"Meta.Region","operator":"Equals","value":"EU"}]""";
+        var sw = Stopwatch.StartNew();
+        _sut.List_PopMultipleByConditionsInPlace(ref list, cond, "AND", out var popped);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_PopMultipleByConditionsInPlace_AndAcrossFields));
+        AssertPopManyInvariant(list, popped, TargetSize);
+    }
+
+    [Fact]
+    public void LoadInPlace_PopMultipleByConditionsInPlace_OrWideMatch()
+    {
+        string list = LargeJsonList;
+        string cond = """[{"path":"Category","operator":"Equals","value":"Books"},{"path":"Category","operator":"Equals","value":"Toys"}]""";
+        var sw = Stopwatch.StartNew();
+        _sut.List_PopMultipleByConditionsInPlace(ref list, cond, "OR", out var popped);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_PopMultipleByConditionsInPlace_OrWideMatch));
+        // Category cycles through 5 values → 40% of items match Books or Toys.
+        AssertPopMany(list, popped, TargetSize, expectedRemoved: 2 * TargetSize / 5);
+    }
+
+    [Fact]
+    public void LoadInPlace_PopMultipleByConditionsInPlace_NumericOperator()
+    {
+        string list = LargeJsonList;
+        string cond = """[{"path":"Id","operator":"GreaterOrEqual","value":"5000"}]""";
+        var sw = Stopwatch.StartNew();
+        _sut.List_PopMultipleByConditionsInPlace(ref list, cond, "AND", out var popped);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_PopMultipleByConditionsInPlace_NumericOperator));
+        AssertPopMany(list, popped, TargetSize, expectedRemoved: TargetSize / 2);
+    }
+
+    #endregion
+
+    #region List_ZipInPlace (3)
+
+    [Fact]
+    public void LoadInPlace_ZipInPlace_FullSize()
+    {
+        string listA = LargeJsonList;
+        var sw = Stopwatch.StartNew();
+        _sut.List_ZipInPlace(ref listA, LargeJsonListB, "A", "B");
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_ZipInPlace_FullSize));
+        AssertZip(listA, expectedLength: TargetSize, "A", "B");
+    }
+
+    [Fact]
+    public void LoadInPlace_ZipInPlace_UnequalHalf()
+    {
+        string listA = LargeJsonList;
+        var sw = Stopwatch.StartNew();
+        _sut.List_ZipInPlace(ref listA, LargeJsonListHalf, "L", "R");
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_ZipInPlace_UnequalHalf));
+        AssertZip(listA, expectedLength: TargetSize / 2, "L", "R");
+    }
+
+    [Fact]
+    public void LoadInPlace_ZipInPlace_SelfZip()
+    {
+        string listA = LargeJsonList;
+        var sw = Stopwatch.StartNew();
+        _sut.List_ZipInPlace(ref listA, LargeJsonList, "X", "Y");
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_ZipInPlace_SelfZip));
+        AssertZip(listA, expectedLength: TargetSize, "X", "Y");
+    }
+
+    #endregion
+
+    #region List_GroupByInPlace (3)
+
+    [Fact]
+    public void LoadInPlace_GroupByInPlace_Status()
+    {
+        string list = LargeJsonList;
+        var sw = Stopwatch.StartNew();
+        _sut.List_GroupByInPlace(ref list, "Status");
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_GroupByInPlace_Status));
+        AssertGroupBy(list, sourceCount: TargetSize, expectedGroups: 4);
+    }
+
+    [Fact]
+    public void LoadInPlace_GroupByInPlace_NestedRegion()
+    {
+        string list = LargeJsonList;
+        var sw = Stopwatch.StartNew();
+        _sut.List_GroupByInPlace(ref list, "Meta.Region");
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_GroupByInPlace_NestedRegion));
+        AssertGroupBy(list, sourceCount: TargetSize, expectedGroups: 4);
+    }
+
+    [Fact]
+    public void LoadInPlace_GroupByInPlace_HighCardinality()
+    {
+        string list = LargeJsonList;
+        var sw = Stopwatch.StartNew();
+        _sut.List_GroupByInPlace(ref list, "Id");
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_GroupByInPlace_HighCardinality));
+        AssertGroupBy(list, sourceCount: TargetSize, expectedGroups: TargetSize);
+    }
+
+    #endregion
+
+    #region List_DifferenceInPlace (3)
+
+    [Fact]
+    public void LoadInPlace_DifferenceInPlace_ById()
+    {
+        string listA = LargeJsonList;
+        var sw = Stopwatch.StartNew();
+        _sut.List_DifferenceInPlace(ref listA, LargeJsonListB, "Id", "Equals", false);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_DifferenceInPlace_ById));
+        // A ids 0..9999, B ids 5000..14999 → diff = 5000.
+        AssertDifference(listA, expectedCount: 5000);
+    }
+
+    [Fact]
+    public void LoadInPlace_DifferenceInPlace_NestedPath()
+    {
+        string listA = LargeJsonList;
+        var sw = Stopwatch.StartNew();
+        _sut.List_DifferenceInPlace(ref listA, LargeJsonListB, "Meta.Region", "Equals", false);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_DifferenceInPlace_NestedPath));
+        AssertDifference(listA, expectedCount: 0);
+    }
+
+    [Fact]
+    public void LoadInPlace_DifferenceInPlace_NumericGreaterThan()
+    {
+        string listA = LargeJsonList;
+        var sw = Stopwatch.StartNew();
+        _sut.List_DifferenceInPlace(ref listA, LargeJsonListB, "Id", "GreaterThan", false);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_DifferenceInPlace_NumericGreaterThan));
+        // matchedAny(keyA) = keyA > min(B)=5000. Keeps ids 0..5000 → 5001 kept.
+        AssertDifference(listA, expectedCount: 5001);
+    }
+
+    #endregion
+
+    #region List_ChunkInPlace (3)
+
+    [Fact]
+    public void LoadInPlace_ChunkInPlace_100()
+    {
+        string list = LargeJsonList;
+        var sw = Stopwatch.StartNew();
+        _sut.List_ChunkInPlace(ref list, 100);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_ChunkInPlace_100));
+        AssertChunks(list, TargetSize, 100);
+    }
+
+    [Fact]
+    public void LoadInPlace_ChunkInPlace_10_UnevenTail()
+    {
+        string list = LargeJsonList;
+        var sw = Stopwatch.StartNew();
+        _sut.List_ChunkInPlace(ref list, 10);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_ChunkInPlace_10_UnevenTail));
+        AssertChunks(list, TargetSize, 10);
+    }
+
+    [Fact]
+    public void LoadInPlace_ChunkInPlace_HalfList()
+    {
+        string list = LargeJsonListHalf;
+        var sw = Stopwatch.StartNew();
+        _sut.List_ChunkInPlace(ref list, 250);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_ChunkInPlace_HalfList));
+        AssertChunks(list, TargetSize / 2, 250);
+    }
+
+    #endregion
+
+    #region List_DistinctByInPlace (3)
+
+    [Fact]
+    public void LoadInPlace_DistinctByInPlace_Status()
+    {
+        string list = LargeJsonList;
+        var sw = Stopwatch.StartNew();
+        _sut.List_DistinctByInPlace(ref list, "Status", false);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_DistinctByInPlace_Status));
+        Assert.Equal(4, ParseArray(list).Count);
+    }
+
+    [Fact]
+    public void LoadInPlace_DistinctByInPlace_Id_AllUnique()
+    {
+        string list = LargeJsonList;
+        var sw = Stopwatch.StartNew();
+        _sut.List_DistinctByInPlace(ref list, "Id", false);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_DistinctByInPlace_Id_AllUnique));
+        Assert.Equal(TargetSize, ParseArray(list).Count);
+    }
+
+    [Fact]
+    public void LoadInPlace_DistinctByInPlace_ArrayIndex()
+    {
+        string list = LargeJsonList;
+        var sw = Stopwatch.StartNew();
+        _sut.List_DistinctByInPlace(ref list, "Meta.Tags[0]", false);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_DistinctByInPlace_ArrayIndex));
+        Assert.Equal(20, ParseArray(list).Count);
+    }
+
+    #endregion
+
+    #region List_SliceInPlace (3)
+
+    [Fact]
+    public void LoadInPlace_SliceInPlace_FirstThousand()
+    {
+        string list = LargeJsonList;
+        var sw = Stopwatch.StartNew();
+        _sut.List_SliceInPlace(ref list, 0, 1000, 1);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_SliceInPlace_FirstThousand));
+        Assert.Equal(1000, ParseArray(list).Count);
+    }
+
+    [Fact]
+    public void LoadInPlace_SliceInPlace_ReverseAll()
+    {
+        string list = LargeJsonList;
+        var sw = Stopwatch.StartNew();
+        _sut.List_SliceInPlace(ref list, -1, 0, -1);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_SliceInPlace_ReverseAll));
+        Assert.Equal(TargetSize, ParseArray(list).Count);
+    }
+
+    [Fact]
+    public void LoadInPlace_SliceInPlace_EveryTenth()
+    {
+        string list = LargeJsonList;
+        var sw = Stopwatch.StartNew();
+        _sut.List_SliceInPlace(ref list, 0, 0, 10);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_SliceInPlace_EveryTenth));
+        Assert.Equal(TargetSize / 10, ParseArray(list).Count);
+    }
+
+    #endregion
+
+    #region List_ShuffleInPlace (3)
+
+    [Fact]
+    public void LoadInPlace_ShuffleInPlace_Seed42()
+    {
+        string list = LargeJsonList;
+        var sw = Stopwatch.StartNew();
+        _sut.List_ShuffleInPlace(ref list, 42);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_ShuffleInPlace_Seed42));
+        AssertShufflePreservesElements(list, TargetSize);
+    }
+
+    [Fact]
+    public void LoadInPlace_ShuffleInPlace_CryptoSeed()
+    {
+        string list = LargeJsonList;
+        var sw = Stopwatch.StartNew();
+        _sut.List_ShuffleInPlace(ref list, 0);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_ShuffleInPlace_CryptoSeed));
+        AssertShufflePreservesElements(list, TargetSize);
+    }
+
+    [Fact]
+    public void LoadInPlace_ShuffleInPlace_HalfList()
+    {
+        string list = LargeJsonListHalf;
+        var sw = Stopwatch.StartNew();
+        _sut.List_ShuffleInPlace(ref list, 7);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_ShuffleInPlace_HalfList));
+        AssertShufflePreservesElements(list, TargetSize / 2);
+    }
+
+    #endregion
+
+    #region List_UpdateAtInPlace (3)
+
+    [Fact]
+    public void LoadInPlace_UpdateAtInPlace_Middle()
+    {
+        string list = LargeJsonList;
+        var sw = Stopwatch.StartNew();
+        _sut.List_UpdateAtInPlace(ref list, TargetSize / 2, "Status", "\"Mid\"", out var previous);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_UpdateAtInPlace_Middle));
+        Assert.NotEqual("null", previous);
+        var arr = ParseArray(list);
+        Assert.Equal("Mid", arr[TargetSize / 2]!["Status"]!.ToString());
+    }
+
+    [Fact]
+    public void LoadInPlace_UpdateAtInPlace_NestedPath()
+    {
+        string list = LargeJsonList;
+        var sw = Stopwatch.StartNew();
+        _sut.List_UpdateAtInPlace(ref list, 500, "Meta.Region", "\"ZZ\"", out var previous);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_UpdateAtInPlace_NestedPath));
+        Assert.NotEqual("null", previous);
+        var arr = ParseArray(list);
+        Assert.Equal("ZZ", arr[500]!["Meta"]!["Region"]!.ToString());
+    }
+
+    [Fact]
+    public void LoadInPlace_UpdateAtInPlace_NegativeIndex()
+    {
+        string list = LargeJsonList;
+        var sw = Stopwatch.StartNew();
+        _sut.List_UpdateAtInPlace(ref list, -1, "Status", "\"Tail\"", out var previous);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(LoadInPlace_UpdateAtInPlace_NegativeIndex));
+        Assert.NotEqual("null", previous);
+        var arr = ParseArray(list);
+        Assert.Equal("Tail", arr[TargetSize - 1]!["Status"]!.ToString());
+    }
+
+    #endregion
 }
