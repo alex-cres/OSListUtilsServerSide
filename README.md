@@ -8,7 +8,7 @@ Advanced list manipulation utilities — index-based pops, condition-based pops,
 
 ## Objective
 
-OutSystems lists lack common collection operations found in general-purpose languages (pop by index, pop by condition, zip, group-by, set difference, chunk, distinct-by, slice, shuffle, in-place update). Implementing these natively requires verbose nested `For Each` loops with manual index tracking. This component provides twenty-eight server-side actions that cover the most common gaps in a single call each — fourteen classic Input + Output actions, and fourteen `*InPlace` variants that take the primary list as a single **Input/Output** parameter so the caller's variable is mutated directly.
+OutSystems lists lack common collection operations found in general-purpose languages (pop by index, pop by condition, zip, group-by, set difference, chunk, distinct-by, slice, shuffle, in-place update). Implementing these natively requires verbose nested `For Each` loops with manual index tracking. This component provides fourteen server-side actions that cover the most common gaps in a single call each.
 
 The JSON-based actions work with **any OutSystems Structure** — the caller serializes the list with `JSON Serialize`, passes it to the action, and deserializes the result. This generic approach eliminates the need for per-structure custom extensions.
 
@@ -198,46 +198,6 @@ Sets a single property of the item at a given `Index`. Returns the modified list
 | `NewValueJson` | `string` (JSON) | Input | The new value as JSON (`"Active"`, `42`, `true`, `{"City":"Lisbon"}`, `null`). Falls back to a raw string when the value is not valid JSON. |
 | `UpdatedListJson` | `string` (JSON array) | Output | The updated JSON array with the property changed. |
 | `PreviousValueJson` | `string` (JSON) | Output | The previous JSON value of the modified property, or `"null"` when: the index was out of range, `PropertyName` was empty, the item was not an object, the property did not exist, OR the property existed with a JSON `null` value (the last two cases are indistinguishable). |
-
----
-
-## In-Place (Input/Output) Variants
-
-Every one of the fourteen actions above has a matching `*InPlace` variant that takes the primary list as a single **Input/Output** parameter (C# `ref`, mapped to OutSystems In/Out). The caller's variable is mutated directly — no separate output list is produced and no reassignment is needed at the call site. Secondary outputs (`PoppedElementJson`, `PoppedElementsJson`, `PreviousValueJson`) stay as normal Output parameters.
-
-Behaviour is byte-for-byte identical to the base action; only the parameter direction changes.
-
-| Base action | In-place variant | Ref parameter | Kept as Output |
-|-------------|------------------|---------------|----------------|
-| `List_Pop` | `List_PopInPlace` | `SourceListJson` | `PoppedElementJson` |
-| `List_PopMultiple` | `List_PopMultipleInPlace` | `SourceListJson` | `PoppedElementsJson` |
-| `List_PopByCondition` | `List_PopByConditionInPlace` | `SourceListJson` | `PoppedElementJson` |
-| `List_PopMultipleByCondition` | `List_PopMultipleByConditionInPlace` | `SourceListJson` | `PoppedElementsJson` |
-| `List_PopByConditions` | `List_PopByConditionsInPlace` | `SourceListJson` | `PoppedElementJson` |
-| `List_PopMultipleByConditions` | `List_PopMultipleByConditionsInPlace` | `SourceListJson` | `PoppedElementsJson` |
-| `List_Zip` | `List_ZipInPlace` | `ListAJson` | *(none)* |
-| `List_GroupBy` | `List_GroupByInPlace` | `SourceListJson` | *(none)* |
-| `List_Difference` | `List_DifferenceInPlace` | `ListAJson` | *(none)* |
-| `List_Chunk` | `List_ChunkInPlace` | `SourceListJson` | *(none)* |
-| `List_DistinctBy` | `List_DistinctByInPlace` | `SourceListJson` | *(none)* |
-| `List_Slice` | `List_SliceInPlace` | `SourceListJson` | *(none)* |
-| `List_Shuffle` | `List_ShuffleInPlace` | `SourceListJson` | *(none)* |
-| `List_UpdateAt` | `List_UpdateAtInPlace` | `SourceListJson` | `PreviousValueJson` |
-
-**When to use which:**
-
-- **Base actions** (Input + Output) — you want to keep the original list and produce a transformed copy, or you want to chain transformations without mutating a shared variable.
-- **`*InPlace` variants** (Input/Output) — you want to shrink the OutSystems flow: one node, one variable, no reassignment. The original list is not preserved after the call.
-
-**Consumer example (OSY pseudo-flow):**
-
-```
-// Base pattern — two variables:
-MyList = ListUtils.List_Shuffle(MyList, 42).ShuffledListJson
-
-// In-place pattern — one variable, mutated in place:
-ListUtils.List_ShuffleInPlace(MyList, 42)
-```
 
 ---
 
@@ -437,7 +397,7 @@ Builds all four projects: ODC library, O11 library, ODC tests, O11 tests.
 dotnet test ListUtils.sln
 ```
 
-Runs 794 tests (397 ODC net10.0 + 397 O11 net48) — 190 functional + 207 load tests per platform.
+Runs 620 tests (310 ODC net10.0 + 310 O11 net48) — 145 functional + 165 load tests per platform.
 
 ### Package (ODC)
 

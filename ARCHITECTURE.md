@@ -35,13 +35,13 @@ Primary class: `ListUtils`, implementing `IListUtils`.
 
 | File | Type | Purpose |
 |------|------|---------|
-| [IListUtils.cs](ListUtils/IListUtils.cs) | `[OSInterface]` | Declares 28 actions: 14 base actions (`List_Pop`, `List_PopMultiple`, `List_PopByCondition`, `List_PopMultipleByCondition`, `List_PopByConditions`, `List_PopMultipleByConditions`, `List_Zip`, `List_GroupBy`, `List_Difference`, `List_Chunk`, `List_DistinctBy`, `List_Slice`, `List_Shuffle`, `List_UpdateAt`) + 14 `*InPlace` variants that use `ref string` on the primary list parameter (mapped to OutSystems Input/Output) |
+| [IListUtils.cs](ListUtils/IListUtils.cs) | `[OSInterface]` | Declares 14 actions: `List_Pop`, `List_PopMultiple`, `List_PopByCondition`, `List_PopMultipleByCondition`, `List_PopByConditions`, `List_PopMultipleByConditions`, `List_Zip`, `List_GroupBy`, `List_Difference`, `List_Chunk`, `List_DistinctBy`, `List_Slice`, `List_Shuffle`, `List_UpdateAt` |
 
 No `[OSStructure]` types — every exposed parameter is a primitive (`string`, `int`, `bool`). All list data is passed as JSON strings (`Text`), which keeps the interface generic across any consumer Structure.
 
 ### Implementation files (partial class)
 
-`ListUtils` is a `public partial class` split across seven files by action group. The shell holds the class declaration + `IListUtils` implementation marker; each partial contributes one concern.
+`ListUtils` is a `public partial class` split across six files by action group. The shell holds the class declaration + `IListUtils` implementation marker; each partial contributes one concern.
 
 | File | Responsibility |
 |------|---------------|
@@ -50,7 +50,6 @@ No `[OSStructure]` types — every exposed parameter is a primitive (`string`, `
 | [ListUtils.Condition.cs](ListUtils/ListUtils.Condition.cs) | Condition-based actions: `List_PopByCondition`, `List_PopMultipleByCondition`, `List_PopByConditions`, `List_PopMultipleByConditions` |
 | [ListUtils.Relational.cs](ListUtils/ListUtils.Relational.cs) | Relational / set actions: `List_Zip`, `List_GroupBy`, `List_Difference` (including all fast-path branches) |
 | [ListUtils.Transform.cs](ListUtils/ListUtils.Transform.cs) | Transformation / randomization actions: `List_Chunk`, `List_DistinctBy`, `List_Slice`, `List_Shuffle`, `List_UpdateAt` (plus private helpers for slice normalization, CSPRNG-vs-seeded shuffle, and nested-path write-back with object-only auto-creation) |
-| [ListUtils.InPlace.cs](ListUtils/ListUtils.InPlace.cs) | The 14 `*InPlace` variants. Each is a thin delegate: call the base action, then assign its output list back to the `ref` parameter. Secondary outputs (`PoppedElementJson`, `PoppedElementsJson`, `PreviousValueJson`) flow through unchanged. |
 | [ListUtils.Helpers.cs](ListUtils/ListUtils.Helpers.cs) | `GetPropertyValue` + `NavigateSegment` path walker, `MatchesCondition` operator evaluator, `ParseConditions` + `EvaluateConditions` multi-condition engine, `TryCompareNumeric` numeric comparator, `ToCamelCase` fallback, nested `Condition` type, shared `JsonSerializerOptions` |
 
 ### Runtime dependencies
@@ -157,7 +156,7 @@ Target framework: **`net48`**, `LangVersion=10`. Namespace: `OutSystems.NssListU
 
 | File | Type | Purpose |
 |------|------|---------|
-| [IssListUtils.cs](ListUtils.O11/IssListUtils.cs) | Interface | Declares 28 methods: 14 base `MssList_*` (`MssList_Pop`, `MssList_PopMultiple`, `MssList_PopByCondition`, `MssList_PopMultipleByCondition`, `MssList_PopByConditions`, `MssList_PopMultipleByConditions`, `MssList_Zip`, `MssList_GroupBy`, `MssList_Difference`, `MssList_Chunk`, `MssList_DistinctBy`, `MssList_Slice`, `MssList_Shuffle`, `MssList_UpdateAt`) + 14 `MssList_*InPlace` variants using `ref string` on the primary list parameter |
+| [IssListUtils.cs](ListUtils.O11/IssListUtils.cs) | Interface | Declares `MssList_Pop`, `MssList_PopMultiple`, `MssList_PopByCondition`, `MssList_PopMultipleByCondition`, `MssList_PopByConditions`, `MssList_PopMultipleByConditions`, `MssList_Zip`, `MssList_GroupBy`, `MssList_Difference`, `MssList_Chunk`, `MssList_DistinctBy`, `MssList_Slice`, `MssList_Shuffle`, `MssList_UpdateAt` |
 
 No record types — every exposed parameter is a primitive (`string`, `int`, `bool`). Lists cross the boundary as JSON strings, identical to the ODC surface.
 
@@ -172,7 +171,6 @@ No record types — every exposed parameter is a primitive (`string`, `int`, `bo
 | [Actions/ListUtilsActions.Condition.cs](ListUtils.O11/Actions/ListUtilsActions.Condition.cs) | `MssList_PopByCondition`, `MssList_PopMultipleByCondition`, `MssList_PopByConditions`, `MssList_PopMultipleByConditions` |
 | [Actions/ListUtilsActions.Relational.cs](ListUtils.O11/Actions/ListUtilsActions.Relational.cs) | `MssList_Zip`, `MssList_GroupBy`, `MssList_Difference` (including all fast-path branches) |
 | [Actions/ListUtilsActions.Transform.cs](ListUtils.O11/Actions/ListUtilsActions.Transform.cs) | `MssList_Chunk`, `MssList_DistinctBy`, `MssList_Slice`, `MssList_Shuffle`, `MssList_UpdateAt` — mirrors the ODC `ListUtils.Transform.cs` |
-| [Actions/ListUtilsActions.InPlace.cs](ListUtils.O11/Actions/ListUtilsActions.InPlace.cs) | The 14 `MssList_*InPlace` delegating implementations. Each calls the base `MssList_*` method with a local `out` variable, then writes it back to the `ref` parameter. |
 | [Actions/ListUtilsActions.Helpers.cs](ListUtils.O11/Actions/ListUtilsActions.Helpers.cs) | Path walker, condition evaluator, multi-condition engine, `TryCompareNumeric`, `ToCamelCase`, nested `Condition` type, shared `JsonSerializerOptions` |
 
 Logic is functionally identical to the ODC implementation. Platform-specific differences:
@@ -195,7 +193,7 @@ Declared in [ListUtils.O11.csproj](ListUtils.O11/ListUtils.O11.csproj).
 
 ## 4. Test projects
 
-190 functional tests + 207 load tests per platform × 2 = **794 tests total**. 13 test files per project.
+145 functional tests + 165 load tests per platform × 2 = **620 tests total**. 12 test files per project.
 
 Load tests use a shared 10,000-element complex JSON structure (nested objects, arrays, mixed types) and assert each Server Action completes in under **300 ms** in Release. Every load test also verifies the **result correctness** (expected element count or the invariant `updated + popped = source`) parsed outside the stopwatch so it does not count against the timing budget. `List_Difference` with `Contains` uses a 1,000-element pair because the substring operator is inherently O(A×B).
 
@@ -230,8 +228,7 @@ All actions clone JSON nodes with `JsonNode.DeepClone()` (System.Text.Json 8.0+)
 | MultiConditionTests.cs | AND/OR combinations, nested-path in condition, empty conditions guard, per-condition case sensitivity, mixed operators |
 | SearchDirectionTests.cs | SearchFromEnd on List_PopByCondition and List_PopByConditions — pops last match vs first match; verifies list order preserved after removal |
 | TransformTests.cs | 20 functional tests — `List_Chunk` (regular / uneven / oversized / negative / empty), `List_DistinctBy` (property key, nested path, empty PropertyName full-item dedupe, null-key bucket, case-sensitive vs insensitive), `List_Slice` (positive / negative Start / negative End / `End == 0` sentinel / `Step == 0` / negative Step reverse), `List_Shuffle` (`Seed != 0` reproducibility, `Seed == 0` CSPRNG variance, source not mutated), `List_UpdateAt` (positive / negative Index, nested path, auto-created missing objects, missing array short-circuit, PreviousValueJson for missing property vs JSON `null`) |
-| InPlaceTests.cs | 45 functional tests — 20 ref-mutation identity + 11 full parity matrix (every `*InPlace` variant vs its base action, asserting byte-equal primary + secondary output) + 14 ref-specific behaviour tests (chained pops reduce the list sequentially; chained shuffle with the same seed is shuffle-of-the-shuffle; fresh input + same seed is fully deterministic across three calls; `List_ChunkInPlace` then `List_SliceInPlace` composes; `List_DistinctByInPlace` then `List_GroupByInPlace` composes; `SearchFromEnd` toggle across chained pops; secondary output is independent of the ref value; `UpdateAtInPlace` PreviousValueJson is a snapshot before the mutation; chained UpdateAt + Pop composes; malformed JSON on `ShuffleInPlace` / `SliceInPlace` throws `JsonException`; `ZipInPlace` / `DifferenceInPlace` do not touch ListB; ref assignment produces a new string reference, not in-place mutation of the caller's original snapshot). |
-| LoadTests.cs | 207 load tests — 165 base + 42 InPlace (3 per InPlace variant across 14 variants) — driven by a shared 10,000-element complex JSON list. Each test asserts elapsed time < 300 ms in Release. `List_Difference` with `Contains` uses a 1,000-element pair (slow-path). InPlace load tests take an O(1) local copy of the shared static input, then pass it by `ref` — the shared data is never mutated across tests. |
+| LoadTests.cs | 165 load tests — 10 per Server Action across the fourteen actions plus repeated fast-path variants — driven by a shared 10,000-element complex JSON list. Each test asserts elapsed time < 300 ms in Release. `List_Difference` with `Contains` uses a 1,000-element pair (slow-path). |
 
 Test data is inline string literals — **no binary test files are committed**.
 
@@ -251,16 +248,13 @@ Test data is inline string literals — **no binary test files are committed**.
 | MultiConditionTests.cs | Byte-for-byte identical to ODC |
 | SearchDirectionTests.cs | Byte-for-byte identical to ODC |
 | TransformTests.cs | Byte-for-byte identical to ODC |
-| InPlaceTests.cs | Byte-for-byte identical to ODC |
 | LoadTests.cs | Byte-for-byte identical to ODC |
 
 The adapter pattern ensures `new ListUtils()` resolves to the wrapper in the
 O11 test namespace, delegating to `CssListUtils` internally. This allows all
 test files to compile unchanged on both platforms. The `internal IListUtils`
 interface and its wrapper in `ListUtils.O11.Tests/TestHelpers.cs` include
-adapter methods for all 28 actions (14 base + 14 `*InPlace`), with the InPlace
-adapters forwarding the `ref string` parameter through to the corresponding
-`MssList_*InPlace` methods.
+adapter methods for all fourteen actions.
 
 ---
 
