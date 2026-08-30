@@ -1,0 +1,208 @@
+ListUtilsServerSide v0.6.0 - N-key composite group-by / cogroup family
+Released 2026-08-30
+
+
+OVERVIEW
+--------
+
+v0.6.0 generalises the single-key group-by and cogroup actions to
+composite keys of arbitrary size. Three new Server Actions bring the
+total to 32.
+
+Composite keys are joined internally with the ASCII Unit Separator
+(U+001F) so distinct tuples cannot collide even when their string
+representations share prefixes. Missing key values fall back to the
+string "Unknown" per key column. Output key labels default to
+"Key0", "Key1", ... when the caller does not supply enough KeyNames
+entries.
+
+No new NuGet dependencies. No behaviour change to any existing action.
+
+
+NEW SERVER ACTIONS
+------------------
+
+List_GroupByMultiple
+  Input:  sourceListJson (Text), propertyPaths (List of Text),
+          keyNames (List of Text), itemsFieldName (Text),
+          caseSensitive (Boolean)
+  Output: groupedListJson (Text)
+  N-key generalisation of List_GroupBy. Groups a JSON list by an
+  ordered list of property paths (composite key). Each output group
+  emits one field per key column, labelled by keyNames[i] (defaulting
+  to "Key0", "Key1", ...), plus an items array named itemsFieldName
+  (defaulting to "Items"). Missing key values fall back to "Unknown"
+  for that key column. Groups appear in first-seen order.
+
+List_ZipGroupByMultiple
+  Input:  listAJson (Text), listBJson (Text),
+          keyPropertiesA (List of Text), keyPropertiesB (List of Text),
+          keyNames (List of Text), keyNameA (Text), keyNameB (Text),
+          caseSensitive (Boolean)
+  Output: groupedListJson (Text)
+  N-key generalisation of List_ZipGroupBy. keyPropertiesA and
+  keyPropertiesB must have the same length N. Each output group holds
+  one field per key column (labelled by keyNames[i], defaulting to
+  "Key0", "Key1", ...) plus two named arrays (keyNameA / keyNameB,
+  defaulting to "ItemsA" / "ItemsB"). Ordering follows A's first-seen
+  composite keys, then any B-only composite keys.
+
+List_ZipManyGroupByMultiple
+  Input:  listsJson (List of Text) [M entries],
+          keyCount (Integer) [N],
+          keyProperties (List of Text) [M*N in list-major order],
+          keyNames (List of Text) [N],
+          itemsFieldNames (List of Text) [M],
+          caseSensitive (Boolean)
+  Output: groupedListJson (Text)
+  M-list, N-key cogroup. keyProperties is a FLAT list in list-major
+  order: entries [i*keyCount .. i*keyCount + keyCount - 1] are the N
+  key paths applied to listsJson[i]. Each output group emits one field
+  per key column plus M named arrays (itemsFieldNames[i], defaulting
+  to "Items0", "Items1", ...). Groups appear in first-seen order across
+  all inputs.
+
+
+IMPLEMENTATION
+--------------
+
+ODC:
+  ListUtils.Relational.cs   - List_GroupByMultiple, List_ZipGroupByMultiple
+  ListUtils.ZipMany.cs      - List_ZipManyGroupByMultiple
+  ListUtils.Helpers.cs      - BuildCompositeKey, KeyLabel
+
+O11:
+  Actions/ListUtilsActions.Relational.cs   - parallel additions
+  Actions/ListUtilsActions.ZipMany.cs      - parallel additions
+  Actions/ListUtilsActions.Helpers.cs      - parallel helpers
+
+All O11 code is net48-safe: no target-typed new(), no range syntax,
+explicit System.Collections.Generic / System.Text.Json usings.
+
+
+TESTS
+-----
+
+Suite grew from 922 to 984 tests (492 ODC + 492 O11).
+
+  V060Tests.cs               32 new functional tests
+                             (16 ODC + 16 O11)
+
+    Happy paths           2-key and 3-key grouping, cogroup with
+                          disjoint keys, M=3 lists / N=2 keys.
+    Edge cases            Empty source, empty key list, KeyNames
+                          shorter than PropertyPaths, null KeyNames,
+                          mismatched KeyPropertiesA / KeyPropertiesB
+                          length.
+    Semantic contracts    Composite-key collision safety via Unit
+                          Separator, "Unknown" bucket for missing
+                          values, per-list case sensitivity, default
+                          label fallback Key0, Key1, ...
+
+  LoadTests.cs               30 new load tests appended
+                             (15 ODC + 15 O11, 5 per new action)
+                             Driven by the shared 10,000-element JSON
+                             list; each asserts elapsed time < 300 ms
+                             in Release. Nested-key composite grouping
+                             uses the 1,000-element SlowPathList pair
+                             to stay under budget on both platforms.
+
+  ListUtils.O11.Tests/TestHelpers.cs
+                             Adapter methods for all three new actions
+                             added to the internal IListUtils shadow
+                             interface and its wrapper so ODC and O11
+                             test files stay byte-for-byte identical.
+
+
+MICRO-BENCHMARK HARNESS (tools/LoadTest/)
+-----------------------------------------
+
+New standalone console tool tools/LoadTest/LoadTest.csproj (net10.0,
+project reference to ListUtils). Exercises every one of the 32
+[OSAction] methods for a configurable iteration count (default 1,000)
+and reports Min / Mean / StdDev / Q1 / Median / Q3 / P80 / P95 / Max
+per action.
+
+Two scenarios per run:
+  Normal      - list sizes drawn from a truncated N(mean=10,000,
+                stdev=5,000) clamped to [1, 20,000]
+  Worst-case  - list sizes fixed at 20,000
+
+A final comparison table prints Normal vs Worst medians, P95s and
+their ratios so quadratic behaviour stands out.
+
+Files:
+  Program.cs        CLI + Box-Muller truncated-normal sampler +
+                    scenario driver.
+  Benchmarks.cs     One entry per [OSAction] (add new actions here).
+  DataFactory.cs    Hand-rolled JSON list generator + pre-chunked
+                    input for List_Flatten.
+  Stats.cs          Linear-interpolation percentiles.
+  Reporter.cs       Console tables + optional CSV output.
+
+CLI flags:
+  --iterations <n>       Iterations per action (default 1,000).
+  --seed <n>             RNG seed for reproducible runs.
+  --csv <path>           Emit results as CSV in addition to console.
+  --only <a,b,c>         Restrict to a comma-separated action subset.
+
+The tool is NOT referenced by ListUtils.sln, runs in Release / server
+GC on the harness side only, and produces no ZIP artifact. Detailed
+usage in tools/LoadTest/README.md.
+
+
+COMPATIBILITY
+-------------
+
+  Existing 29 actions       Unchanged behaviour, unchanged signatures.
+  Existing Structures       Unchanged.
+  Operator strings          Unchanged (Operators / LogicalOperators /
+                            AggregateOperations constants still apply).
+  Symbol aliases            Still accepted (!=, >, <, >=, <=).
+  Empty inputs              Return empty results (never exceptions),
+                            same as prior versions.
+
+No migration required. Existing consumers see no behavioural change.
+
+
+DEPENDENCIES
+------------
+
+ODC:
+  OutSystems.ExternalLibraries.SDK  1.5.0
+  System.Text.Json                  runtime-provided
+  Target framework                  net10.0
+
+O11:
+  OutSystems Platform DLLs          provided by Integration Studio
+  System.Text.Json                  8.0.5 (bundled in XIF)
+  Target framework                  net48
+
+
+BUILD AND PACKAGE
+-----------------
+
+ODC:
+  cd ListUtils
+  .\generate_upload_package.ps1
+  Upload the resulting ZIP to ODC Portal - External Logic.
+
+O11:
+  Open the XIF in Integration Studio, click 1-Click Publish, or
+  build in Visual Studio and upload the XIF via Service Center.
+
+
+KNOWN LIMITATIONS
+-----------------
+
+Unchanged from v0.5.0. See docs/platform/odc/limitations.md and
+docs/platform/o11/limitations.md.
+
+Composite keys are encoded internally via the ASCII Unit Separator
+(U+001F). The separator is an internal implementation detail - callers
+never see it in output; the returned group objects carry one plain
+field per key column (labelled by keyNames[i]).
+
+Missing key values collapse into a shared "Unknown" bucket per key
+column. Callers that need to distinguish "missing" from a literal
+"Unknown" string must pre-process the source list.
