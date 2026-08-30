@@ -28,6 +28,14 @@ Composite-key encoding uses the ASCII **Unit Separator** (`\u001F`) between key 
 - Adapter methods for all three new actions added to `internal IListUtils` and its wrapper in `ListUtils.O11.Tests/TestHelpers.cs` so ODC and O11 test files remain byte-for-byte identical.
 - Total suite grew from 922 to **984 tests** (492 ODC + 492 O11).
 
+### Micro-benchmark harness (`tools/LoadTest/`)
+
+- New standalone console tool `tools/LoadTest/LoadTest.csproj` (net10.0, project reference to `ListUtils`) that exercises every one of the 33 `[OSAction]` methods for a configurable iteration count (default 1 000) and reports **Min / Mean / StdDev / Q1 / Median / Q3 / P80 / P95 / Max** per action.
+- Two scenarios per run: (a) **Normal** — list sizes drawn from a truncated `N(mean=10 000, stdev=5 000)` clamped to `[1, 20 000]`; (b) **Worst-case** — list sizes fixed at 20 000. A final comparison table prints Normal vs Worst medians, P95s and their ratios so quadratic behaviour stands out.
+- Files: `Program.cs` (CLI + Box-Muller truncated-normal sampler + scenario driver), `Benchmarks.cs` (one entry per `[OSAction]`, add new actions here), `DataFactory.cs` (hand-rolled JSON list generator + pre-chunked input for `List_Flatten`), `Stats.cs` (linear-interpolation percentiles), `Reporter.cs` (console tables + optional CSV output).
+- CLI: `--iterations`, `--seed`, `--csv <path>`, `--only <a,b,c>`. Detailed usage in `tools/LoadTest/README.md`.
+- Non-shipping — the tool is not referenced by `ListUtils.sln`, is Release-mode / server-GC on the harness side only, and produces no ZIP artifact.
+
 ## Changed
 
 *(nothing yet)*
