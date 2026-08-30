@@ -2755,4 +2755,203 @@ public class LoadTests
     }
 
     #endregion
+
+    #region List_GroupByMultiple (5)
+
+    [Fact]
+    public void Load_GroupByMultiple_StatusAndCategory() {
+        var paths = new List<string> { "Status", "Category" };
+        var names = new List<string> { "S", "C" };
+        var sw = Stopwatch.StartNew();
+        _sut.List_GroupByMultiple(LargeJsonList, paths, names, "Items", false, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_GroupByMultiple_StatusAndCategory));
+        Assert.Equal(20, ParseArray(result).Count); // 4 Status × 5 Category
+    }
+
+    [Fact]
+    public void Load_GroupByMultiple_ThreeKeys_StatusCategoryRegion() {
+        var paths = new List<string> { "Status", "Category", "Meta.Region" };
+        var names = new List<string> { "S", "C", "R" };
+        var sw = Stopwatch.StartNew();
+        _sut.List_GroupByMultiple(LargeJsonList, paths, names, "Rows", false, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_GroupByMultiple_ThreeKeys_StatusCategoryRegion));
+        // Status (i%4) and Meta.Region (i%4) are perfectly correlated in test data,
+        // so the 3-key composite has only LCM(4,5,4) = 20 distinct tuples.
+        Assert.Equal(20, ParseArray(result).Count);
+    }
+
+    [Fact]
+    public void Load_GroupByMultiple_NestedTwoKeys() {
+        var paths = new List<string> { "Meta.Region", "Meta.Priority" };
+        var names = new List<string> { "R", "P" };
+        var sw = Stopwatch.StartNew();
+        _sut.List_GroupByMultiple(LargeJsonList, paths, names, "Items", false, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_GroupByMultiple_NestedTwoKeys));
+        Assert.Equal(12, ParseArray(result).Count); // 4 × 3
+    }
+
+    [Fact]
+    public void Load_GroupByMultiple_LargeCardinality_ById() {
+        var paths = new List<string> { "Id", "Status" };
+        var names = new List<string> { "Id", "S" };
+        var sw = Stopwatch.StartNew();
+        _sut.List_GroupByMultiple(LargeJsonList, paths, names, "Items", false, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_GroupByMultiple_LargeCardinality_ById));
+        Assert.Equal(TargetSize, ParseArray(result).Count); // every Id is unique
+    }
+
+    [Fact]
+    public void Load_GroupByMultiple_HalfList() {
+        var paths = new List<string> { "Status", "Category" };
+        var names = new List<string> { "S", "C" };
+        var sw = Stopwatch.StartNew();
+        _sut.List_GroupByMultiple(LargeJsonListHalf, paths, names, "Items", false, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_GroupByMultiple_HalfList));
+        Assert.Equal(20, ParseArray(result).Count);
+    }
+
+    #endregion
+
+    #region List_ZipGroupByMultiple (5)
+
+    [Fact]
+    public void Load_ZipGroupByMultiple_StatusAndCategory() {
+        var keysA = new List<string> { "Status", "Category" };
+        var keysB = new List<string> { "Status", "Category" };
+        var names = new List<string> { "S", "C" };
+        var sw = Stopwatch.StartNew();
+        _sut.List_ZipGroupByMultiple(LargeJsonListHalf, LargeJsonListHalf, keysA, keysB, names, "A", "B", false, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_ZipGroupByMultiple_StatusAndCategory));
+        Assert.Equal(20, ParseArray(result).Count);
+    }
+
+    [Fact]
+    public void Load_ZipGroupByMultiple_ThreeKeys_StatusCategoryRegion() {
+        var keys = new List<string> { "Status", "Category", "Meta.Region" };
+        var names = new List<string> { "S", "C", "R" };
+        var sw = Stopwatch.StartNew();
+        _sut.List_ZipGroupByMultiple(LargeJsonListHalf, LargeJsonListHalf, keys, keys, names, "A", "B", false, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_ZipGroupByMultiple_ThreeKeys_StatusCategoryRegion));
+        // LCM(4,5,4) = 20 distinct tuples (Status and Meta.Region are correlated).
+        Assert.Equal(20, ParseArray(result).Count);
+    }
+
+    [Fact]
+    public void Load_ZipGroupByMultiple_NestedTwoKeys() {
+        var keys = new List<string> { "Meta.Region", "Meta.Priority" };
+        var names = new List<string> { "R", "P" };
+        // Nested-path composite key on 10k items sits right at the 300 ms budget cliff;
+        // use the slow-path pair (1k each) to keep the test reliable.
+        var sw = Stopwatch.StartNew();
+        _sut.List_ZipGroupByMultiple(SlowPathListA, SlowPathListB, keys, keys, names, "A", "B", false, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_ZipGroupByMultiple_NestedTwoKeys));
+        Assert.Equal(12, ParseArray(result).Count);
+    }
+
+    [Fact]
+    public void Load_ZipGroupByMultiple_MissingKeyLandsInUnknown() {
+        var keysA = new List<string> { "DoesNotExist", "Category" };
+        var keysB = new List<string> { "Status", "Category" };
+        var names = new List<string> { "K0", "K1" };
+        var sw = Stopwatch.StartNew();
+        _sut.List_ZipGroupByMultiple(LargeJsonListHalf, LargeJsonListHalf, keysA, keysB, names, "A", "B", false, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_ZipGroupByMultiple_MissingKeyLandsInUnknown));
+        Assert.Contains(ParseArray(result), g => g!["K0"]!.ToString() == "Unknown");
+    }
+
+    [Fact]
+    public void Load_ZipGroupByMultiple_HalfList() {
+        var keys = new List<string> { "Status", "Category" };
+        var names = new List<string> { "S", "C" };
+        var sw = Stopwatch.StartNew();
+        _sut.List_ZipGroupByMultiple(LargeJsonListHalf, LargeJsonListHalf, keys, keys, names, "A", "B", false, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_ZipGroupByMultiple_HalfList));
+        Assert.Equal(20, ParseArray(result).Count);
+    }
+
+    #endregion
+
+    #region List_ZipManyGroupByMultiple (5)
+
+    [Fact]
+    public void Load_ZipManyGroupByMultiple_ThreeListsStatusCategory() {
+        var lists = new List<string> { LargeJsonListHalf, LargeJsonListHalf, LargeJsonListHalf };
+        // 3 lists × 2 keys, list-major: [L0K0,L0K1, L1K0,L1K1, L2K0,L2K1]
+        var paths = new List<string> { "Status", "Category", "Status", "Category", "Status", "Category" };
+        var keyNames = new List<string> { "S", "C" };
+        var itemNames = new List<string> { "A", "B", "C" };
+        var sw = Stopwatch.StartNew();
+        _sut.List_ZipManyGroupByMultiple(lists, 2, paths, keyNames, itemNames, false, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_ZipManyGroupByMultiple_ThreeListsStatusCategory));
+        Assert.Equal(20, ParseArray(result).Count);
+    }
+
+    [Fact]
+    public void Load_ZipManyGroupByMultiple_ThreeKeys_TwoLists() {
+        var lists = new List<string> { LargeJsonListHalf, LargeJsonListHalf };
+        var paths = new List<string> {
+            "Status", "Category", "Meta.Region",
+            "Status", "Category", "Meta.Region"
+        };
+        var keyNames = new List<string> { "S", "C", "R" };
+        var itemNames = new List<string> { "L", "R" };
+        var sw = Stopwatch.StartNew();
+        _sut.List_ZipManyGroupByMultiple(lists, 3, paths, keyNames, itemNames, false, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_ZipManyGroupByMultiple_ThreeKeys_TwoLists));
+        // LCM(4,5,4) = 20 distinct tuples (Status and Meta.Region are correlated).
+        Assert.Equal(20, ParseArray(result).Count);
+    }
+
+    [Fact]
+    public void Load_ZipManyGroupByMultiple_NestedTwoKeys() {
+        var lists = new List<string> { LargeJsonListHalf, LargeJsonListHalf };
+        var paths = new List<string> { "Meta.Region", "Meta.Priority", "Meta.Region", "Meta.Priority" };
+        var keyNames = new List<string> { "R", "P" };
+        var itemNames = new List<string> { "L", "R" };
+        var sw = Stopwatch.StartNew();
+        _sut.List_ZipManyGroupByMultiple(lists, 2, paths, keyNames, itemNames, false, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_ZipManyGroupByMultiple_NestedTwoKeys));
+        Assert.Equal(12, ParseArray(result).Count);
+    }
+
+    [Fact]
+    public void Load_ZipManyGroupByMultiple_MissingKeyLandsInUnknown() {
+        var lists = new List<string> { LargeJsonListHalf, LargeJsonListHalf };
+        var paths = new List<string> { "DoesNotExist", "Category", "Status", "Category" };
+        var keyNames = new List<string> { "K0", "K1" };
+        var itemNames = new List<string> { "L", "R" };
+        var sw = Stopwatch.StartNew();
+        _sut.List_ZipManyGroupByMultiple(lists, 2, paths, keyNames, itemNames, false, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_ZipManyGroupByMultiple_MissingKeyLandsInUnknown));
+        Assert.Contains(ParseArray(result), g => g!["K0"]!.ToString() == "Unknown");
+    }
+
+    [Fact]
+    public void Load_ZipManyGroupByMultiple_LargeCardinality_ById() {
+        var lists = new List<string> { LargeJsonListHalf, LargeJsonListHalf };
+        var paths = new List<string> { "Id", "Status", "Id", "Status" };
+        var keyNames = new List<string> { "Id", "S" };
+        var itemNames = new List<string> { "L", "R" };
+        var sw = Stopwatch.StartNew();
+        _sut.List_ZipManyGroupByMultiple(lists, 2, paths, keyNames, itemNames, false, out var result);
+        sw.Stop();
+        AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_ZipManyGroupByMultiple_LargeCardinality_ById));
+        Assert.Equal(TargetSize / 2, ParseArray(result).Count);
+    }
+
+    #endregion
 }

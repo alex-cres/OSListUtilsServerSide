@@ -487,7 +487,7 @@ Builds all four projects: ODC library, O11 library, ODC tests, O11 tests.
 dotnet test ListUtils.sln
 ```
 
-Runs 954 tests (477 ODC net10.0 + 477 O11 net48) — 247 functional + 230 load tests per platform.
+Runs 984 tests (492 ODC net10.0 + 492 O11 net48) — 247 functional + 245 load tests per platform.
 
 ### Package (ODC)
 

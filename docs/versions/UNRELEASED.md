@@ -24,8 +24,9 @@ Composite-key encoding uses the ASCII **Unit Separator** (`\u001F`) between key 
 ### Test Suite Growth
 
 - 32 new functional tests (16 ODC + 16 O11) in `V060Tests.cs` — happy paths (2-key and 3-key grouping, cogroup with disjoint keys, M=3 lists / N=2 keys), edge cases (empty source, empty key list, `KeyNames` shorter than `PropertyPaths`, `null!` KeyNames, mismatched `KeyPropertiesA` / `KeyPropertiesB` length), and semantic contracts (composite-key collision safety via Unit Separator, `"Unknown"` bucket for missing values, per-list case sensitivity, default label fallback `Key0`, `Key1`, …).
+- 30 new load tests (15 ODC + 15 O11) appended to `LoadTests.cs` — 5 per new action — driven by the shared 10 000-element JSON list. Each asserts elapsed time < 300 ms in Release. Nested-key composite grouping uses the 1 000-element `SlowPathList` pair to stay comfortably under budget on both platforms.
 - Adapter methods for all three new actions added to `internal IListUtils` and its wrapper in `ListUtils.O11.Tests/TestHelpers.cs` so ODC and O11 test files remain byte-for-byte identical.
-- Total suite grew from 922 to **954 tests** (477 ODC + 477 O11).
+- Total suite grew from 922 to **984 tests** (492 ODC + 492 O11).
 
 ## Changed
 

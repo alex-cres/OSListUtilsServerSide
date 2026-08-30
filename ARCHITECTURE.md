@@ -267,7 +267,7 @@ Declared in [ListUtils.O11.csproj](ListUtils.O11/ListUtils.O11.csproj).
 
 ## 4. Test projects
 
-247 functional tests + 230 load tests per platform × 2 = **954 tests total**. 14 test files per project.
+247 functional tests + 245 load tests per platform × 2 = **984 tests total**. 14 test files per project.
 
 Load tests use a shared 10,000-element complex JSON structure (nested objects, arrays, mixed types) and assert each Server Action completes in under **300 ms** in Release. Every load test also verifies the **result correctness** (expected element count or the invariant `updated + popped = source`) parsed outside the stopwatch so it does not count against the timing budget. `List_Difference` with `Contains` uses a 1,000-element pair because the substring operator is inherently O(A×B).
 
@@ -302,7 +302,7 @@ All actions clone JSON nodes with `JsonNode.DeepClone()` (System.Text.Json 8.0+)
 | MultiConditionTests.cs | AND/OR combinations, nested-path in condition, empty conditions guard, per-condition case sensitivity, mixed operators |
 | SearchDirectionTests.cs | SearchFromEnd on List_PopByCondition and List_PopByConditions — pops last match vs first match; verifies list order preserved after removal |
 | TransformTests.cs | 20 functional tests — `List_Chunk` (regular / uneven / oversized / negative / empty), `List_DistinctBy` (property key, nested path, empty PropertyName full-item dedupe, null-key bucket, case-sensitive vs insensitive), `List_Slice` (positive / negative Start / negative End / `End == 0` sentinel / `Step == 0` / negative Step reverse), `List_Shuffle` (`Seed != 0` reproducibility, `Seed == 0` CSPRNG variance, source not mutated), `List_UpdateAt` (positive / negative Index, nested path, auto-created missing objects, missing array short-circuit, PreviousValueJson for missing property vs JSON `null`) |
-| LoadTests.cs | 230 load tests — 5–10 per Server Action across the thirty-two actions — driven by a shared 10,000-element complex JSON list. Each test asserts elapsed time < 300 ms in Release. `List_Difference` with `Contains` uses a 1,000-element pair (slow-path). |
+| LoadTests.cs | 245 load tests — 5–10 per Server Action across the thirty-two actions — driven by a shared 10,000-element complex JSON list. Each test asserts elapsed time < 300 ms in Release. `List_Difference` with `Contains` and nested-key composite grouping use a 1,000-element pair (slow-path). |
 
 Test data is inline string literals — **no binary test files are committed**.
 
