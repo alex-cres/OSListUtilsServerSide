@@ -106,4 +106,77 @@ public partial class ListUtils
         }
         return $"Items{index}";
     }
+
+    public void List_ZipManyGroupByMultiple(
+        List<string> ListsJson,
+        int KeyCount,
+        List<string> KeyProperties,
+        List<string> KeyNames,
+        List<string> ItemsFieldNames,
+        bool CaseSensitive,
+        out string GroupedListJson)
+    {
+        GroupedListJson = "[]";
+        if (ListsJson == null || ListsJson.Count == 0 || KeyCount <= 0) return;
+
+        int m = ListsJson.Count;
+        int n = KeyCount;
+        var arrays = new JsonArray[m];
+        for (int i = 0; i < m; i++)
+        {
+            var s = ListsJson[i];
+            arrays[i] = string.IsNullOrEmpty(s) ? new JsonArray() : JsonNode.Parse(s)!.AsArray();
+        }
+
+        var cmp = CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
+        var groups = new Dictionary<string, JsonArray[]>(cmp);
+        var parts = new Dictionary<string, string[]>(cmp);
+        var order = new List<string>();
+
+        int totalPaths = KeyProperties?.Count ?? 0;
+        var scratch = new List<string>(n);
+
+        for (int listIdx = 0; listIdx < m; listIdx++)
+        {
+            scratch.Clear();
+            for (int k = 0; k < n; k++)
+            {
+                int flatIdx = listIdx * n + k;
+                scratch.Add(flatIdx < totalPaths ? KeyProperties![flatIdx] : "");
+            }
+
+            foreach (var item in arrays[listIdx])
+            {
+                var (composite, keyValues) = BuildCompositeKey(item!, scratch);
+                if (!groups.TryGetValue(composite, out var buckets))
+                {
+                    buckets = new JsonArray[m];
+                    for (int k = 0; k < m; k++) buckets[k] = new JsonArray();
+                    groups[composite] = buckets;
+                    parts[composite] = keyValues;
+                    order.Add(composite);
+                }
+                buckets[listIdx].Add(item!.DeepClone());
+            }
+        }
+
+        var result = new JsonArray();
+        foreach (var composite in order)
+        {
+            var keyValues = parts[composite];
+            var buckets = groups[composite];
+            var obj = new JsonObject();
+            for (int i = 0; i < keyValues.Length; i++)
+            {
+                obj[KeyLabel(KeyNames, i)] = keyValues[i];
+            }
+            for (int listIdx = 0; listIdx < m; listIdx++)
+            {
+                obj[KeyName(ItemsFieldNames, listIdx)] = buckets[listIdx];
+            }
+            result.Add(obj);
+        }
+
+        GroupedListJson = result.ToJsonString(JsonOptions);
+    }
 }

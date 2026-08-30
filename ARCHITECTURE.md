@@ -35,7 +35,7 @@ Primary class: `ListUtils`, implementing `IListUtils`.
 
 | File | Type | Purpose |
 |------|------|---------|
-| [IListUtils.cs](ListUtils/IListUtils.cs) | `[OSInterface]` | Declares 29 actions: `List_Pop`, `List_PopMultiple`, `List_SplitAt`, `List_PopByCondition`, `List_PopMultipleByCondition`, `List_PopByConditions`, `List_PopMultipleByConditions`, `List_Partition`, `List_PartitionByConditions`, `List_Zip`, `List_GroupBy`, `List_ZipGroupBy`, `List_Difference`, `List_Intersect`, `List_Union`, `List_Chunk`, `List_DistinctBy`, `List_Slice`, `List_Shuffle`, `List_UpdateAt`, `List_Reverse`, `List_Flatten`, `List_Sample`, `List_ReplaceWhere`, `List_UpdateMultipleAt`, `List_MinBy`, `List_MaxBy`, `List_Aggregate`, `List_ZipMany`, `List_ZipManyGroupBy` |
+| [IListUtils.cs](ListUtils/IListUtils.cs) | `[OSInterface]` | Declares 32 actions: `List_Pop`, `List_PopMultiple`, `List_SplitAt`, `List_PopByCondition`, `List_PopMultipleByCondition`, `List_PopByConditions`, `List_PopMultipleByConditions`, `List_Partition`, `List_PartitionByConditions`, `List_Zip`, `List_GroupBy`, `List_ZipGroupBy`, `List_GroupByMultiple`, `List_ZipGroupByMultiple`, `List_Difference`, `List_Intersect`, `List_Union`, `List_Chunk`, `List_DistinctBy`, `List_Slice`, `List_Shuffle`, `List_UpdateAt`, `List_Reverse`, `List_Flatten`, `List_Sample`, `List_ReplaceWhere`, `List_UpdateMultipleAt`, `List_MinBy`, `List_MaxBy`, `List_Aggregate`, `List_ZipMany`, `List_ZipManyGroupBy`, `List_ZipManyGroupByMultiple` |
 
 No `[OSStructure]` types — every exposed parameter is a primitive (`string`, `int`, `bool`). All list data is passed as JSON strings (`Text`), which keeps the interface generic across any consumer Structure.
 
@@ -48,11 +48,11 @@ No `[OSStructure]` types — every exposed parameter is a primitive (`string`, `
 | [ListUtils.cs](ListUtils/ListUtils.cs) | Partial-class shell — declares `public partial class ListUtils : IListUtils`, no members |
 | [ListUtils.Index.cs](ListUtils/ListUtils.Index.cs) | Index-based pops: `List_Pop`, `List_PopMultiple` |
 | [ListUtils.Condition.cs](ListUtils/ListUtils.Condition.cs) | Condition-based actions: `List_PopByCondition`, `List_PopMultipleByCondition`, `List_PopByConditions`, `List_PopMultipleByConditions` |
-| [ListUtils.Relational.cs](ListUtils/ListUtils.Relational.cs) | Relational / set actions: `List_Zip`, `List_GroupBy`, `List_ZipGroupBy` (two-list cogroup), `List_Difference` (including all fast-path branches) |
+| [ListUtils.Relational.cs](ListUtils/ListUtils.Relational.cs) | Relational / set actions: `List_Zip`, `List_GroupBy`, `List_ZipGroupBy` (two-list cogroup), `List_GroupByMultiple` (N-key group-by), `List_ZipGroupByMultiple` (N-key two-list cogroup), `List_Difference` (including all fast-path branches) |
 | [ListUtils.Transform.cs](ListUtils/ListUtils.Transform.cs) | Transformation / randomization actions: `List_Chunk`, `List_DistinctBy`, `List_Slice`, `List_Shuffle`, `List_UpdateAt`, `List_Reverse`, `List_Flatten`, `List_Sample`, `List_ReplaceWhere`, `List_UpdateMultipleAt` (plus private helpers for slice normalization, CSPRNG-vs-seeded RNG shared by Shuffle and Sample, and nested-path write-back with object-only auto-creation) |
 | [ListUtils.Aggregate.cs](ListUtils/ListUtils.Aggregate.cs) | Aggregations: `List_MinBy`, `List_MaxBy`, `List_Aggregate` (Sum / Avg / Min / Max / Count / CountDistinct over a property path) |
-| [ListUtils.ZipMany.cs](ListUtils/ListUtils.ZipMany.cs) | Multi-list zip: `List_ZipMany`, `List_ZipManyGroupBy` (N-list generalisations of `List_Zip` and `List_ZipGroupBy`). Accepts `List<string>` inputs so callers pass a Text List directly. |
-| [ListUtils.Helpers.cs](ListUtils/ListUtils.Helpers.cs) | `GetPropertyValue` + `NavigateSegment` path walker, `MatchesCondition` operator evaluator, `ParseConditions` + `EvaluateConditions` multi-condition engine, `TryCompareNumeric` numeric comparator, `ToCamelCase` fallback, nested `Condition` type, shared `JsonSerializerOptions` |
+| [ListUtils.ZipMany.cs](ListUtils/ListUtils.ZipMany.cs) | Multi-list zip: `List_ZipMany`, `List_ZipManyGroupBy`, `List_ZipManyGroupByMultiple` (N-list generalisations of `List_Zip` / `List_ZipGroupBy`, plus the N-key composite variant). Accepts `List<string>` inputs so callers pass a Text List directly. |
+| [ListUtils.Helpers.cs](ListUtils/ListUtils.Helpers.cs) | `GetPropertyValue` + `NavigateSegment` path walker, `MatchesCondition` operator evaluator, `ParseConditions` + `EvaluateConditions` multi-condition engine, `TryCompareNumeric` numeric comparator, `ToCamelCase` fallback, `BuildCompositeKey` (Unit-Separator-joined N-key composite with `"Unknown"` fallback) and `KeyLabel` (label lookup with `"Key{i}"` default) shared by the multi-key grouping actions, nested `Condition` type, shared `JsonSerializerOptions` |
 
 ### Runtime dependencies
 
@@ -117,10 +117,14 @@ flowchart LR
     Type -->|List_Zip| Zip["Parse both arrays<br/>Index-pair JsonObjects<br/>Truncate to shorter"]
     Type -->|List_GroupBy| GroupBy["Parse source<br/>Dictionary&lt;string, JsonArray&gt;<br/>keyed by GetPropertyValue(path)<br/>preserves first-seen order"]
     Type -->|List_ZipGroupBy| ZipGroup["Parse two arrays<br/>Pair + group by key"]
+    Type -->|List_GroupByMultiple| GroupByN["Parse source<br/>Per item: BuildCompositeKey(paths, caseSensitive)<br/>(Unit-Separator joined, missing values -> Unknown)<br/>Dictionary&lt;string, JsonArray&gt;<br/>Emit {KeyLabel(0..N-1): raw values, ItemsFieldName: [...]}"]
+    Type -->|List_ZipGroupByMultiple| ZipGroupN["Parse two arrays<br/>Per item: BuildCompositeKey with per-side paths<br/>Two Dictionary&lt;string, JsonArray&gt; buckets, shared composite-key order<br/>Emit {KeyLabel per key column, KeyNameA: [...], KeyNameB: [...]}"]
     Type -->|List_Difference /<br/>Intersect / Union| SetOp["Parse both arrays<br/>Build B-value HashSet once<br/>Equals / NotEquals: O(A+B) HashSet<br/>StartsWith / EndsWith: O(A·L) prefix/suffix scan<br/>Numeric: precompute min/max(B) — O(A+B)<br/>Contains: linear scan — O(A·B)"]
     Zip --> Serialize["ToJsonString(JsonOptions)"]
     GroupBy --> Serialize
     ZipGroup --> Serialize
+    GroupByN --> Serialize
+    ZipGroupN --> Serialize
     SetOp --> Serialize
     Serialize --> Out[Output parameters]
 ```
@@ -172,8 +176,10 @@ flowchart LR
     In["List&lt;string&gt; SourceListsJson<br/>List&lt;string&gt; KeyNames"] --> Type{Action?}
     Type -->|List_ZipMany| Zip["Parse each list once<br/>Index-pair across all N lists<br/>Truncate to shortest<br/>Emit JsonObject per row"]
     Type -->|List_ZipManyGroupBy| ZipGroup["Zip as above<br/>Group by GroupByPath value<br/>Dictionary&lt;string, JsonArray&gt;"]
+    Type -->|List_ZipManyGroupByMultiple| ZipGroupN["Parse M lists once<br/>Slice KeyProperties into per-list windows of KeyCount (list-major)<br/>Per item: BuildCompositeKey using that list's window (missing -> Unknown)<br/>M parallel Dictionary&lt;string, JsonArray&gt; buckets sharing composite-key order<br/>Emit {KeyLabel per key column, ItemsFieldNames[i]: [...] for i in 0..M-1}"]
     Zip --> Serialize["ToJsonString(JsonOptions)"]
     ZipGroup --> Serialize
+    ZipGroupN --> Serialize
     Serialize --> Out[Output parameters]
 ```
 
@@ -222,7 +228,7 @@ Target framework: **`net48`**, `LangVersion=10`. Namespace: `OutSystems.NssListU
 
 | File | Type | Purpose |
 |------|------|---------|
-| [IssListUtils.cs](ListUtils.O11/IssListUtils.cs) | Interface | Declares 29 `Mss` methods mirroring the ODC surface (Pop family, SplitAt, Partition family, Zip / GroupBy / ZipGroupBy / Difference / Intersect / Union, Chunk / DistinctBy / Slice / Shuffle / UpdateAt / Reverse / Flatten / Sample / ReplaceWhere / UpdateMultipleAt, MinBy / MaxBy / Aggregate, ZipMany / ZipManyGroupBy) |
+| [IssListUtils.cs](ListUtils.O11/IssListUtils.cs) | Interface | Declares 32 `Mss` methods mirroring the ODC surface (Pop family, SplitAt, Partition family, Zip / GroupBy / ZipGroupBy / GroupByMultiple / ZipGroupByMultiple / Difference / Intersect / Union, Chunk / DistinctBy / Slice / Shuffle / UpdateAt / Reverse / Flatten / Sample / ReplaceWhere / UpdateMultipleAt, MinBy / MaxBy / Aggregate, ZipMany / ZipManyGroupBy / ZipManyGroupByMultiple) |
 
 No record types — every exposed parameter is a primitive (`string`, `int`, `bool`). Lists cross the boundary as JSON strings, identical to the ODC surface.
 
@@ -235,11 +241,11 @@ No record types — every exposed parameter is a primitive (`string`, `int`, `bo
 | [Actions/ListUtilsActions.cs](ListUtils.O11/Actions/ListUtilsActions.cs) | Partial-class shell — declares `public partial class CssListUtils : IssListUtils`, no members |
 | [Actions/ListUtilsActions.Index.cs](ListUtils.O11/Actions/ListUtilsActions.Index.cs) | `MssList_Pop`, `MssList_PopMultiple` |
 | [Actions/ListUtilsActions.Condition.cs](ListUtils.O11/Actions/ListUtilsActions.Condition.cs) | `MssList_PopByCondition`, `MssList_PopMultipleByCondition`, `MssList_PopByConditions`, `MssList_PopMultipleByConditions` |
-| [Actions/ListUtilsActions.Relational.cs](ListUtils.O11/Actions/ListUtilsActions.Relational.cs) | `MssList_Zip`, `MssList_GroupBy`, `MssList_ZipGroupBy`, `MssList_Difference` (including all fast-path branches) |
+| [Actions/ListUtilsActions.Relational.cs](ListUtils.O11/Actions/ListUtilsActions.Relational.cs) | `MssList_Zip`, `MssList_GroupBy`, `MssList_ZipGroupBy`, `MssList_GroupByMultiple`, `MssList_ZipGroupByMultiple`, `MssList_Difference` (including all fast-path branches) |
 | [Actions/ListUtilsActions.Transform.cs](ListUtils.O11/Actions/ListUtilsActions.Transform.cs) | `MssList_Chunk`, `MssList_DistinctBy`, `MssList_Slice`, `MssList_Shuffle`, `MssList_UpdateAt`, `MssList_Reverse`, `MssList_Flatten`, `MssList_Sample`, `MssList_ReplaceWhere`, `MssList_UpdateMultipleAt` — mirrors the ODC `ListUtils.Transform.cs` |
 | [Actions/ListUtilsActions.Aggregate.cs](ListUtils.O11/Actions/ListUtilsActions.Aggregate.cs) | `MssList_MinBy`, `MssList_MaxBy`, `MssList_Aggregate` |
-| [Actions/ListUtilsActions.ZipMany.cs](ListUtils.O11/Actions/ListUtilsActions.ZipMany.cs) | `MssList_ZipMany`, `MssList_ZipManyGroupBy` — `List<string>` inputs matching the ODC side |
-| [Actions/ListUtilsActions.Helpers.cs](ListUtils.O11/Actions/ListUtilsActions.Helpers.cs) | Path walker, condition evaluator (`List<Condition>` typed input), multi-condition engine, `TryCompareNumeric`, `ToCamelCase`, shared `JsonSerializerOptions` |
+| [Actions/ListUtilsActions.ZipMany.cs](ListUtils.O11/Actions/ListUtilsActions.ZipMany.cs) | `MssList_ZipMany`, `MssList_ZipManyGroupBy`, `MssList_ZipManyGroupByMultiple` — `List<string>` inputs matching the ODC side |
+| [Actions/ListUtilsActions.Helpers.cs](ListUtils.O11/Actions/ListUtilsActions.Helpers.cs) | Path walker, condition evaluator (`List<Condition>` typed input), multi-condition engine, `TryCompareNumeric`, `ToCamelCase`, `BuildCompositeKey` + `KeyLabel` (shared by the multi-key grouping actions), shared `JsonSerializerOptions` |
 
 Logic is functionally identical to the ODC implementation. Platform-specific differences:
 - `ss`-prefixed parameter names
@@ -261,7 +267,7 @@ Declared in [ListUtils.O11.csproj](ListUtils.O11/ListUtils.O11.csproj).
 
 ## 4. Test projects
 
-228 functional tests + 245 load tests per platform × 2 = **906 tests total**. 13 test files per project.
+247 functional tests + 230 load tests per platform × 2 = **954 tests total**. 14 test files per project.
 
 Load tests use a shared 10,000-element complex JSON structure (nested objects, arrays, mixed types) and assert each Server Action completes in under **300 ms** in Release. Every load test also verifies the **result correctness** (expected element count or the invariant `updated + popped = source`) parsed outside the stopwatch so it does not count against the timing budget. `List_Difference` with `Contains` uses a 1,000-element pair because the substring operator is inherently O(A×B).
 
@@ -296,7 +302,7 @@ All actions clone JSON nodes with `JsonNode.DeepClone()` (System.Text.Json 8.0+)
 | MultiConditionTests.cs | AND/OR combinations, nested-path in condition, empty conditions guard, per-condition case sensitivity, mixed operators |
 | SearchDirectionTests.cs | SearchFromEnd on List_PopByCondition and List_PopByConditions — pops last match vs first match; verifies list order preserved after removal |
 | TransformTests.cs | 20 functional tests — `List_Chunk` (regular / uneven / oversized / negative / empty), `List_DistinctBy` (property key, nested path, empty PropertyName full-item dedupe, null-key bucket, case-sensitive vs insensitive), `List_Slice` (positive / negative Start / negative End / `End == 0` sentinel / `Step == 0` / negative Step reverse), `List_Shuffle` (`Seed != 0` reproducibility, `Seed == 0` CSPRNG variance, source not mutated), `List_UpdateAt` (positive / negative Index, nested path, auto-created missing objects, missing array short-circuit, PreviousValueJson for missing property vs JSON `null`) |
-| LoadTests.cs | 165 load tests — 10 per Server Action across the fourteen actions plus repeated fast-path variants — driven by a shared 10,000-element complex JSON list. Each test asserts elapsed time < 300 ms in Release. `List_Difference` with `Contains` uses a 1,000-element pair (slow-path). |
+| LoadTests.cs | 230 load tests — 5–10 per Server Action across the thirty-two actions — driven by a shared 10,000-element complex JSON list. Each test asserts elapsed time < 300 ms in Release. `List_Difference` with `Contains` uses a 1,000-element pair (slow-path). |
 
 Test data is inline string literals — **no binary test files are committed**.
 
@@ -322,7 +328,7 @@ The adapter pattern ensures `new ListUtils()` resolves to the wrapper in the
 O11 test namespace, delegating to `CssListUtils` internally. This allows all
 test files to compile unchanged on both platforms. The `internal IListUtils`
 interface and its wrapper in `ListUtils.O11.Tests/TestHelpers.cs` include
-adapter methods for all fourteen actions.
+adapter methods for all thirty-two actions.
 
 ---
 

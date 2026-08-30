@@ -85,6 +85,9 @@ internal interface IListUtils
     void List_UpdateMultipleAt(string SourceListJson, string IndicesToUpdate, string PropertyName, string NewValueJson, out string UpdatedListJson, out int UpdatedCount);
     void List_ZipMany(List<string> ListsJson, List<string> KeyNamesJson, out string ZippedListJson);
     void List_ZipManyGroupBy(List<string> ListsJson, List<string> KeyPropertiesJson, List<string> KeyNamesJson, bool CaseSensitive, out string GroupedListJson);
+    void List_GroupByMultiple(string SourceListJson, List<string> PropertyPaths, List<string> KeyNames, string ItemsFieldName, bool CaseSensitive, out string GroupedListJson);
+    void List_ZipGroupByMultiple(string ListAJson, string ListBJson, List<string> KeyPropertiesA, List<string> KeyPropertiesB, List<string> KeyNames, string KeyNameA, string KeyNameB, bool CaseSensitive, out string GroupedListJson);
+    void List_ZipManyGroupByMultiple(List<string> ListsJson, int KeyCount, List<string> KeyProperties, List<string> KeyNames, List<string> ItemsFieldNames, bool CaseSensitive, out string GroupedListJson);
 }
 
 internal sealed class ListUtils : IListUtils
@@ -172,4 +175,10 @@ internal sealed class ListUtils : IListUtils
         => _inner.MssList_ZipMany(ListsJson, KeyNamesJson, out ZippedListJson);
     public void List_ZipManyGroupBy(List<string> ListsJson, List<string> KeyPropertiesJson, List<string> KeyNamesJson, bool CaseSensitive, out string GroupedListJson)
         => _inner.MssList_ZipManyGroupBy(ListsJson, KeyPropertiesJson, KeyNamesJson, CaseSensitive, out GroupedListJson);
+    public void List_GroupByMultiple(string SourceListJson, List<string> PropertyPaths, List<string> KeyNames, string ItemsFieldName, bool CaseSensitive, out string GroupedListJson)
+        => _inner.MssList_GroupByMultiple(SourceListJson, PropertyPaths, KeyNames, ItemsFieldName, CaseSensitive, out GroupedListJson);
+    public void List_ZipGroupByMultiple(string ListAJson, string ListBJson, List<string> KeyPropertiesA, List<string> KeyPropertiesB, List<string> KeyNames, string KeyNameA, string KeyNameB, bool CaseSensitive, out string GroupedListJson)
+        => _inner.MssList_ZipGroupByMultiple(ListAJson, ListBJson, KeyPropertiesA, KeyPropertiesB, KeyNames, KeyNameA, KeyNameB, CaseSensitive, out GroupedListJson);
+    public void List_ZipManyGroupByMultiple(List<string> ListsJson, int KeyCount, List<string> KeyProperties, List<string> KeyNames, List<string> ItemsFieldNames, bool CaseSensitive, out string GroupedListJson)
+        => _inner.MssList_ZipManyGroupByMultiple(ListsJson, KeyCount, KeyProperties, KeyNames, ItemsFieldNames, CaseSensitive, out GroupedListJson);
 }

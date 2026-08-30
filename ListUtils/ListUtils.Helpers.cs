@@ -121,5 +121,37 @@ public partial class ListUtils
         return char.ToLowerInvariant(str[0]) + str[1..];
     }
 
+    // ASCII Unit Separator — safe internal joiner for composite N-key group keys.
+    private const char CompositeKeySeparator = '\u001F';
+    private const string UnknownKey = "Unknown";
+
+    private static (string composite, string[] parts) BuildCompositeKey(JsonNode item, List<string> keyPaths)
+    {
+        int n = keyPaths?.Count ?? 0;
+        if (n == 0) return (UnknownKey, System.Array.Empty<string>());
+
+        var parts = new string[n];
+        var sb = new System.Text.StringBuilder();
+        for (int i = 0; i < n; i++)
+        {
+            var path = keyPaths![i];
+            var val = string.IsNullOrEmpty(path) ? null : GetPropertyValue(item, path);
+            parts[i] = val ?? UnknownKey;
+            if (i > 0) sb.Append(CompositeKeySeparator);
+            sb.Append(parts[i]);
+        }
+        return (sb.ToString(), parts);
+    }
+
+    private static string KeyLabel(List<string> keyNames, int index)
+    {
+        if (keyNames != null && index < keyNames.Count)
+        {
+            var raw = keyNames[index];
+            if (!string.IsNullOrEmpty(raw)) return raw;
+        }
+        return "Key" + index.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    }
+
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = false };
 }

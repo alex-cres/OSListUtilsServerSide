@@ -10,7 +10,7 @@ Versions correspond to releases published on the [OutSystems Forge](https://www.
 
 | Version | Platform | Date | Notes |
 |---------|----------|------|-------|
-| [Unreleased](./docs/versions/UNRELEASED.md) | Both | — | In-progress changes not yet published to Forge |
+| [Unreleased](./docs/versions/UNRELEASED.md) | Both | — | 3 new multi-key grouping actions — `List_GroupByMultiple`, `List_ZipGroupByMultiple`, `List_ZipManyGroupByMultiple` — generalising the group-by / cogroup family from a single property path to N-key composite keys (Unit-Separator encoding, `"Unknown"` fallback bucket, default `Key0`, `Key1`, … labels). 32 Server Actions total. |
 | [v0.5.0](./docs/versions/v0.5.0.md) | Both | 2026-08-30 | 14 new actions — aggregations (`MinBy`, `MaxBy`, `Aggregate`), set ops (`Intersect`, `Union`), split / partition (`SplitAt`, `Partition`, `PartitionByConditions`), shape (`Reverse`, `Flatten`, `Sample`), mass update (`ReplaceWhere`, `UpdateMultipleAt`), and multi-list zip (`ZipMany`, `ZipManyGroupBy`). API ergonomics refactor: new `Condition` Structure + `Operators` / `LogicalOperators` / `AggregateOperations` constant classes; four multi-condition actions switched from `ConditionsJson : Text` to `Conditions : List<Condition>` (breaking). 29 Server Actions total. |
 | [v0.4.0](./docs/versions/v0.4.0.md) | Both | 2026-08-30 | `List_ZipGroupBy` — cogroup / two-list join by shared key. For every distinct key across ListA and ListB, emits `{Key, <KeyNameA>: [...], <KeyNameB>: [...]}`. 15 Server Actions total. |
 | [v0.3.0](./docs/versions/v0.3.0.md) | Both | 2026-08-30 | Five new transformation / randomization actions: `List_Chunk`, `List_DistinctBy`, `List_Slice`, `List_Shuffle`, `List_UpdateAt` — 14 Server Actions total. |

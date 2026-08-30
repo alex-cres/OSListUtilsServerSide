@@ -16,7 +16,7 @@ Advanced list manipulation utilities — pop by index, pop by condition, zip, gr
 
 ### What This Component Does
 
-**ListUtilsServerSide** is an Extension that provides fourteen high-utility list manipulation actions that are absent or cumbersome to implement natively in OutSystems 11. It covers index-based removal, condition-based filtering (single and multi-condition with AND/OR), list pairing (zip), grouping, set difference, chunking, distinct-by, Python-style slicing, shuffling, and in-place property updates — all in single server-side calls.
+**ListUtilsServerSide** is an Extension that provides thirty-two high-utility list manipulation actions that are absent or cumbersome to implement natively in OutSystems 11. It covers index-based removal, condition-based filtering (single and multi-condition with AND/OR), partition, split, list pairing (zip), grouping (single-key, N-key composite, cogroup across 2 or M lists), set operations (difference, intersect, union), aggregation (min-by, max-by, sum/avg/min/max/count/count-distinct), chunking, distinct-by, Python-style slicing, shuffling, reverse, flatten, sampling, replace-where, and in-place property updates — all in single server-side calls.
 
 For generic structure support, the JSON-based actions accept any Structure List serialized with `JSON Serialize` and return JSON strings that can be deserialized back with `JSON Deserialize`. This eliminates the need to build separate extensions for each data structure.
 
@@ -45,6 +45,12 @@ For generic structure support, the JSON-based actions accept any Structure List 
 **List_Zip** — Pairs two JSON lists element-by-element into objects with caller-specified key names. Truncates to the shorter list.
 
 **List_GroupBy** — Groups a flat JSON list by a property value (nested paths + array indexing supported). Returns an array of `{Key, Items}` objects in first-seen order.
+
+**List_GroupByMultiple** — N-key generalisation of `List_GroupBy`. Groups a JSON list by an **ordered list of property paths** (composite key). Each output group emits one field per key (labelled by `KeyNames[i]`, defaulting to `Key0`, `Key1`, …) plus the items array (`ItemsFieldName`, defaulting to `Items`). Composite keys are joined internally with the ASCII Unit Separator so distinct tuples never collide.
+
+**List_ZipGroupByMultiple** — N-key generalisation of the two-list cogroup. Cogroups two lists by an ordered list of property paths per side (both sides must supply the same number of paths). Each output group holds one field per key column plus two named arrays (`KeyNameA` / `KeyNameB`).
+
+**List_ZipManyGroupByMultiple** — M-list, N-key cogroup. Generalises `List_ZipManyGroupBy` to composite keys. `KeyProperties` is a flat list in list-major order — entries `[i*KeyCount .. i*KeyCount + KeyCount - 1]` supply the key paths for `ListsJson[i]`. Missing key values collapse into the shared `"Unknown"` bucket per key column.
 
 **List_Difference** — Computes the set difference (A − B) matching on a key property. Supports nested paths, array indexing, comparison operators, and case sensitivity.
 
@@ -157,13 +163,13 @@ Symbol aliases (`!=`, `>`, `<`, `>=`, `<=`) are still accepted for backwards com
        └───► [poppedElementJson] ──► JSON Deserialize → Structure Record
 ```
 
-4. For index-based actions (`List_Pop`, `List_PopMultiple`), serialize your `List of Text` (or any Record List) with `JSONSerialize` first — all fourteen actions consume and return JSON strings.
+4. For index-based actions (`List_Pop`, `List_PopMultiple`), serialize your `List of Text` (or any Record List) with `JSONSerialize` first — every action consumes and returns JSON strings.
 
 ---
 
 ### Features
 
-- **14 server-side actions** covering the most common list manipulation gaps
+- **32 server-side actions** covering the most common list manipulation gaps
 - **Generic structure support** via JSON serialization — works with any OutSystems Structure
 - **First-class `Condition` Structure** for multi-condition filtering — no hand-authored JSON
 - **9 comparison operators** (Equals, NotEquals, Contains, StartsWith, EndsWith, GreaterThan, LessThan, GreaterOrEqual, LessOrEqual) with symbol aliases

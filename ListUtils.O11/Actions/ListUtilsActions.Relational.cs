@@ -339,4 +339,115 @@ public partial class CssListUtils
 
         ssUnionListJson = result.ToJsonString(JsonOptions);
     }
+
+    public void MssList_GroupByMultiple(
+        string ssSourceListJson,
+        List<string> ssPropertyPaths,
+        List<string> ssKeyNames,
+        string ssItemsFieldName,
+        bool ssCaseSensitive,
+        out string ssGroupedListJson)
+    {
+        if (string.IsNullOrEmpty(ssSourceListJson) || ssPropertyPaths == null || ssPropertyPaths.Count == 0)
+        {
+            ssGroupedListJson = "[]";
+            return;
+        }
+
+        var array = JsonNode.Parse(ssSourceListJson)!.AsArray();
+        var cmp = ssCaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
+        var groups = new Dictionary<string, JsonArray>(cmp);
+        var parts = new Dictionary<string, string[]>(cmp);
+        var order = new List<string>();
+
+        foreach (var item in array)
+        {
+            BuildCompositeKey(item!, ssPropertyPaths, out var composite, out var keyValues);
+            if (!groups.TryGetValue(composite, out var bucket))
+            {
+                bucket = new JsonArray();
+                groups[composite] = bucket;
+                parts[composite] = keyValues;
+                order.Add(composite);
+            }
+            bucket.Add(item!.DeepClone());
+        }
+
+        string itemsField = string.IsNullOrEmpty(ssItemsFieldName) ? "Items" : ssItemsFieldName;
+
+        var result = new JsonArray();
+        foreach (var composite in order)
+        {
+            var keyValues = parts[composite];
+            var obj = new JsonObject();
+            for (int i = 0; i < keyValues.Length; i++)
+            {
+                obj[KeyLabel(ssKeyNames, i)] = keyValues[i];
+            }
+            obj[itemsField] = groups[composite];
+            result.Add(obj);
+        }
+
+        ssGroupedListJson = result.ToJsonString(JsonOptions);
+    }
+
+    public void MssList_ZipGroupByMultiple(
+        string ssListAJson,
+        string ssListBJson,
+        List<string> ssKeyPropertiesA,
+        List<string> ssKeyPropertiesB,
+        List<string> ssKeyNames,
+        string ssKeyNameA,
+        string ssKeyNameB,
+        bool ssCaseSensitive,
+        out string ssGroupedListJson)
+    {
+        var cmp = ssCaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
+        var groupsA = new Dictionary<string, JsonArray>(cmp);
+        var groupsB = new Dictionary<string, JsonArray>(cmp);
+        var parts = new Dictionary<string, string[]>(cmp);
+        var order = new List<string>();
+        var seen = new HashSet<string>(cmp);
+
+        void Consume(string listJson, List<string> keyPaths, Dictionary<string, JsonArray> target)
+        {
+            if (string.IsNullOrEmpty(listJson)) return;
+            var effectivePaths = keyPaths ?? new List<string>();
+            var arr = JsonNode.Parse(listJson)!.AsArray();
+            foreach (var item in arr)
+            {
+                BuildCompositeKey(item!, effectivePaths, out var composite, out var keyValues);
+                if (!target.TryGetValue(composite, out var bucket))
+                    target[composite] = bucket = new JsonArray();
+                bucket.Add(item!.DeepClone());
+                if (seen.Add(composite))
+                {
+                    parts[composite] = keyValues;
+                    order.Add(composite);
+                }
+            }
+        }
+
+        Consume(ssListAJson, ssKeyPropertiesA, groupsA);
+        Consume(ssListBJson, ssKeyPropertiesB, groupsB);
+
+        string nameA = string.IsNullOrEmpty(ssKeyNameA) ? "ItemsA" : ssKeyNameA;
+        string nameB = string.IsNullOrEmpty(ssKeyNameB) ? "ItemsB" : ssKeyNameB;
+
+        var result = new JsonArray();
+        foreach (var composite in order)
+        {
+            var keyValues = parts[composite];
+            var obj = new JsonObject();
+            for (int i = 0; i < keyValues.Length; i++)
+            {
+                obj[KeyLabel(ssKeyNames, i)] = keyValues[i];
+            }
+            obj[nameA] = groupsA.TryGetValue(composite, out var listA) ? listA : new JsonArray();
+            obj[nameB] = groupsB.TryGetValue(composite, out var listB) ? listB : new JsonArray();
+            result.Add(obj);
+        }
+
+        ssGroupedListJson = result.ToJsonString(JsonOptions);
+    }
 }

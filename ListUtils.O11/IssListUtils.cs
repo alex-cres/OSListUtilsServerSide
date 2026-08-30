@@ -213,4 +213,32 @@ public interface IssListUtils
         List<string> ssKeyNamesJson,
         bool ssCaseSensitive,
         out string ssGroupedListJson);
+
+    void MssList_GroupByMultiple(
+        string ssSourceListJson,
+        List<string> ssPropertyPaths,
+        List<string> ssKeyNames,
+        string ssItemsFieldName,
+        bool ssCaseSensitive,
+        out string ssGroupedListJson);
+
+    void MssList_ZipGroupByMultiple(
+        string ssListAJson,
+        string ssListBJson,
+        List<string> ssKeyPropertiesA,
+        List<string> ssKeyPropertiesB,
+        List<string> ssKeyNames,
+        string ssKeyNameA,
+        string ssKeyNameB,
+        bool ssCaseSensitive,
+        out string ssGroupedListJson);
+
+    void MssList_ZipManyGroupByMultiple(
+        List<string> ssListsJson,
+        int ssKeyCount,
+        List<string> ssKeyProperties,
+        List<string> ssKeyNames,
+        List<string> ssItemsFieldNames,
+        bool ssCaseSensitive,
+        out string ssGroupedListJson);
 }

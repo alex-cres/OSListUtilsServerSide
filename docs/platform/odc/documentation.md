@@ -14,7 +14,7 @@ ADDING THE LIBRARY TO YOUR APP
 USAGE
 -----
 
-All fourteen actions consume and return JSON strings. Use JSON Serialize to
+All actions consume and return JSON strings. Use JSON Serialize to
 convert any Structure List (including a plain List of Text) to a JSON
 string before calling the action, then JSON Deserialize the output back
 to your target Structure List.
@@ -115,6 +115,51 @@ List_GroupBy
   array of objects with "Key" (the group value) and "Items" (array
   of elements in that group). Groups appear in first-seen order.
   propertyName supports nested paths and array indexing.
+
+List_GroupByMultiple
+  Input:  sourceListJson (Text), propertyPaths (List of Text),
+          keyNames (List of Text), itemsFieldName (Text),
+          caseSensitive (Boolean)
+  Output: groupedListJson (Text)
+  N-key generalisation of List_GroupBy. Groups a JSON list by an
+  ordered list of property paths (composite key). Each output group
+  emits one field per key column, labelled by keyNames[i] (defaulting
+  to "Key0", "Key1", ...), plus an items array named itemsFieldName
+  (defaulting to "Items"). Composite keys are joined internally with
+  the ASCII Unit Separator (U+001F) so distinct tuples never collide.
+  Missing key values fall back to the string "Unknown" for that key
+  column. Groups appear in first-seen order.
+
+List_ZipGroupByMultiple
+  Input:  listAJson (Text), listBJson (Text),
+          keyPropertiesA (List of Text), keyPropertiesB (List of Text),
+          keyNames (List of Text), keyNameA (Text), keyNameB (Text),
+          caseSensitive (Boolean)
+  Output: groupedListJson (Text)
+  N-key generalisation of the two-list cogroup. keyPropertiesA and
+  keyPropertiesB must have the same length N. Each output group holds
+  one field per key column (labelled by keyNames[i], defaulting to
+  "Key0", "Key1", ...) plus two named arrays (keyNameA / keyNameB,
+  defaulting to "ItemsA" / "ItemsB"). Ordering follows A's first-seen
+  composite keys, then any B-only composite keys. Items with missing
+  key values fall into a single "Unknown" bucket per key column.
+
+List_ZipManyGroupByMultiple
+  Input:  listsJson (List of Text) [M entries],
+          keyCount (Integer) [N],
+          keyProperties (List of Text) [M*N in list-major order],
+          keyNames (List of Text) [N],
+          itemsFieldNames (List of Text) [M],
+          caseSensitive (Boolean)
+  Output: groupedListJson (Text)
+  M-list, N-key cogroup. keyProperties is a FLAT list in list-major
+  order: entries [i*keyCount .. i*keyCount + keyCount - 1] are the N
+  key paths applied to listsJson[i]. Each output group emits one
+  field per key column (labelled by keyNames[i], defaulting to
+  "Key0", "Key1", ...) plus M named arrays (itemsFieldNames[i],
+  defaulting to "Items0", "Items1", ...). Groups appear in first-seen
+  order across all inputs. Missing key values collapse into the
+  single "Unknown" bucket per key column.
 
 List_Difference
   Input:  listAJson (Text), listBJson (Text), matchKey (Text),

@@ -406,4 +406,59 @@ public interface IListUtils
         bool CaseSensitive,
         [OSParameter(Description = "JSON array of groups: [{Key: <keyValue>, <KeyNames[0]>: [...], <KeyNames[1]>: [...], ...}, ...]. Items whose key is null share the 'Unknown' bucket.")]
         out string GroupedListJson);
+
+    // ── Multi-key grouping (3) ───────────────────────────────────────────
+
+    [OSAction(Description = "Groups a JSON list by N property paths (composite key). Each output group holds one field per key (labelled by KeyNames) plus the matching items. Generalisation of List_GroupBy to any number of key columns.")]
+    void List_GroupByMultiple(
+        [OSParameter(Description = "The source JSON list")]
+        string SourceListJson,
+        [OSParameter(Description = "Ordered list of N property paths that together form the composite group key. Supports nested paths and array indexing. Missing values fall back to the string \"Unknown\".")]
+        List<string> PropertyPaths,
+        [OSParameter(Description = "Ordered list of N labels used as the field names for the group keys in the output. Shorter lists default to 'Key0', 'Key1', ...")]
+        List<string> KeyNames,
+        [OSParameter(Description = "Field name for the items array within each group. Empty defaults to 'Items'.")]
+        string ItemsFieldName,
+        [OSParameter(Description = "When true, key comparison is case-sensitive. When false (default), case-insensitive.")]
+        bool CaseSensitive,
+        [OSParameter(Description = "JSON array of groups: [{<KeyNames[0]>:<v0>, <KeyNames[1]>:<v1>, ..., <ItemsFieldName>:[...items...]}, ...]. Groups appear in first-seen order.")]
+        out string GroupedListJson);
+
+    [OSAction(Description = "Cogroups two JSON lists by an N-key composite. Each output group carries one field per key plus one named array per input list of items sharing that composite key. Generalisation of List_ZipGroupBy to N keys.")]
+    void List_ZipGroupByMultiple(
+        [OSParameter(Description = "The first JSON list")]
+        string ListAJson,
+        [OSParameter(Description = "The second JSON list")]
+        string ListBJson,
+        [OSParameter(Description = "Ordered list of N property paths in ListA that form the composite group key.")]
+        List<string> KeyPropertiesA,
+        [OSParameter(Description = "Ordered list of N property paths in ListB that form the composite group key. Must have the same length as KeyPropertiesA.")]
+        List<string> KeyPropertiesB,
+        [OSParameter(Description = "Ordered list of N labels used as the field names for the group keys in the output. Shorter lists default to 'Key0', 'Key1', ...")]
+        List<string> KeyNames,
+        [OSParameter(Description = "Output field name for the ListA items array within each group. Empty defaults to 'ItemsA'.")]
+        string KeyNameA,
+        [OSParameter(Description = "Output field name for the ListB items array within each group. Empty defaults to 'ItemsB'.")]
+        string KeyNameB,
+        [OSParameter(Description = "When true, key comparison is case-sensitive. When false (default), case-insensitive.")]
+        bool CaseSensitive,
+        [OSParameter(Description = "JSON array of groups: [{<KeyNames[0]>:<v0>, ..., <KeyNameA>:[...], <KeyNameB>:[...]}, ...]. Union of first-seen composite keys across both lists preserves ordering.")]
+        out string GroupedListJson);
+
+    [OSAction(Description = "Cogroups M lists by an N-key composite. Each output group carries one field per key plus one named array per input list of items sharing that composite key. Generalisation of List_ZipManyGroupBy to N keys.")]
+    void List_ZipManyGroupByMultiple(
+        [OSParameter(Description = "A list of M JSON-array strings — one entry per input list.")]
+        List<string> ListsJson,
+        [OSParameter(Description = "Number of key columns N. Determines how many entries per list are consumed from KeyProperties.")]
+        int KeyCount,
+        [OSParameter(Description = "Flat list of M*N property paths in list-major order: entries [i*KeyCount .. i*KeyCount + KeyCount-1] belong to ListsJson[i]. Missing entries default to empty (Unknown bucket).")]
+        List<string> KeyProperties,
+        [OSParameter(Description = "Ordered list of N labels used as the field names for the group keys in the output. Shorter lists default to 'Key0', 'Key1', ...")]
+        List<string> KeyNames,
+        [OSParameter(Description = "Ordered list of M labels — one per input list — used as the field names for that list's items array. Shorter lists default to 'Items0', 'Items1', ...")]
+        List<string> ItemsFieldNames,
+        [OSParameter(Description = "When true, key comparison is case-sensitive. When false (default), case-insensitive.")]
+        bool CaseSensitive,
+        [OSParameter(Description = "JSON array of groups: [{<KeyNames[0]>:<v0>, ..., <ItemsFieldNames[0]>:[...], <ItemsFieldNames[1]>:[...], ...}, ...]. Items whose key is null share the 'Unknown' bucket.")]
+        out string GroupedListJson);
 }

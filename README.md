@@ -8,7 +8,7 @@ Advanced list manipulation utilities — index-based pops, condition-based pops,
 
 ## Objective
 
-OutSystems lists lack common collection operations found in general-purpose languages (pop by index, pop by condition, zip, cogroup, group-by, set difference / intersection / union, chunk, distinct-by, slice, shuffle, sample, sort by property, min / max by property, aggregation, partition, mass update). Implementing these natively requires verbose nested `For Each` loops with manual index tracking. This component provides **twenty-nine** server-side actions that cover the most common gaps in a single call each — grouped into pop-by-index / pop-by-condition, relational (zip / group-by / cogroup / set ops), transformations, aggregations, split / partition, mass update, and multi-list zip.
+OutSystems lists lack common collection operations found in general-purpose languages (pop by index, pop by condition, zip, cogroup, group-by, multi-key group-by / cogroup, set difference / intersection / union, chunk, distinct-by, slice, shuffle, sample, sort by property, min / max by property, aggregation, partition, mass update). Implementing these natively requires verbose nested `For Each` loops with manual index tracking. This component provides **thirty-two** server-side actions that cover the most common gaps in a single call each — grouped into pop-by-index / pop-by-condition, relational (zip / group-by / cogroup / multi-key group-by / set ops), transformations, aggregations, split / partition, mass update, and multi-list zip.
 
 The JSON-based actions work with **any OutSystems Structure** — the caller serializes the list with `JSON Serialize`, passes it to the action, and deserializes the result. This generic approach eliminates the need for per-structure custom extensions.
 
@@ -161,6 +161,51 @@ List_ZipGroupBy(..., "CustomerId", "CustomerId", "Orders", "Payments", false)
 ```
 
 A key that appears only on one side still produces a group — the other array is empty. The two `KeyProperty*` parameters can differ (e.g. `CustomerId` on ListA vs `customer_id` on ListB) which is handy for joining data from two systems with different naming conventions.
+
+### List_GroupByMultiple
+
+Groups a flat JSON list by an **N-key composite** — i.e. by more than one property path at once. Generalisation of `List_GroupBy`.
+
+| Parameter | Type | Direction | Description |
+|-----------|------|-----------|-------------|
+| `SourceListJson` | `string` (JSON array) | Input | The source JSON list. |
+| `PropertyPaths` | `List<string>` | Input | Ordered list of N property paths that together form the composite group key. Supports nested paths and array indexing. Missing values fall back to the string `"Unknown"`. |
+| `KeyNames` | `List<string>` | Input | Ordered list of N labels used as the field names for the group keys in the output. Missing / shorter entries default to `"Key0"`, `"Key1"`, … |
+| `ItemsFieldName` | `string` | Input | Field name for the items array within each group. Blank falls back to `"Items"`. |
+| `CaseSensitive` | `bool` | Input | Key comparison flag (default `false`). |
+| `GroupedListJson` | `string` | Output | JSON array of `{<KeyNames[0]>: <v0>, <KeyNames[1]>: <v1>, …, <ItemsFieldName>: [...]}` groups, in first-seen order. |
+
+Internally the composite key is joined with the ASCII **Unit Separator** (`\u001F`), so distinct tuples cannot collide even when their string representations share prefixes.
+
+### List_ZipGroupByMultiple
+
+Cogroup two JSON lists by an **N-key composite** — the N-key generalisation of `List_ZipGroupBy`. For every distinct composite key across the two inputs, emits one group holding one field per key plus two named arrays.
+
+| Parameter | Type | Direction | Description |
+|-----------|------|-----------|-------------|
+| `ListAJson` | `string` (JSON array) | Input | The first JSON list. |
+| `ListBJson` | `string` (JSON array) | Input | The second JSON list. |
+| `KeyPropertiesA` | `List<string>` | Input | Ordered list of N property paths in `ListA` that form the composite key. |
+| `KeyPropertiesB` | `List<string>` | Input | Ordered list of N property paths in `ListB` that form the composite key. Must have the same length as `KeyPropertiesA`. |
+| `KeyNames` | `List<string>` | Input | Ordered list of N labels used as the field names for the composite key values in the output. Missing / shorter entries default to `"Key0"`, `"Key1"`, … |
+| `KeyNameA` | `string` | Input | Output field name for the `ListA` items array within each group. Blank falls back to `"ItemsA"`. |
+| `KeyNameB` | `string` | Input | Output field name for the `ListB` items array within each group. Blank falls back to `"ItemsB"`. |
+| `CaseSensitive` | `bool` | Input | Key comparison flag (default `false`). |
+| `GroupedListJson` | `string` | Output | JSON array of `{<KeyNames[0]>: <v0>, …, <KeyNameA>: [...], <KeyNameB>: [...]}` groups. Ordering follows A's first-seen composite keys, then any B-only composite keys. Items with missing key values fall into the single `"Unknown"` bucket per key column. |
+
+### List_ZipManyGroupByMultiple
+
+Cogroup **M lists** by an **N-key composite** — the N-key generalisation of `List_ZipManyGroupBy`. For every distinct composite key across all M inputs, emits one group holding one field per key plus M named arrays.
+
+| Parameter | Type | Direction | Description |
+|-----------|------|-----------|-------------|
+| `ListsJson` | `List<string>` | Input | A list of M JSON-array strings — one entry per input list. |
+| `KeyCount` | `int` | Input | Number of key columns N. Determines how many entries per list are consumed from `KeyProperties`. |
+| `KeyProperties` | `List<string>` | Input | **Flat** list of M×N property paths in **list-major order**: entries `[i*KeyCount .. i*KeyCount + KeyCount - 1]` are the N key paths applied to `ListsJson[i]`. Missing entries default to empty (`"Unknown"` bucket). |
+| `KeyNames` | `List<string>` | Input | Ordered list of N labels for the composite-key fields in the output. Missing / shorter entries default to `"Key0"`, `"Key1"`, … |
+| `ItemsFieldNames` | `List<string>` | Input | Ordered list of M labels — one per input list — for that list's items array in each group. Missing / shorter entries default to `"Items0"`, `"Items1"`, … |
+| `CaseSensitive` | `bool` | Input | Key comparison flag (default `false`). |
+| `GroupedListJson` | `string` | Output | JSON array of `{<KeyNames[0]>: <v0>, …, <ItemsFieldNames[0]>: [...], <ItemsFieldNames[1]>: [...], …}` groups. Groups appear in first-seen order across all inputs. Missing key values collapse into the single `"Unknown"` bucket. |
 
 ### List_Difference
 
@@ -442,7 +487,7 @@ Builds all four projects: ODC library, O11 library, ODC tests, O11 tests.
 dotnet test ListUtils.sln
 ```
 
-Runs 906 tests (453 ODC net10.0 + 453 O11 net48) — 228 functional + 245 load tests per platform.
+Runs 954 tests (477 ODC net10.0 + 477 O11 net48) — 247 functional + 230 load tests per platform.
 
 ### Package (ODC)
 
