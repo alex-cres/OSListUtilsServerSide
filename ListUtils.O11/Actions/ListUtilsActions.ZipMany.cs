@@ -69,11 +69,10 @@ public partial class CssListUtils
         {
             var arr = arrays[listIdx];
             string keyPath = listIdx < (ssKeyPropertiesJson == null ? 0 : ssKeyPropertiesJson.Count) ? ssKeyPropertiesJson![listIdx] : "";
+            var segments = SplitPath(keyPath);
             foreach (var item in DrainToArray(arr))
             {
-                string key = (string.IsNullOrEmpty(keyPath)
-                    ? null
-                    : GetPropertyValue(item!, keyPath)) ?? UnknownKey;
+                string key = GetPropertyValue(item!, segments) ?? UnknownKey;
 
                 if (!groups.TryGetValue(key, out var buckets))
                 {
@@ -138,20 +137,20 @@ public partial class CssListUtils
         var order = new List<string>();
 
         int totalPaths = ssKeyProperties == null ? 0 : ssKeyProperties.Count;
-        var scratch = new List<string>(n);
+        var compiledSegments = new string[]?[n];
 
         for (int listIdx = 0; listIdx < m; listIdx++)
         {
-            scratch.Clear();
             for (int k = 0; k < n; k++)
             {
                 int flatIdx = listIdx * n + k;
-                scratch.Add(flatIdx < totalPaths ? ssKeyProperties[flatIdx] : "");
+                string raw = flatIdx < totalPaths ? ssKeyProperties![flatIdx] : "";
+                compiledSegments[k] = SplitPath(raw);
             }
 
             foreach (var item in DrainToArray(arrays[listIdx]))
             {
-                BuildCompositeKey(item!, scratch, out var composite, out var keyValues);
+                BuildCompositeKey(item!, compiledSegments, out var composite, out var keyValues);
                 if (!groups.TryGetValue(composite, out var buckets))
                 {
                     buckets = new JsonArray[m];

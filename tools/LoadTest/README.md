@@ -39,6 +39,7 @@ Options:
 | `--seed <N>`               |    `42` | RNG seed for both the size draws and the sample data |
 | `--csv <path>`             |    none | Also write a machine-readable CSV                    |
 | `--only <a,b,c>`           |    none | Comma-separated action names to run (case-insensitive) |
+| `--worst-only`             |   `off` | Skip the Normal scenario; run only the Worst-case scenario |
 | `-h`, `--help`             |         | Show usage                                           |
 
 Examples:

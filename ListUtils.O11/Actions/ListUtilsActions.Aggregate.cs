@@ -50,6 +50,7 @@ public partial class CssListUtils
         var invariant = CultureInfo.InvariantCulture;
         var numStyle = NumberStyles.Any;
         var cmp = StringComparer.OrdinalIgnoreCase;
+        var segments = SplitPath(propertyName);
 
         decimal bestNumeric = 0m;
         string? bestText = null;
@@ -58,7 +59,7 @@ public partial class CssListUtils
 
         for (int i = 0; i < array.Count; i++)
         {
-            var value = GetPropertyValue(array[i]!, propertyName);
+            var value = GetPropertyValue(array[i]!, segments);
             if (value == null) continue;
 
             if (numericMode)
@@ -120,13 +121,14 @@ public partial class CssListUtils
         if (normalized.Length == 0) normalized = "SUM";
         var invariant = CultureInfo.InvariantCulture;
         var numStyle = NumberStyles.Any;
+        var segments = SplitPath(ssPropertyName);
 
         if (normalized == "COUNT" || normalized == "COUNTDISTINCT")
         {
             var seen = new HashSet<string>(StringComparer.Ordinal);
             for (int i = 0; i < array.Count; i++)
             {
-                var v = GetPropertyValue(array[i]!, ssPropertyName);
+                var v = GetPropertyValue(array[i]!, segments);
                 if (v == null) continue;
                 ssMatchedCount++;
                 if (normalized == "COUNTDISTINCT") seen.Add(v);
@@ -141,7 +143,7 @@ public partial class CssListUtils
         decimal max = 0m;
         for (int i = 0; i < array.Count; i++)
         {
-            var v = GetPropertyValue(array[i]!, ssPropertyName);
+            var v = GetPropertyValue(array[i]!, segments);
             if (v == null) continue;
             if (!decimal.TryParse(v, numStyle, invariant, out var d)) continue;
             if (ssMatchedCount == 0) { min = max = d; }

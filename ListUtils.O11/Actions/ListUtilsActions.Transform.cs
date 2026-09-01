@@ -67,10 +67,11 @@ public partial class CssListUtils
         var cmp = ssCaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
         var seen = new HashSet<string>(cmp);
         bool nullSeen = false;
+        var segments = SplitPath(ssPropertyName);
 
         foreach (var item in picked)
         {
-            var key = GetPropertyValue(item!, ssPropertyName);
+            var key = GetPropertyValue(item!, segments);
             if (key == null)
             {
                 if (nullSeen) continue;
@@ -503,10 +504,11 @@ public partial class CssListUtils
 
         var array = JsonNode.Parse(ssSourceListJson!)!.AsArray();
         var newValue = ParseValueOrString(ssNewValueJson);
+        var compiled = CompileConditions(ssConditions);
 
         foreach (var item in array)
         {
-            if (!EvaluateConditions(item!, ssConditions, ssLogicalOperator)) continue;
+            if (!EvaluateConditions(item!, compiled, ssLogicalOperator)) continue;
             if (!(item is JsonObject)) continue;
             SetPropertyValue(item!, ssUpdateProperty, newValue);
             ssMatchCount++;

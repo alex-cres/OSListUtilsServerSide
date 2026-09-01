@@ -22,6 +22,7 @@ public partial class ListUtils
         }
 
         var array = JsonNode.Parse(SourceListJson)!.AsArray();
+        var segments = SplitPath(PropertyName);
         JsonNode? matchedNode = null;
         int matchedIndex = -1;
 
@@ -29,7 +30,7 @@ public partial class ListUtils
         {
             for (int i = array.Count - 1; i >= 0; i--)
             {
-                var value = GetPropertyValue(array[i]!, PropertyName);
+                var value = GetPropertyValue(array[i]!, segments);
                 if (value != null && MatchesCondition(value, TargetValue, ComparisonOperator, CaseSensitive))
                 {
                     matchedIndex = i;
@@ -41,7 +42,7 @@ public partial class ListUtils
         {
             for (int i = 0; i < array.Count; i++)
             {
-                var value = GetPropertyValue(array[i]!, PropertyName);
+                var value = GetPropertyValue(array[i]!, segments);
                 if (value != null && MatchesCondition(value, TargetValue, ComparisonOperator, CaseSensitive))
                 {
                     matchedIndex = i;
@@ -79,10 +80,11 @@ public partial class ListUtils
         var originalArray = JsonNode.Parse(SourceListJson)!.AsArray();
         var keptArray = new JsonArray();
         var poppedArray = new JsonArray();
+        var segments = SplitPath(PropertyName);
 
         foreach (var item in DrainToArray(originalArray))
         {
-            var value = GetPropertyValue(item!, PropertyName);
+            var value = GetPropertyValue(item!, segments);
             if (value != null && MatchesCondition(value, TargetValue, ComparisonOperator, CaseSensitive))
                 poppedArray.Add(item);
             else
@@ -118,11 +120,12 @@ public partial class ListUtils
         }
 
         int matchedIndex = -1;
+        var compiled = CompileConditions(Conditions);
         if (SearchFromEnd)
         {
             for (int i = array.Count - 1; i >= 0; i--)
             {
-                if (EvaluateConditions(array[i]!, Conditions, LogicalOperator))
+                if (EvaluateConditions(array[i]!, compiled, LogicalOperator))
                 {
                     matchedIndex = i;
                     break;
@@ -133,7 +136,7 @@ public partial class ListUtils
         {
             for (int i = 0; i < array.Count; i++)
             {
-                if (EvaluateConditions(array[i]!, Conditions, LogicalOperator))
+                if (EvaluateConditions(array[i]!, compiled, LogicalOperator))
                 {
                     matchedIndex = i;
                     break;
@@ -177,10 +180,11 @@ public partial class ListUtils
 
         var keptArray = new JsonArray();
         var poppedArray = new JsonArray();
+        var compiled = CompileConditions(Conditions);
 
         foreach (var item in DrainToArray(originalArray))
         {
-            if (EvaluateConditions(item!, Conditions, LogicalOperator))
+            if (EvaluateConditions(item!, compiled, LogicalOperator))
                 poppedArray.Add(item);
             else
                 keptArray.Add(item);
@@ -212,9 +216,10 @@ public partial class ListUtils
 
         var matching = new JsonArray();
         var nonMatching = new JsonArray();
+        var segments = SplitPath(PropertyName);
         foreach (var item in DrainToArray(array))
         {
-            var value = GetPropertyValue(item!, PropertyName);
+            var value = GetPropertyValue(item!, segments);
             bool match = value != null && MatchesCondition(value, TargetValue, ComparisonOperator, CaseSensitive);
             (match ? matching : nonMatching).Add(item);
         }
@@ -243,9 +248,10 @@ public partial class ListUtils
 
         var matching = new JsonArray();
         var nonMatching = new JsonArray();
+        var compiled = CompileConditions(Conditions);
         foreach (var item in DrainToArray(array))
         {
-            bool match = EvaluateConditions(item!, Conditions, LogicalOperator);
+            bool match = EvaluateConditions(item!, compiled, LogicalOperator);
             (match ? matching : nonMatching).Add(item);
         }
 

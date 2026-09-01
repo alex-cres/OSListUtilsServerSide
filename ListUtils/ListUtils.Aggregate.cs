@@ -47,6 +47,7 @@ public partial class ListUtils
         var invariant = CultureInfo.InvariantCulture;
         var numStyle = NumberStyles.Any;
         var cmp = StringComparer.OrdinalIgnoreCase;
+        var segments = SplitPath(propertyName);
 
         decimal bestNumeric = 0m;
         string? bestText = null;
@@ -55,7 +56,7 @@ public partial class ListUtils
 
         for (int i = 0; i < array.Count; i++)
         {
-            var value = GetPropertyValue(array[i]!, propertyName);
+            var value = GetPropertyValue(array[i]!, segments);
             if (value == null) continue;
 
             if (numericMode)
@@ -117,13 +118,14 @@ public partial class ListUtils
         if (normalized.Length == 0) normalized = "SUM";
         var invariant = CultureInfo.InvariantCulture;
         var numStyle = NumberStyles.Any;
+        var segments = SplitPath(PropertyName);
 
         if (normalized == "COUNT" || normalized == "COUNTDISTINCT")
         {
             var seen = new HashSet<string>(StringComparer.Ordinal);
             for (int i = 0; i < array.Count; i++)
             {
-                var v = GetPropertyValue(array[i]!, PropertyName);
+                var v = GetPropertyValue(array[i]!, segments);
                 if (v == null) continue;
                 MatchedCount++;
                 if (normalized == "COUNTDISTINCT") seen.Add(v);
@@ -138,7 +140,7 @@ public partial class ListUtils
         decimal max = 0m;
         for (int i = 0; i < array.Count; i++)
         {
-            var v = GetPropertyValue(array[i]!, PropertyName);
+            var v = GetPropertyValue(array[i]!, segments);
             if (v == null) continue;
             if (!decimal.TryParse(v, numStyle, invariant, out var d)) continue;
             if (MatchedCount == 0) { min = max = d; }

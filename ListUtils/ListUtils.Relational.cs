@@ -49,12 +49,14 @@ public partial class ListUtils
         }
 
         var array = JsonNode.Parse(SourceListJson)!.AsArray();
-        var groups = new Dictionary<string, JsonArray>(StringComparer.Ordinal);
+        int nA = array.Count;
+        var groups = new Dictionary<string, JsonArray>(nA, StringComparer.Ordinal);
         var groupOrder = new List<string>();
+        var segments = SplitPath(PropertyName);
 
         foreach (var item in DrainToArray(array))
         {
-            string key = GetPropertyValue(item!, PropertyName) ?? "Unknown";
+            string key = GetPropertyValue(item!, segments) ?? "Unknown";
             if (!groups.ContainsKey(key))
             {
                 groups[key] = new JsonArray();
@@ -92,13 +94,15 @@ public partial class ListUtils
         var groupsB = new Dictionary<string, JsonArray>(cmp);
         var groupOrder = new List<string>();
         var seen = new HashSet<string>(cmp);
+        var segA = SplitPath(KeyPropertyA);
+        var segB = SplitPath(KeyPropertyB);
 
         if (!string.IsNullOrEmpty(ListAJson))
         {
             var arrA = JsonNode.Parse(ListAJson)!.AsArray();
             foreach (var item in DrainToArray(arrA))
             {
-                string key = GetPropertyValue(item!, KeyPropertyA) ?? "Unknown";
+                string key = GetPropertyValue(item!, segA) ?? "Unknown";
                 if (!groupsA.TryGetValue(key, out var bucket))
                     groupsA[key] = bucket = new JsonArray();
                 bucket.Add(item);
@@ -111,7 +115,7 @@ public partial class ListUtils
             var arrB = JsonNode.Parse(ListBJson)!.AsArray();
             foreach (var item in DrainToArray(arrB))
             {
-                string key = GetPropertyValue(item!, KeyPropertyB) ?? "Unknown";
+                string key = GetPropertyValue(item!, segB) ?? "Unknown";
                 if (!groupsB.TryGetValue(key, out var bucket))
                     groupsB[key] = bucket = new JsonArray();
                 bucket.Add(item);
@@ -156,11 +160,12 @@ public partial class ListUtils
         var strCmp = CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
         var invariant = System.Globalization.CultureInfo.InvariantCulture;
         var numStyle = System.Globalization.NumberStyles.Any;
+        var segments = SplitPath(MatchKey);
 
-        var bValues = new List<string>();
+        var bValues = new List<string>(arrB.Count);
         foreach (var b in arrB)
         {
-            var k = GetPropertyValue(b!, MatchKey);
+            var k = GetPropertyValue(b!, segments);
             if (k != null) bValues.Add(k);
         }
 
@@ -243,7 +248,7 @@ public partial class ListUtils
         var result = new JsonArray();
         foreach (var item in DrainToArray(arrA))
         {
-            var key = GetPropertyValue(item!, MatchKey);
+            var key = GetPropertyValue(item!, segments);
             if (key == null || !matchedAny(key))
                 result.Add(item);
         }
@@ -267,11 +272,12 @@ public partial class ListUtils
         var normalizedOp = (ComparisonOperator ?? "").Trim().ToUpperInvariant();
         bool isEquals = normalizedOp.Length == 0 || normalizedOp == "EQUALS";
         var strCmp = CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
+        var segments = SplitPath(MatchKey);
 
-        var bValues = new List<string>();
+        var bValues = new List<string>(arrB.Count);
         foreach (var b in arrB)
         {
-            var k = GetPropertyValue(b!, MatchKey);
+            var k = GetPropertyValue(b!, segments);
             if (k != null) bValues.Add(k);
         }
 
@@ -280,7 +286,7 @@ public partial class ListUtils
         var result = new JsonArray();
         foreach (var item in DrainToArray(arrA))
         {
-            var key = GetPropertyValue(item!, MatchKey);
+            var key = GetPropertyValue(item!, segments);
             if (key == null) continue;
             bool match = isEquals
                 ? bSet!.Contains(key)
@@ -303,19 +309,21 @@ public partial class ListUtils
         var arrA = string.IsNullOrEmpty(ListAJson) ? new JsonArray() : JsonNode.Parse(ListAJson)!.AsArray();
         var arrB = string.IsNullOrEmpty(ListBJson) ? new JsonArray() : JsonNode.Parse(ListBJson)!.AsArray();
         var cmp = CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
-        var seen = new HashSet<string>(cmp);
+        int estimated = arrA.Count + arrB.Count;
+        var seen = new HashSet<string>(estimated, cmp);
         bool nullKeySeen = false;
         var result = new JsonArray();
+        var segments = SplitPath(MatchKey);
 
         void Consume(JsonArray src)
         {
             foreach (var item in DrainToArray(src))
             {
                 string? key;
-                if (string.IsNullOrEmpty(MatchKey))
+                if (segments == null)
                     key = item?.ToJsonString(JsonOptions) ?? "null";
                 else
-                    key = GetPropertyValue(item!, MatchKey);
+                    key = GetPropertyValue(item!, segments);
 
                 if (key == null)
                 {
@@ -355,10 +363,11 @@ public partial class ListUtils
         var groups = new Dictionary<string, JsonArray>(cmp);
         var parts = new Dictionary<string, string[]>(cmp);
         var order = new List<string>();
+        var compiledPaths = CompileKeyPaths(PropertyPaths);
 
         foreach (var item in DrainToArray(array))
         {
-            var (composite, keyValues) = BuildCompositeKey(item!, PropertyPaths);
+            var (composite, keyValues) = BuildCompositeKey(item!, compiledPaths);
             if (!groups.TryGetValue(composite, out var bucket))
             {
                 bucket = new JsonArray();
@@ -408,14 +417,14 @@ public partial class ListUtils
         var order = new List<string>();
         var seen = new HashSet<string>(cmp);
 
-        void Consume(string listJson, List<string> keyPaths, Dictionary<string, JsonArray> target)
+        void Consume(string listJson, List<string>? keyPaths, Dictionary<string, JsonArray> target)
         {
             if (string.IsNullOrEmpty(listJson)) return;
-            var effectivePaths = keyPaths ?? new List<string>();
+            var compiled = CompileKeyPaths(keyPaths);
             var arr = JsonNode.Parse(listJson)!.AsArray();
             foreach (var item in DrainToArray(arr))
             {
-                var (composite, keyValues) = BuildCompositeKey(item!, effectivePaths);
+                var (composite, keyValues) = BuildCompositeKey(item!, compiled);
                 if (!target.TryGetValue(composite, out var bucket))
                     target[composite] = bucket = new JsonArray();
                 bucket.Add(item);

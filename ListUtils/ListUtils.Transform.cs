@@ -64,12 +64,13 @@ public partial class ListUtils
         }
 
         var cmp = CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
-        var seen = new HashSet<string>(cmp);
+        var seen = new HashSet<string>(picked.Length, cmp);
         bool nullSeen = false;
+        var segments = SplitPath(PropertyName);
 
         foreach (var item in picked)
         {
-            var key = GetPropertyValue(item!, PropertyName);
+            var key = GetPropertyValue(item!, segments);
             if (key == null)
             {
                 if (nullSeen) continue;
@@ -499,10 +500,11 @@ public partial class ListUtils
 
         var array = JsonNode.Parse(SourceListJson)!.AsArray();
         var newValue = ParseValueOrString(NewValueJson);
+        var compiled = CompileConditions(Conditions);
 
         foreach (var item in array)
         {
-            if (!EvaluateConditions(item!, Conditions, LogicalOperator)) continue;
+            if (!EvaluateConditions(item!, compiled, LogicalOperator)) continue;
             if (item is not JsonObject) continue;
             SetPropertyValue(item!, UpdateProperty, newValue);
             MatchCount++;

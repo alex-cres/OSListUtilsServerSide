@@ -23,13 +23,14 @@ public partial class CssListUtils
         }
 
         var array = JsonNode.Parse(ssSourceListJson)!.AsArray();
+        var segments = SplitPath(ssPropertyName);
         int matchedIndex = -1;
 
         if (ssSearchFromEnd)
         {
             for (int i = array.Count - 1; i >= 0; i--)
             {
-                var value = GetPropertyValue(array[i]!, ssPropertyName);
+                var value = GetPropertyValue(array[i]!, segments);
                 if (value != null && MatchesCondition(value, ssTargetValue, ssComparisonOperator, ssCaseSensitive))
                 {
                     matchedIndex = i;
@@ -41,7 +42,7 @@ public partial class CssListUtils
         {
             for (int i = 0; i < array.Count; i++)
             {
-                var value = GetPropertyValue(array[i]!, ssPropertyName);
+                var value = GetPropertyValue(array[i]!, segments);
                 if (value != null && MatchesCondition(value, ssTargetValue, ssComparisonOperator, ssCaseSensitive))
                 {
                     matchedIndex = i;
@@ -80,10 +81,11 @@ public partial class CssListUtils
         var originalArray = JsonNode.Parse(ssSourceListJson)!.AsArray();
         var keptArray = new JsonArray();
         var poppedArray = new JsonArray();
+        var segments = SplitPath(ssPropertyName);
 
         foreach (var item in DrainToArray(originalArray))
         {
-            var value = GetPropertyValue(item!, ssPropertyName);
+            var value = GetPropertyValue(item!, segments);
             if (value != null && MatchesCondition(value, ssTargetValue, ssComparisonOperator, ssCaseSensitive))
                 poppedArray.Add(item);
             else
@@ -119,11 +121,12 @@ public partial class CssListUtils
         }
 
         int matchedIndex = -1;
+        var compiled = CompileConditions(ssConditions);
         if (ssSearchFromEnd)
         {
             for (int i = array.Count - 1; i >= 0; i--)
             {
-                if (EvaluateConditions(array[i]!, ssConditions, ssLogicalOperator))
+                if (EvaluateConditions(array[i]!, compiled, ssLogicalOperator))
                 {
                     matchedIndex = i;
                     break;
@@ -134,7 +137,7 @@ public partial class CssListUtils
         {
             for (int i = 0; i < array.Count; i++)
             {
-                if (EvaluateConditions(array[i]!, ssConditions, ssLogicalOperator))
+                if (EvaluateConditions(array[i]!, compiled, ssLogicalOperator))
                 {
                     matchedIndex = i;
                     break;
@@ -178,10 +181,11 @@ public partial class CssListUtils
 
         var keptArray = new JsonArray();
         var poppedArray = new JsonArray();
+        var compiled = CompileConditions(ssConditions);
 
         foreach (var item in DrainToArray(originalArray))
         {
-            if (EvaluateConditions(item!, ssConditions, ssLogicalOperator))
+            if (EvaluateConditions(item!, compiled, ssLogicalOperator))
                 poppedArray.Add(item);
             else
                 keptArray.Add(item);
@@ -213,9 +217,10 @@ public partial class CssListUtils
 
         var matching = new JsonArray();
         var nonMatching = new JsonArray();
+        var segments = SplitPath(ssPropertyName);
         foreach (var item in DrainToArray(array))
         {
-            var value = GetPropertyValue(item!, ssPropertyName);
+            var value = GetPropertyValue(item!, segments);
             bool match = value != null && MatchesCondition(value, ssTargetValue, ssComparisonOperator, ssCaseSensitive);
             (match ? matching : nonMatching).Add(item);
         }
@@ -244,9 +249,10 @@ public partial class CssListUtils
 
         var matching = new JsonArray();
         var nonMatching = new JsonArray();
+        var compiled = CompileConditions(ssConditions);
         foreach (var item in DrainToArray(array))
         {
-            bool match = EvaluateConditions(item!, ssConditions, ssLogicalOperator);
+            bool match = EvaluateConditions(item!, compiled, ssLogicalOperator);
             (match ? matching : nonMatching).Add(item);
         }
 

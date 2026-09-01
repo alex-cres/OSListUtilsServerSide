@@ -29,6 +29,7 @@ internal static class Program
         int seed = 42;
         string? csvPath = null;
         HashSet<string>? only = null;
+        bool worstOnly = false;
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -45,6 +46,9 @@ internal static class Program
                     break;
                 case "--only" when i + 1 < args.Length:
                     only = new HashSet<string>(args[++i].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries), StringComparer.OrdinalIgnoreCase);
+                    break;
+                case "--worst-only":
+                    worstOnly = true;
                     break;
                 case "--help" or "-h":
                     PrintUsage();
@@ -95,15 +99,23 @@ internal static class Program
         Console.WriteLine($"done ({warmSw.Elapsed.TotalMilliseconds:F0} ms)");
         Console.WriteLine();
 
-        var normalResults = RunScenario("Normal",     benchmarks, iterations, rngNormal, useNormalDistribution: true);
+        var normalResults = worstOnly
+            ? new List<ScenarioResult>()
+            : RunScenario("Normal", benchmarks, iterations, rngNormal, useNormalDistribution: true);
         var worstResults  = RunScenario("Worst-case", benchmarks, iterations, rngWorst,  useNormalDistribution: false);
 
         Console.WriteLine();
-        Reporter.PrintFullTable("NORMAL SCENARIO — sizes ~ N(10k, 5k) clamped to [1, 20k]", normalResults);
-        Console.WriteLine();
+        if (!worstOnly)
+        {
+            Reporter.PrintFullTable("NORMAL SCENARIO — sizes ~ N(10k, 5k) clamped to [1, 20k]", normalResults);
+            Console.WriteLine();
+        }
         Reporter.PrintFullTable($"WORST-CASE SCENARIO — sizes = {MaxSize}", worstResults);
-        Console.WriteLine();
-        Reporter.PrintComparison(normalResults, worstResults);
+        if (!worstOnly)
+        {
+            Console.WriteLine();
+            Reporter.PrintComparison(normalResults, worstResults);
+        }
 
         if (csvPath is not null)
         {
@@ -200,6 +212,7 @@ internal static class Program
         Console.WriteLine("      --seed <N>         RNG seed (default 42)");
         Console.WriteLine("      --csv <path>       Also write results to CSV");
         Console.WriteLine("      --only <a,b,c>     Comma-separated list of action names to run");
+        Console.WriteLine("      --worst-only       Skip the Normal scenario; run only the Worst-case scenario");
         Console.WriteLine("  -h, --help             Show this help");
     }
 }
