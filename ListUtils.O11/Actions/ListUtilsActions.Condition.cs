@@ -81,13 +81,13 @@ public partial class CssListUtils
         var keptArray = new JsonArray();
         var poppedArray = new JsonArray();
 
-        foreach (var item in originalArray)
+        foreach (var item in DrainToArray(originalArray))
         {
             var value = GetPropertyValue(item!, ssPropertyName);
             if (value != null && MatchesCondition(value, ssTargetValue, ssComparisonOperator, ssCaseSensitive))
-                poppedArray.Add(item!.DeepClone());
+                poppedArray.Add(item);
             else
-                keptArray.Add(item!.DeepClone());
+                keptArray.Add(item);
         }
 
         ssUpdatedListJson = keptArray.ToJsonString(JsonOptions);
@@ -179,12 +179,12 @@ public partial class CssListUtils
         var keptArray = new JsonArray();
         var poppedArray = new JsonArray();
 
-        foreach (var item in originalArray)
+        foreach (var item in DrainToArray(originalArray))
         {
             if (EvaluateConditions(item!, ssConditions, ssLogicalOperator))
-                poppedArray.Add(item!.DeepClone());
+                poppedArray.Add(item);
             else
-                keptArray.Add(item!.DeepClone());
+                keptArray.Add(item);
         }
 
         ssUpdatedListJson = keptArray.ToJsonString(JsonOptions);
@@ -213,11 +213,11 @@ public partial class CssListUtils
 
         var matching = new JsonArray();
         var nonMatching = new JsonArray();
-        foreach (var item in array)
+        foreach (var item in DrainToArray(array))
         {
             var value = GetPropertyValue(item!, ssPropertyName);
             bool match = value != null && MatchesCondition(value, ssTargetValue, ssComparisonOperator, ssCaseSensitive);
-            (match ? matching : nonMatching).Add(item!.DeepClone());
+            (match ? matching : nonMatching).Add(item);
         }
 
         ssMatchingListJson = matching.ToJsonString(JsonOptions);
@@ -244,10 +244,10 @@ public partial class CssListUtils
 
         var matching = new JsonArray();
         var nonMatching = new JsonArray();
-        foreach (var item in array)
+        foreach (var item in DrainToArray(array))
         {
             bool match = EvaluateConditions(item!, ssConditions, ssLogicalOperator);
-            (match ? matching : nonMatching).Add(item!.DeepClone());
+            (match ? matching : nonMatching).Add(item);
         }
 
         ssMatchingListJson = matching.ToJsonString(JsonOptions);

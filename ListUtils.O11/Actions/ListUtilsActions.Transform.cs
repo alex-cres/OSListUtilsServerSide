@@ -18,15 +18,18 @@ public partial class CssListUtils
             return;
 
         var array = JsonNode.Parse(ssSourceListJson!)!.AsArray();
+        int n = array.Count;
+        var picked = DrainToArray(array);
+
         JsonArray current = new JsonArray();
-        for (int i = 0; i < array.Count; i++)
+        for (int i = 0; i < n; i++)
         {
             if (current.Count == ssChunkSize)
             {
                 ssChunksListJson.Add(current.ToJsonString(JsonOptions));
                 current = new JsonArray();
             }
-            current.Add(array[i]!.DeepClone());
+            current.Add(picked[i]);
         }
         if (current.Count > 0)
             ssChunksListJson.Add(current.ToJsonString(JsonOptions));
@@ -45,16 +48,17 @@ public partial class CssListUtils
         }
 
         var array = JsonNode.Parse(ssSourceListJson!)!.AsArray();
+        var picked = DrainToArray(array);
         var result = new JsonArray();
 
         if (string.IsNullOrEmpty(ssPropertyName))
         {
             var seenRaw = new HashSet<string>(ssCaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
-            foreach (var item in array)
+            foreach (var item in picked)
             {
                 var raw = item?.ToJsonString(JsonOptions) ?? "null";
                 if (seenRaw.Add(raw))
-                    result.Add(item!.DeepClone());
+                    result.Add(item);
             }
             ssDistinctListJson = result.ToJsonString(JsonOptions);
             return;
@@ -64,18 +68,18 @@ public partial class CssListUtils
         var seen = new HashSet<string>(cmp);
         bool nullSeen = false;
 
-        foreach (var item in array)
+        foreach (var item in picked)
         {
             var key = GetPropertyValue(item!, ssPropertyName);
             if (key == null)
             {
                 if (nullSeen) continue;
                 nullSeen = true;
-                result.Add(item!.DeepClone());
+                result.Add(item);
             }
             else if (seen.Add(key))
             {
-                result.Add(item!.DeepClone());
+                result.Add(item);
             }
         }
 
@@ -111,13 +115,14 @@ public partial class CssListUtils
             ? (step > 0 ? n : -1)
             : NormalizeSliceEnd(ssEnd, n, step);
 
+        var picked = DrainToArray(array);
         var result = new JsonArray();
         if (step > 0)
         {
             for (int i = start; i < end && i < n; i += step)
             {
                 if (i < 0) continue;
-                result.Add(array[i]!.DeepClone());
+                result.Add(picked[i]);
             }
         }
         else
@@ -125,7 +130,7 @@ public partial class CssListUtils
             for (int i = start; i > end && i >= 0; i += step)
             {
                 if (i >= n) continue;
-                result.Add(array[i]!.DeepClone());
+                result.Add(picked[i]);
             }
         }
 
@@ -176,9 +181,7 @@ public partial class CssListUtils
         }
 
         var source = JsonNode.Parse(ssSourceListJson!)!.AsArray();
-        var buffer = new JsonNode?[source.Count];
-        for (int i = 0; i < source.Count; i++)
-            buffer[i] = source[i]!.DeepClone();
+        var buffer = DrainToArray(source);
 
         if (ssSeed != 0)
         {
@@ -394,9 +397,15 @@ public partial class CssListUtils
         }
 
         var array = JsonNode.Parse(ssSourceListJson!)!.AsArray();
+        int n = array.Count;
         var result = new JsonArray();
-        for (int i = array.Count - 1; i >= 0; i--)
-            result.Add(array[i]!.DeepClone());
+        // Tail-drain → items detach in reverse order; add each directly.
+        for (int i = n - 1; i >= 0; i--)
+        {
+            var item = array[i];
+            array.RemoveAt(i);
+            result.Add(item);
+        }
 
         ssReversedListJson = result.ToJsonString(JsonOptions);
     }
@@ -415,8 +424,9 @@ public partial class CssListUtils
                 try { parsed = JsonNode.Parse(entry!); }
                 catch (JsonException) { continue; }
                 if (!(parsed is JsonArray inner)) continue;
-                foreach (var item in inner)
-                    result.Add(item == null ? null : item.DeepClone());
+                var picked = DrainToArray(inner);
+                for (int i = 0; i < picked.Length; i++)
+                    result.Add(picked[i]);
             }
         }
         ssFlatListJson = result.ToJsonString(JsonOptions);
@@ -443,8 +453,7 @@ public partial class CssListUtils
         }
 
         int take = ssSampleSize > n ? n : ssSampleSize;
-        var buffer = new JsonNode?[n];
-        for (int i = 0; i < n; i++) buffer[i] = source[i]!.DeepClone();
+        var buffer = DrainToArray(source);
 
         if (ssSeed != 0)
         {

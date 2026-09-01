@@ -22,15 +22,17 @@ public partial class CssListUtils
 
         var arrA = JsonNode.Parse(ssListAJson)!.AsArray();
         var arrB = JsonNode.Parse(ssListBJson)!.AsArray();
+        int minCount = Math.Min(arrA.Count, arrB.Count);
+        var pickedA = DrainToArray(arrA);
+        var pickedB = DrainToArray(arrB);
         var result = new JsonArray();
 
-        int minCount = Math.Min(arrA.Count, arrB.Count);
         for (int i = 0; i < minCount; i++)
         {
             var pair = new JsonObject
             {
-                [ssKeyNameA] = arrA[i]!.DeepClone(),
-                [ssKeyNameB] = arrB[i]!.DeepClone()
+                [ssKeyNameA] = pickedA[i],
+                [ssKeyNameB] = pickedB[i]
             };
             result.Add(pair);
         }
@@ -53,7 +55,7 @@ public partial class CssListUtils
         var groups = new Dictionary<string, JsonArray>(StringComparer.Ordinal);
         var groupOrder = new List<string>();
 
-        foreach (var item in array)
+        foreach (var item in DrainToArray(array))
         {
             string key = GetPropertyValue(item!, ssPropertyName) ?? "Unknown";
             if (!groups.ContainsKey(key))
@@ -61,7 +63,7 @@ public partial class CssListUtils
                 groups[key] = new JsonArray();
                 groupOrder.Add(key);
             }
-            groups[key].Add(item!.DeepClone());
+            groups[key].Add(item);
         }
 
         var result = new JsonArray();
@@ -97,7 +99,7 @@ public partial class CssListUtils
         if (!string.IsNullOrEmpty(ssListAJson))
         {
             var arrA = JsonNode.Parse(ssListAJson)!.AsArray();
-            foreach (var item in arrA)
+            foreach (var item in DrainToArray(arrA))
             {
                 string key = GetPropertyValue(item!, ssKeyPropertyA) ?? "Unknown";
                 JsonArray bucket;
@@ -106,7 +108,7 @@ public partial class CssListUtils
                     bucket = new JsonArray();
                     groupsA[key] = bucket;
                 }
-                bucket.Add(item!.DeepClone());
+                bucket.Add(item);
                 if (seen.Add(key)) groupOrder.Add(key);
             }
         }
@@ -114,7 +116,7 @@ public partial class CssListUtils
         if (!string.IsNullOrEmpty(ssListBJson))
         {
             var arrB = JsonNode.Parse(ssListBJson)!.AsArray();
-            foreach (var item in arrB)
+            foreach (var item in DrainToArray(arrB))
             {
                 string key = GetPropertyValue(item!, ssKeyPropertyB) ?? "Unknown";
                 JsonArray bucket;
@@ -123,7 +125,7 @@ public partial class CssListUtils
                     bucket = new JsonArray();
                     groupsB[key] = bucket;
                 }
-                bucket.Add(item!.DeepClone());
+                bucket.Add(item);
                 if (seen.Add(key)) groupOrder.Add(key);
             }
         }
@@ -245,11 +247,11 @@ public partial class CssListUtils
         }
 
         var result = new JsonArray();
-        foreach (var item in arrA)
+        foreach (var item in DrainToArray(arrA))
         {
             var key = GetPropertyValue(item!, ssMatchKey);
             if (key == null || !matchedAny(key))
-                result.Add(item!.DeepClone());
+                result.Add(item);
         }
 
         ssDifferenceListJson = result.ToJsonString(JsonOptions);
@@ -282,14 +284,14 @@ public partial class CssListUtils
         HashSet<string>? bSet = isEquals ? new HashSet<string>(bValues, strCmp) : null;
 
         var result = new JsonArray();
-        foreach (var item in arrA)
+        foreach (var item in DrainToArray(arrA))
         {
             var key = GetPropertyValue(item!, ssMatchKey);
             if (key == null) continue;
             bool match = isEquals
                 ? bSet!.Contains(key)
                 : bValues.Any(bv => MatchesCondition(key, bv, ssComparisonOperator ?? "", ssCaseSensitive));
-            if (match) result.Add(item!.DeepClone());
+            if (match) result.Add(item);
         }
 
         ssIntersectionListJson = result.ToJsonString(JsonOptions);
@@ -313,7 +315,7 @@ public partial class CssListUtils
 
         void Consume(JsonArray src)
         {
-            foreach (var item in src)
+            foreach (var item in DrainToArray(src))
             {
                 string? key;
                 if (string.IsNullOrEmpty(ssMatchKey))
@@ -325,11 +327,11 @@ public partial class CssListUtils
                 {
                     if (nullKeySeen) continue;
                     nullKeySeen = true;
-                    result.Add(item!.DeepClone());
+                    result.Add(item);
                 }
                 else if (seen.Add(key))
                 {
-                    result.Add(item!.DeepClone());
+                    result.Add(item);
                 }
             }
         }
@@ -360,7 +362,7 @@ public partial class CssListUtils
         var parts = new Dictionary<string, string[]>(cmp);
         var order = new List<string>();
 
-        foreach (var item in array)
+        foreach (var item in DrainToArray(array))
         {
             BuildCompositeKey(item!, ssPropertyPaths, out var composite, out var keyValues);
             if (!groups.TryGetValue(composite, out var bucket))
@@ -370,7 +372,7 @@ public partial class CssListUtils
                 parts[composite] = keyValues;
                 order.Add(composite);
             }
-            bucket.Add(item!.DeepClone());
+            bucket.Add(item);
         }
 
         string itemsField = string.IsNullOrEmpty(ssItemsFieldName) ? "Items" : ssItemsFieldName;
@@ -414,12 +416,12 @@ public partial class CssListUtils
             if (string.IsNullOrEmpty(listJson)) return;
             var effectivePaths = keyPaths ?? new List<string>();
             var arr = JsonNode.Parse(listJson)!.AsArray();
-            foreach (var item in arr)
+            foreach (var item in DrainToArray(arr))
             {
                 BuildCompositeKey(item!, effectivePaths, out var composite, out var keyValues);
                 if (!target.TryGetValue(composite, out var bucket))
                     target[composite] = bucket = new JsonArray();
-                bucket.Add(item!.DeepClone());
+                bucket.Add(item);
                 if (seen.Add(composite))
                 {
                     parts[composite] = keyValues;

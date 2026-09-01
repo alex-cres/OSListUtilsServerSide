@@ -156,4 +156,19 @@ public partial class CssListUtils
     }
 
     private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions { WriteIndented = false };
+
+    // Removes every element from `array` and returns the detached refs in original order.
+    // Tail-drain keeps each RemoveAt at O(1). Callers can re-parent the refs into a fresh
+    // JsonArray without cloning, since RemoveAt sets each node's Parent to null.
+    private static JsonNode?[] DrainToArray(JsonArray array)
+    {
+        int n = array.Count;
+        var picked = new JsonNode?[n];
+        for (int i = n - 1; i >= 0; i--)
+        {
+            picked[i] = array[i];
+            array.RemoveAt(i);
+        }
+        return picked;
+    }
 }

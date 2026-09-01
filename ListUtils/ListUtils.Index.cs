@@ -61,24 +61,25 @@ public partial class ListUtils
             .OrderByDescending(i => i)
             .ToList();
 
-        var poppedArray = new JsonArray();
-
+        // Detach in descending-index order (indices remain valid), stash refs,
+        // then re-parent them into `poppedArray` in ascending order — no clones.
+        var picked = new List<JsonNode?>(indices.Count);
         foreach (int idx in indices)
         {
             if (idx < array.Count)
             {
                 var item = array[idx];
-                poppedArray.Add(item!.DeepClone());
                 array.RemoveAt(idx);
+                picked.Add(item);
             }
         }
 
-        var ordered = new JsonArray();
-        for (int i = poppedArray.Count - 1; i >= 0; i--)
-            ordered.Add(poppedArray[i]!.DeepClone());
+        var poppedArray = new JsonArray();
+        for (int i = picked.Count - 1; i >= 0; i--)
+            poppedArray.Add(picked[i]);
 
         UpdatedListJson = array.ToJsonString(JsonOptions);
-        PoppedElementsJson = ordered.ToJsonString(JsonOptions);
+        PoppedElementsJson = poppedArray.ToJsonString(JsonOptions);
     }
 
     public void List_SplitAt(
@@ -100,11 +101,12 @@ public partial class ListUtils
         if (split < 0) split = 0;
         if (split > n) split = n;
 
+        var picked = DrainToArray(array);
         var left = new JsonArray();
         var right = new JsonArray();
         for (int i = 0; i < n; i++)
         {
-            (i < split ? left : right).Add(array[i]!.DeepClone());
+            (i < split ? left : right).Add(picked[i]);
         }
 
         LeftListJson = left.ToJsonString(JsonOptions);

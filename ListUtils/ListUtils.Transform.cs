@@ -16,15 +16,18 @@ public partial class ListUtils
             return;
 
         var array = JsonNode.Parse(SourceListJson)!.AsArray();
+        int n = array.Count;
+        var picked = DrainToArray(array);
+
         JsonArray current = new();
-        for (int i = 0; i < array.Count; i++)
+        for (int i = 0; i < n; i++)
         {
             if (current.Count == ChunkSize)
             {
                 ChunksListJson.Add(current.ToJsonString(JsonOptions));
                 current = new JsonArray();
             }
-            current.Add(array[i]!.DeepClone());
+            current.Add(picked[i]);
         }
         if (current.Count > 0)
             ChunksListJson.Add(current.ToJsonString(JsonOptions));
@@ -43,17 +46,18 @@ public partial class ListUtils
         }
 
         var array = JsonNode.Parse(SourceListJson)!.AsArray();
+        var picked = DrainToArray(array);
         var result = new JsonArray();
 
         if (string.IsNullOrEmpty(PropertyName))
         {
             // No key → dedupe on the item's own JSON representation.
             var seenRaw = new HashSet<string>(CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
-            foreach (var item in array)
+            foreach (var item in picked)
             {
                 var raw = item?.ToJsonString(JsonOptions) ?? "null";
                 if (seenRaw.Add(raw))
-                    result.Add(item!.DeepClone());
+                    result.Add(item);
             }
             DistinctListJson = result.ToJsonString(JsonOptions);
             return;
@@ -63,18 +67,18 @@ public partial class ListUtils
         var seen = new HashSet<string>(cmp);
         bool nullSeen = false;
 
-        foreach (var item in array)
+        foreach (var item in picked)
         {
             var key = GetPropertyValue(item!, PropertyName);
             if (key == null)
             {
                 if (nullSeen) continue;
                 nullSeen = true;
-                result.Add(item!.DeepClone());
+                result.Add(item);
             }
             else if (seen.Add(key))
             {
-                result.Add(item!.DeepClone());
+                result.Add(item);
             }
         }
 
@@ -113,13 +117,14 @@ public partial class ListUtils
             ? (step > 0 ? n : -1)
             : NormalizeSliceEnd(End, n, step);
 
+        var picked = DrainToArray(array);
         var result = new JsonArray();
         if (step > 0)
         {
             for (int i = start; i < end && i < n; i += step)
             {
                 if (i < 0) continue;
-                result.Add(array[i]!.DeepClone());
+                result.Add(picked[i]);
             }
         }
         else
@@ -127,7 +132,7 @@ public partial class ListUtils
             for (int i = start; i > end && i >= 0; i += step)
             {
                 if (i >= n) continue;
-                result.Add(array[i]!.DeepClone());
+                result.Add(picked[i]);
             }
         }
 
@@ -178,9 +183,7 @@ public partial class ListUtils
         }
 
         var source = JsonNode.Parse(SourceListJson)!.AsArray();
-        var buffer = new JsonNode?[source.Count];
-        for (int i = 0; i < source.Count; i++)
-            buffer[i] = source[i]!.DeepClone();
+        var buffer = DrainToArray(source);
 
         // Fisher-Yates. Non-zero seed → deterministic; zero → cryptographic RNG.
         if (Seed != 0)
@@ -391,9 +394,15 @@ public partial class ListUtils
         }
 
         var array = JsonNode.Parse(SourceListJson)!.AsArray();
+        int n = array.Count;
         var result = new JsonArray();
-        for (int i = array.Count - 1; i >= 0; i--)
-            result.Add(array[i]!.DeepClone());
+        // Tail-drain → items detach in reverse order; add each directly.
+        for (int i = n - 1; i >= 0; i--)
+        {
+            var item = array[i];
+            array.RemoveAt(i);
+            result.Add(item);
+        }
 
         ReversedListJson = result.ToJsonString(JsonOptions);
     }
@@ -412,8 +421,9 @@ public partial class ListUtils
                 try { parsed = JsonNode.Parse(entry); }
                 catch (JsonException) { continue; }
                 if (parsed is not JsonArray inner) continue;
-                foreach (var item in inner)
-                    result.Add(item?.DeepClone());
+                var picked = DrainToArray(inner);
+                for (int i = 0; i < picked.Length; i++)
+                    result.Add(picked[i]);
             }
         }
         FlatListJson = result.ToJsonString(JsonOptions);
@@ -440,8 +450,7 @@ public partial class ListUtils
         }
 
         int take = SampleSize > n ? n : SampleSize;
-        var buffer = new JsonNode?[n];
-        for (int i = 0; i < n; i++) buffer[i] = source[i]!.DeepClone();
+        var buffer = DrainToArray(source);
 
         // Partial Fisher-Yates: shuffle just the first `take` slots.
         if (Seed != 0)

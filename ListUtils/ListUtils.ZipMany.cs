@@ -22,6 +22,9 @@ public partial class ListUtils
             if (arrays[i].Count < minLen) minLen = arrays[i].Count;
         }
 
+        var picked = new JsonNode?[arrays.Length][];
+        for (int i = 0; i < arrays.Length; i++) picked[i] = DrainToArray(arrays[i]);
+
         var result = new JsonArray();
         for (int pos = 0; pos < minLen; pos++)
         {
@@ -29,7 +32,7 @@ public partial class ListUtils
             for (int listIdx = 0; listIdx < arrays.Length; listIdx++)
             {
                 string keyName = KeyName(KeyNamesJson, listIdx);
-                obj[keyName] = arrays[listIdx][pos]!.DeepClone();
+                obj[keyName] = picked[listIdx][pos];
             }
             result.Add(obj);
         }
@@ -65,7 +68,7 @@ public partial class ListUtils
         {
             var arr = arrays[listIdx];
             string keyPath = listIdx < (KeyPropertiesJson?.Count ?? 0) ? KeyPropertiesJson![listIdx] : "";
-            foreach (var item in arr)
+            foreach (var item in DrainToArray(arr))
             {
                 string key = (string.IsNullOrEmpty(keyPath)
                     ? null
@@ -78,7 +81,7 @@ public partial class ListUtils
                     groups[key] = buckets;
                     groupOrder.Add(key);
                 }
-                buckets[listIdx].Add(item!.DeepClone());
+                buckets[listIdx].Add(item);
             }
         }
 
@@ -145,7 +148,7 @@ public partial class ListUtils
                 scratch.Add(flatIdx < totalPaths ? KeyProperties![flatIdx] : "");
             }
 
-            foreach (var item in arrays[listIdx])
+            foreach (var item in DrainToArray(arrays[listIdx]))
             {
                 var (composite, keyValues) = BuildCompositeKey(item!, scratch);
                 if (!groups.TryGetValue(composite, out var buckets))
@@ -156,7 +159,7 @@ public partial class ListUtils
                     parts[composite] = keyValues;
                     order.Add(composite);
                 }
-                buckets[listIdx].Add(item!.DeepClone());
+                buckets[listIdx].Add(item);
             }
         }
 

@@ -135,4 +135,15 @@ public class ListPopTests
         Assert.Equal("[]", updated);
         Assert.Equal("[]", popped);
     }
+
+    [Fact]
+    public void List_PopMultiple_NullLiteralInArray_DoesNotThrow()
+    {
+        string json = """[1,null,3]""";
+
+        _sut.List_PopMultiple(json, "1", out var updated, out var popped);
+
+        Assert.Equal("[1,3]", updated);
+        Assert.Equal("[null]", popped);
+    }
 }
