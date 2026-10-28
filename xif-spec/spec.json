@@ -1,0 +1,1349 @@
+{
+  "name": "ListUtils",
+  "description": "Advanced list manipulation utilities — index-based pops, condition-based pops, zip, group-by, and set difference. Uses JSON serialization for generic structure support.",
+  "icon": "../ListUtils.O11/resources/icon.ico",
+  "structures": [
+    {
+      "name": "Condition",
+      "description": "A single filter condition used by the multi-condition actions (List_PopByConditions, List_PopMultipleByConditions, List_PartitionByConditions, List_ReplaceWhere). Groups a property path, a comparison operator, a comparison value and a case-sensitivity flag into one first-class OutSystems Structure so callers no longer need to hand-craft a JSON string.",
+      "attributes": [
+        {
+          "name": "Path",
+          "type": "Text",
+          "mandatory": false,
+          "description": "Property path to check on each list element. Supports nested paths with dots (e.g. 'Address.City') and array indexing (e.g. 'Tags[0]', 'Items[-1].Name'). CamelCase fallback is applied per segment.",
+          "length": 2000
+        },
+        {
+          "name": "Operator",
+          "type": "Text",
+          "mandatory": false,
+          "description": "Comparison operator name. Prefer the constants on the ListUtils.Operators helper class (Equals, NotEquals, Contains, StartsWith, EndsWith, GreaterThan, LessThan, GreaterOrEqual, LessOrEqual). Symbol aliases '!=', '>', '<', '>=', '<=' are also accepted. Empty defaults to Equals.",
+          "length": 50
+        },
+        {
+          "name": "Value",
+          "type": "Text",
+          "mandatory": false,
+          "description": "The value to compare against, as text. Numeric operators parse this as a decimal with InvariantCulture.",
+          "length": 2000
+        },
+        {
+          "name": "CaseSensitive",
+          "type": "Boolean",
+          "mandatory": false,
+          "description": "When true, string comparisons are case-sensitive. When false (default), case-insensitive. Ignored by numeric operators."
+        }
+      ]
+    },
+    {
+      "name": "TextItem",
+      "description": "One Text value. Integration Studio has no List-of-Text parameter type, so Text lists (property paths, key names, JSON chunks) are passed as a Record List of TextItem.",
+      "attributes": [
+        {
+          "name": "Value",
+          "type": "Text",
+          "length": 2000,
+          "mandatory": false,
+          "description": "The text value."
+        }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "name": "List_Pop",
+      "description": "Removes an element at a specific index from a JSON list. Returns the removed element and the updated list as JSON.",
+      "inputs": [
+        {
+          "name": "SourceListJson",
+          "type": "Text",
+          "description": "The source list serialized as a JSON array string",
+          "mandatory": true
+        },
+        {
+          "name": "Index",
+          "type": "Integer",
+          "description": "The 0-based index of the element to remove",
+          "mandatory": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "UpdatedListJson",
+          "type": "Text",
+          "description": "The JSON array without the popped element"
+        },
+        {
+          "name": "PoppedElementJson",
+          "type": "Text",
+          "description": "The JSON element that was removed"
+        }
+      ]
+    },
+    {
+      "name": "List_PopMultiple",
+      "description": "Removes multiple elements at specified indices from a JSON list. Returns the removed elements and the updated list as JSON.",
+      "inputs": [
+        {
+          "name": "SourceListJson",
+          "type": "Text",
+          "description": "The source list serialized as a JSON array string",
+          "mandatory": true
+        },
+        {
+          "name": "IndicesToPop",
+          "type": "Text",
+          "description": "Comma-separated 0-based indices to remove (e.g. '1,3,5')",
+          "mandatory": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "UpdatedListJson",
+          "type": "Text",
+          "description": "The JSON array without the popped elements"
+        },
+        {
+          "name": "PoppedElementsJson",
+          "type": "Text",
+          "description": "The JSON array of elements that were removed"
+        }
+      ]
+    },
+    {
+      "name": "List_PopByCondition",
+      "description": "Pops the first element matching a property condition. Returns the popped element and modified list as JSON.",
+      "inputs": [
+        {
+          "name": "SourceListJson",
+          "type": "Text",
+          "description": "The source list serialized as a JSON string",
+          "mandatory": true
+        },
+        {
+          "name": "PropertyName",
+          "type": "Text",
+          "description": "Property path to check. Supports nested paths with dots (e.g. 'Address.City') and array indexing (e.g. 'Items[0]', 'Tags[-1]'). CamelCase fallback applied at each segment.",
+          "mandatory": false
+        },
+        {
+          "name": "TargetValue",
+          "type": "Text",
+          "description": "The value to filter by (as a string, e.g. 'true' or '5')",
+          "mandatory": false
+        },
+        {
+          "name": "ComparisonOperator",
+          "type": "Text",
+          "description": "Comparison operator: Equals (default), NotEquals, Contains, StartsWith, EndsWith, GreaterThan, LessThan, GreaterOrEqual, LessOrEqual. Empty = Equals.",
+          "mandatory": false
+        },
+        {
+          "name": "CaseSensitive",
+          "type": "Boolean",
+          "description": "When true, string comparison is case-sensitive. When false (default), case-insensitive. Ignored by numeric operators.",
+          "mandatory": false
+        },
+        {
+          "name": "SearchFromEnd",
+          "type": "Boolean",
+          "description": "When true, searches from the end of the list backwards (pops the LAST match). When false (default), searches from the beginning (pops the FIRST match).",
+          "mandatory": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "UpdatedListJson",
+          "type": "Text",
+          "description": "The updated JSON list without the matched element"
+        },
+        {
+          "name": "PoppedElementJson",
+          "type": "Text",
+          "description": "The single JSON object that was matched and removed"
+        }
+      ]
+    },
+    {
+      "name": "List_PopMultipleByCondition",
+      "description": "Pops all elements matching a property condition. Returns the popped elements and modified list as JSON.",
+      "inputs": [
+        {
+          "name": "SourceListJson",
+          "type": "Text",
+          "description": "The source list serialized as a JSON string",
+          "mandatory": true
+        },
+        {
+          "name": "PropertyName",
+          "type": "Text",
+          "description": "Property path to check. Supports nested paths with dots and array indexing (e.g. 'Items[0].Name').",
+          "mandatory": false
+        },
+        {
+          "name": "TargetValue",
+          "type": "Text",
+          "description": "The value to filter by",
+          "mandatory": false
+        },
+        {
+          "name": "ComparisonOperator",
+          "type": "Text",
+          "description": "Comparison operator: Equals (default), NotEquals, Contains, StartsWith, EndsWith, GreaterThan, LessThan, GreaterOrEqual, LessOrEqual. Empty = Equals.",
+          "mandatory": false
+        },
+        {
+          "name": "CaseSensitive",
+          "type": "Boolean",
+          "description": "When true, string comparison is case-sensitive. When false (default), case-insensitive.",
+          "mandatory": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "UpdatedListJson",
+          "type": "Text",
+          "description": "The updated JSON list without any matched elements"
+        },
+        {
+          "name": "PoppedElementsJson",
+          "type": "Text",
+          "description": "The JSON array of all items that were matched and removed"
+        }
+      ]
+    },
+    {
+      "name": "List_PopByConditions",
+      "description": "Pops the first element matching multiple conditions combined with AND/OR. Returns the popped element and modified list as JSON.",
+      "inputs": [
+        {
+          "name": "SourceListJson",
+          "type": "Text",
+          "description": "The source list serialized as a JSON string",
+          "mandatory": true
+        },
+        {
+          "name": "Conditions",
+          "type": "RecordList",
+          "description": "List of Condition Structures. Each entry has Path, Operator, Value, CaseSensitive. Build with the ListUtils.Operators constants (e.g. Operators.Equals) for compile-time safety.",
+          "record": "Condition",
+          "mandatory": false
+        },
+        {
+          "name": "LogicalOperator",
+          "type": "Text",
+          "description": "How to combine conditions: 'AND' (default) - all must match; 'OR' - at least one must match. Empty = AND. See ListUtils.LogicalOperators.",
+          "mandatory": false
+        },
+        {
+          "name": "SearchFromEnd",
+          "type": "Boolean",
+          "description": "When true, searches from the end of the list backwards (pops the LAST match). When false (default), searches from the beginning (pops the FIRST match).",
+          "mandatory": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "UpdatedListJson",
+          "type": "Text",
+          "description": "The updated JSON list without the matched element"
+        },
+        {
+          "name": "PoppedElementJson",
+          "type": "Text",
+          "description": "The single JSON object that was matched and removed"
+        }
+      ]
+    },
+    {
+      "name": "List_PopMultipleByConditions",
+      "description": "Pops all elements matching multiple conditions combined with AND/OR. Returns the popped elements and modified list as JSON.",
+      "inputs": [
+        {
+          "name": "SourceListJson",
+          "type": "Text",
+          "description": "The source list serialized as a JSON string",
+          "mandatory": true
+        },
+        {
+          "name": "Conditions",
+          "type": "RecordList",
+          "description": "List of Condition Structures.",
+          "record": "Condition",
+          "mandatory": false
+        },
+        {
+          "name": "LogicalOperator",
+          "type": "Text",
+          "description": "How to combine conditions: 'AND' (default) or 'OR'. Empty = AND. See ListUtils.LogicalOperators.",
+          "mandatory": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "UpdatedListJson",
+          "type": "Text",
+          "description": "The updated JSON list without any matched elements"
+        },
+        {
+          "name": "PoppedElementsJson",
+          "type": "Text",
+          "description": "The JSON array of all items that were matched and removed"
+        }
+      ]
+    },
+    {
+      "name": "List_Zip",
+      "description": "Combines two lists into a single list of paired objects based on matching indexes.",
+      "inputs": [
+        {
+          "name": "ListAJson",
+          "type": "Text",
+          "description": "The first JSON list source",
+          "mandatory": true
+        },
+        {
+          "name": "ListBJson",
+          "type": "Text",
+          "description": "The second JSON list source",
+          "mandatory": true
+        },
+        {
+          "name": "KeyNameA",
+          "type": "Text",
+          "description": "Key property label for List A entries in the output",
+          "mandatory": false
+        },
+        {
+          "name": "KeyNameB",
+          "type": "Text",
+          "description": "Key property label for List B entries in the output",
+          "mandatory": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "ZippedListJson",
+          "type": "Text",
+          "description": "The combined JSON array of paired objects"
+        }
+      ]
+    },
+    {
+      "name": "List_GroupBy",
+      "description": "Groups a JSON list by a specific property name.",
+      "inputs": [
+        {
+          "name": "SourceListJson",
+          "type": "Text",
+          "description": "The source JSON list",
+          "mandatory": true
+        },
+        {
+          "name": "PropertyName",
+          "type": "Text",
+          "description": "Property path to group by. Supports nested paths with dots (e.g. 'Address.City'). CamelCase fallback applied at each segment.",
+          "mandatory": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "GroupedListJson",
+          "type": "Text",
+          "description": "Grouped JSON array with Key and Items per group"
+        }
+      ]
+    },
+    {
+      "name": "List_ZipGroupBy",
+      "description": "Groups two JSON lists by a shared key value. Each output group contains the Key plus a named array of items from ListA and a named array of items from ListB that share the same key. Union of first-seen keys across both lists preserves ordering. Useful for cogroup / two-list join scenarios (orders + payments per customer, etc.).",
+      "inputs": [
+        {
+          "name": "ListAJson",
+          "type": "Text",
+          "description": "The first JSON list",
+          "mandatory": true
+        },
+        {
+          "name": "ListBJson",
+          "type": "Text",
+          "description": "The second JSON list",
+          "mandatory": true
+        },
+        {
+          "name": "KeyPropertyA",
+          "type": "Text",
+          "description": "Property path in ListA that supplies the group key. Supports nested paths and array indexing.",
+          "mandatory": false
+        },
+        {
+          "name": "KeyPropertyB",
+          "type": "Text",
+          "description": "Property path in ListB that supplies the group key. Supports nested paths and array indexing.",
+          "mandatory": false
+        },
+        {
+          "name": "KeyNameA",
+          "type": "Text",
+          "description": "Output field name for the ListA items array within each group (e.g. 'Orders').",
+          "mandatory": false
+        },
+        {
+          "name": "KeyNameB",
+          "type": "Text",
+          "description": "Output field name for the ListB items array within each group (e.g. 'Payments').",
+          "mandatory": false
+        },
+        {
+          "name": "CaseSensitive",
+          "type": "Boolean",
+          "description": "When true, key comparison is case-sensitive. When false (default), case-insensitive.",
+          "mandatory": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "GroupedListJson",
+          "type": "Text",
+          "description": "JSON array of groups: [{\"Key\": <keyValue>, <KeyNameA>: [...ListA items...], <KeyNameB>: [...ListB items...]}, ...]. Items with no key value fall into a single 'Unknown' bucket."
+        }
+      ]
+    },
+    {
+      "name": "List_Difference",
+      "description": "Finds elements that exist in List A but not in List B (set difference). Matches on a specified key.",
+      "inputs": [
+        {
+          "name": "ListAJson",
+          "type": "Text",
+          "description": "The base JSON list",
+          "mandatory": true
+        },
+        {
+          "name": "ListBJson",
+          "type": "Text",
+          "description": "The subtraction JSON list",
+          "mandatory": true
+        },
+        {
+          "name": "MatchKey",
+          "type": "Text",
+          "description": "Property path to match on. Supports nested paths and array indexing (e.g. 'Meta.Id', 'Refs[0].Code').",
+          "mandatory": false
+        },
+        {
+          "name": "ComparisonOperator",
+          "type": "Text",
+          "description": "Comparison operator for key matching: Equals (default), Contains, StartsWith. Empty = Equals.",
+          "mandatory": false
+        },
+        {
+          "name": "CaseSensitive",
+          "type": "Boolean",
+          "description": "When true, key comparison is case-sensitive. When false (default), case-insensitive.",
+          "mandatory": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "DifferenceListJson",
+          "type": "Text",
+          "description": "The elements in A that have no match in B"
+        }
+      ]
+    },
+    {
+      "name": "List_Chunk",
+      "description": "Splits a JSON list into a list of JSON-string chunks of a fixed size. Last chunk may be smaller. Essential for batching API payloads and throttled loops. Each output entry is a standalone JSON array ready for JSON Deserialize into the caller's Structure List.",
+      "inputs": [
+        {
+          "name": "SourceListJson",
+          "type": "Text",
+          "description": "The source list serialized as a JSON array string",
+          "mandatory": true
+        },
+        {
+          "name": "ChunkSize",
+          "type": "Integer",
+          "description": "Maximum number of elements per chunk. Must be >= 1; values <= 0 return an empty list.",
+          "mandatory": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "ChunksListJson",
+          "type": "RecordList",
+          "description": "A list of JSON-array strings — one string per chunk (e.g. [\"[..first N..]\", \"[..next N..]\", ...]). The last entry may hold fewer elements than ChunkSize. Empty list when the source is empty or ChunkSize <= 0.",
+          "record": "TextItem"
+        }
+      ]
+    },
+    {
+      "name": "List_DistinctBy",
+      "description": "Filters a JSON list to unique elements based on a property value (first occurrence wins). Works on structures — native ODC Distinct only supports basic types.",
+      "inputs": [
+        {
+          "name": "SourceListJson",
+          "type": "Text",
+          "description": "The source list serialized as a JSON array string",
+          "mandatory": true
+        },
+        {
+          "name": "PropertyName",
+          "type": "Text",
+          "description": "Property path used as the uniqueness key. Supports nested paths (e.g. 'Address.City') and array indexing (e.g. 'Tags[0]'). CamelCase fallback applied at each segment.",
+          "mandatory": false
+        },
+        {
+          "name": "CaseSensitive",
+          "type": "Boolean",
+          "description": "When true, key comparison is case-sensitive. When false (default), case-insensitive.",
+          "mandatory": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "DistinctListJson",
+          "type": "Text",
+          "description": "The JSON array containing only the first occurrence of each unique key, preserving source order."
+        }
+      ]
+    },
+    {
+      "name": "List_Slice",
+      "description": "Extracts a subset of a JSON list using Python/JavaScript-style Start/End/Step. Supports negative indices, negative step (reverse), and End <= 0 meaning 'to end of list'.",
+      "inputs": [
+        {
+          "name": "SourceListJson",
+          "type": "Text",
+          "description": "The source list serialized as a JSON array string",
+          "mandatory": true
+        },
+        {
+          "name": "Start",
+          "type": "Integer",
+          "description": "0-based inclusive start index. Negative values count from the end (e.g. -2 = second-to-last). Clamped to the list bounds.",
+          "mandatory": false
+        },
+        {
+          "name": "End",
+          "type": "Integer",
+          "description": "0-based exclusive end index. Negative values count from the end. Special case: End == 0 is treated as 'unspecified' — for positive Step it means 'to end of list', for negative Step it means 'past the beginning' (Python default).",
+          "mandatory": false
+        },
+        {
+          "name": "Step",
+          "type": "Integer",
+          "description": "Step between selected elements. 0 is treated as 1. Positive walks forward; negative walks backward (reverse slice, matching Python semantics).",
+          "mandatory": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "SliceListJson",
+          "type": "Text",
+          "description": "The sliced JSON array"
+        }
+      ]
+    },
+    {
+      "name": "List_Shuffle",
+      "description": "Randomizes the order of a JSON list using the Fisher-Yates algorithm. Deterministic when Seed is non-zero; otherwise uses a cryptographically-seeded RNG.",
+      "inputs": [
+        {
+          "name": "SourceListJson",
+          "type": "Text",
+          "description": "The source list serialized as a JSON array string",
+          "mandatory": true
+        },
+        {
+          "name": "Seed",
+          "type": "Integer",
+          "description": "Random seed. Use 0 for a non-deterministic shuffle. Any non-zero value produces the same permutation every call (useful for reproducible tests).",
+          "mandatory": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "ShuffledListJson",
+          "type": "Text",
+          "description": "The shuffled JSON array. Original source list is not mutated."
+        }
+      ]
+    },
+    {
+      "name": "List_UpdateAt",
+      "description": "Sets a single property of the item at a given index. Returns the modified list and the previous value of that property.",
+      "inputs": [
+        {
+          "name": "SourceListJson",
+          "type": "Text",
+          "description": "The source list serialized as a JSON array string",
+          "mandatory": true
+        },
+        {
+          "name": "Index",
+          "type": "Integer",
+          "description": "0-based index of the item to modify. Negative values count from the end. Out-of-range indices return the source unchanged and PreviousValueJson = 'null'.",
+          "mandatory": false
+        },
+        {
+          "name": "PropertyName",
+          "type": "Text",
+          "description": "Property path to update on the target item. Supports nested paths with dots (e.g. 'Address.City') and array indexing (e.g. 'Tags[0]'). Missing intermediate objects are created (arrays are NOT auto-created; if an array indexing step encounters a missing or non-array node, the action returns the source unchanged).",
+          "mandatory": false
+        },
+        {
+          "name": "NewValueJson",
+          "type": "Text",
+          "description": "The new value as JSON (e.g. '\"Active\"', '42', 'true', '{\"City\":\"Lisbon\"}', 'null'). Falls back to a raw string when the value is not valid JSON.",
+          "mandatory": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "UpdatedListJson",
+          "type": "Text",
+          "description": "The updated JSON array with the property changed"
+        },
+        {
+          "name": "PreviousValueJson",
+          "type": "Text",
+          "description": "The previous JSON value of the modified property, or 'null' when the property did not exist, when the property existed with a JSON null value (these two cases are indistinguishable), or when the index was out of range"
+        }
+      ]
+    },
+    {
+      "name": "List_MinBy",
+      "description": "Returns the element with the smallest value at a given property path. Empty list returns MinValue = '' and MinIndex = -1.",
+      "inputs": [
+        {
+          "name": "SourceListJson",
+          "type": "Text",
+          "description": "The source list serialized as a JSON array string",
+          "mandatory": true
+        },
+        {
+          "name": "PropertyName",
+          "type": "Text",
+          "description": "Property path to compare on. Supports nested paths (e.g. 'Meta.Score') and array indexing (e.g. 'Items[0].Qty').",
+          "mandatory": false
+        },
+        {
+          "name": "NumericMode",
+          "type": "Boolean",
+          "description": "When true, values are parsed as decimals for numeric comparison. When false, compared as ordinal text (case-insensitive).",
+          "mandatory": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "ElementJson",
+          "type": "Text",
+          "description": "The full element at the minimum, or 'null' when the source is empty or no item had a value at PropertyName."
+        },
+        {
+          "name": "MinValue",
+          "type": "Text",
+          "description": "The raw value at PropertyName for the returned element, or '' when the list is empty."
+        },
+        {
+          "name": "MinIndex",
+          "type": "Integer",
+          "description": "The 0-based index of the returned element in the source list, or -1 when no element qualified."
+        }
+      ]
+    },
+    {
+      "name": "List_MaxBy",
+      "description": "Returns the element with the largest value at a given property path. Empty list returns MaxValue = '' and MaxIndex = -1.",
+      "inputs": [
+        {
+          "name": "SourceListJson",
+          "type": "Text",
+          "description": "The source list serialized as a JSON array string",
+          "mandatory": true
+        },
+        {
+          "name": "PropertyName",
+          "type": "Text",
+          "description": "Property path to compare on. Supports nested paths and array indexing.",
+          "mandatory": false
+        },
+        {
+          "name": "NumericMode",
+          "type": "Boolean",
+          "description": "When true, values are parsed as decimals for numeric comparison. When false, compared as ordinal text.",
+          "mandatory": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "ElementJson",
+          "type": "Text",
+          "description": "The full element at the maximum, or 'null' when the source is empty or no item had a value at PropertyName."
+        },
+        {
+          "name": "MaxValue",
+          "type": "Text",
+          "description": "The raw value at PropertyName for the returned element, or '' when the list is empty."
+        },
+        {
+          "name": "MaxIndex",
+          "type": "Integer",
+          "description": "The 0-based index of the returned element in the source list, or -1 when no element qualified."
+        }
+      ]
+    },
+    {
+      "name": "List_Aggregate",
+      "description": "Applies a scalar aggregation over a property. Sum / Avg / Min / Max parse each value as a decimal; Count / CountDistinct work on any value. Missing or non-parseable values are skipped and reported via MatchedCount.",
+      "inputs": [
+        {
+          "name": "SourceListJson",
+          "type": "Text",
+          "description": "The source list serialized as a JSON array string",
+          "mandatory": true
+        },
+        {
+          "name": "PropertyName",
+          "type": "Text",
+          "description": "Property path to aggregate on. Supports nested paths and array indexing.",
+          "mandatory": false
+        },
+        {
+          "name": "Operation",
+          "type": "Text",
+          "description": "One of: Sum, Avg, Min, Max, Count, CountDistinct. Case-insensitive. Empty defaults to Sum.",
+          "mandatory": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "ResultValue",
+          "type": "Text",
+          "description": "The aggregation result as text. Sum / Avg / Min / Max are decimals formatted with InvariantCulture; Count and CountDistinct are non-negative integers. Empty when no item contributed (e.g. empty source, or numeric op with all non-numeric values)."
+        },
+        {
+          "name": "MatchedCount",
+          "type": "Integer",
+          "description": "Number of items that contributed to the aggregation — items with a non-null value at PropertyName, and (for numeric ops) parseable as decimal."
+        }
+      ]
+    },
+    {
+      "name": "List_Intersect",
+      "description": "Set intersection A ∩ B on a keyed property. Returns the elements from A whose key value also appears in B, preserving A's original order.",
+      "inputs": [
+        {
+          "name": "ListAJson",
+          "type": "Text",
+          "description": "The base JSON list",
+          "mandatory": true
+        },
+        {
+          "name": "ListBJson",
+          "type": "Text",
+          "description": "The intersection JSON list",
+          "mandatory": true
+        },
+        {
+          "name": "MatchKey",
+          "type": "Text",
+          "description": "Property path to match on. Supports nested paths and array indexing.",
+          "mandatory": false
+        },
+        {
+          "name": "ComparisonOperator",
+          "type": "Text",
+          "description": "Comparison operator for key matching: Equals (default), Contains, StartsWith, EndsWith, NotEquals, GreaterThan, LessThan, GreaterOrEqual, LessOrEqual. Empty = Equals.",
+          "mandatory": false
+        },
+        {
+          "name": "CaseSensitive",
+          "type": "Boolean",
+          "description": "When true, key comparison is case-sensitive. When false (default), case-insensitive.",
+          "mandatory": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IntersectionListJson",
+          "type": "Text",
+          "description": "The elements in A whose MatchKey has at least one match in B."
+        }
+      ]
+    },
+    {
+      "name": "List_Union",
+      "description": "Set union of two lists: concatenates A + B and deduplicates by a keyed property (first occurrence wins; A's items appear first).",
+      "inputs": [
+        {
+          "name": "ListAJson",
+          "type": "Text",
+          "description": "The first JSON list",
+          "mandatory": true
+        },
+        {
+          "name": "ListBJson",
+          "type": "Text",
+          "description": "The second JSON list",
+          "mandatory": true
+        },
+        {
+          "name": "MatchKey",
+          "type": "Text",
+          "description": "Property path used as the uniqueness key. Empty = dedupe by the whole element's JSON.",
+          "mandatory": false
+        },
+        {
+          "name": "CaseSensitive",
+          "type": "Boolean",
+          "description": "When true, key comparison is case-sensitive. When false (default), case-insensitive.",
+          "mandatory": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "UnionListJson",
+          "type": "Text",
+          "description": "A + B with duplicates removed by MatchKey."
+        }
+      ]
+    },
+    {
+      "name": "List_SplitAt",
+      "description": "Splits a JSON list at a given index into a Left (elements before Index) and Right (Index and later) pair.",
+      "inputs": [
+        {
+          "name": "SourceListJson",
+          "type": "Text",
+          "description": "The source list serialized as a JSON array string",
+          "mandatory": true
+        },
+        {
+          "name": "Index",
+          "type": "Integer",
+          "description": "0-based split index. Negative values count from the end. Values <= 0 leave Left empty; values >= list.Length leave Right empty.",
+          "mandatory": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LeftListJson",
+          "type": "Text",
+          "description": "The elements with position < Index (or the empty list when Index <= 0)."
+        },
+        {
+          "name": "RightListJson",
+          "type": "Text",
+          "description": "The elements with position >= Index (or the empty list when Index >= list.Length)."
+        }
+      ]
+    },
+    {
+      "name": "List_Partition",
+      "description": "Partitions a JSON list into matching and non-matching sublists based on a single property condition. Non-mutating dual of List_PopMultipleByCondition — both sides are returned.",
+      "inputs": [
+        {
+          "name": "SourceListJson",
+          "type": "Text",
+          "description": "The source list serialized as a JSON array string",
+          "mandatory": true
+        },
+        {
+          "name": "PropertyName",
+          "type": "Text",
+          "description": "Property path to check.",
+          "mandatory": false
+        },
+        {
+          "name": "TargetValue",
+          "type": "Text",
+          "description": "The value to compare against.",
+          "mandatory": false
+        },
+        {
+          "name": "ComparisonOperator",
+          "type": "Text",
+          "description": "Comparison operator. Empty = Equals.",
+          "mandatory": false
+        },
+        {
+          "name": "CaseSensitive",
+          "type": "Boolean",
+          "description": "When true, string comparison is case-sensitive.",
+          "mandatory": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "MatchingListJson",
+          "type": "Text",
+          "description": "Elements that satisfy the condition."
+        },
+        {
+          "name": "NonMatchingListJson",
+          "type": "Text",
+          "description": "Elements that do NOT satisfy the condition."
+        }
+      ]
+    },
+    {
+      "name": "List_PartitionByConditions",
+      "description": "Partitions a JSON list into matching and non-matching sublists based on multiple conditions combined with AND / OR.",
+      "inputs": [
+        {
+          "name": "SourceListJson",
+          "type": "Text",
+          "description": "The source list serialized as a JSON array string",
+          "mandatory": true
+        },
+        {
+          "name": "Conditions",
+          "type": "RecordList",
+          "description": "List of Condition Structures.",
+          "record": "Condition",
+          "mandatory": false
+        },
+        {
+          "name": "LogicalOperator",
+          "type": "Text",
+          "description": "'AND' (default) or 'OR'. See ListUtils.LogicalOperators.",
+          "mandatory": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "MatchingListJson",
+          "type": "Text",
+          "description": "Elements that satisfy the combined condition."
+        },
+        {
+          "name": "NonMatchingListJson",
+          "type": "Text",
+          "description": "Elements that do NOT satisfy the combined condition."
+        }
+      ]
+    },
+    {
+      "name": "List_Reverse",
+      "description": "Reverses a JSON list. Equivalent to List_Slice(-1, 0, -1) but explicit and cheaper.",
+      "inputs": [
+        {
+          "name": "SourceListJson",
+          "type": "Text",
+          "description": "The source list serialized as a JSON array string",
+          "mandatory": true
+        }
+      ],
+      "outputs": [
+        {
+          "name": "ReversedListJson",
+          "type": "Text",
+          "description": "The reversed JSON array."
+        }
+      ]
+    },
+    {
+      "name": "List_Flatten",
+      "description": "Concatenates a list of JSON-array strings into a single flat JSON array. Inverse of List_Chunk — feed List_Chunk's output directly and get back the original list. Non-array entries are skipped.",
+      "inputs": [
+        {
+          "name": "ChunksListJson",
+          "type": "RecordList",
+          "description": "A list of JSON-array strings (typically List_Chunk's output). Each entry is a self-contained JSON array. Non-array entries are silently skipped.",
+          "record": "TextItem",
+          "mandatory": true
+        }
+      ],
+      "outputs": [
+        {
+          "name": "FlatListJson",
+          "type": "Text",
+          "description": "The concatenation of every parsed inner array, in order."
+        }
+      ]
+    },
+    {
+      "name": "List_Sample",
+      "description": "Returns a random subset of SampleSize elements from the source list, without replacement. Uses the same RNG semantics as List_Shuffle (Seed = 0 → CSPRNG; Seed != 0 → deterministic).",
+      "inputs": [
+        {
+          "name": "SourceListJson",
+          "type": "Text",
+          "description": "The source list serialized as a JSON array string",
+          "mandatory": true
+        },
+        {
+          "name": "SampleSize",
+          "type": "Integer",
+          "description": "Number of elements to sample. Values <= 0 return the empty list; values >= list.Length return the full list in shuffled order.",
+          "mandatory": false
+        },
+        {
+          "name": "Seed",
+          "type": "Integer",
+          "description": "Random seed. 0 = non-deterministic (CSPRNG); non-zero = deterministic (System.Random).",
+          "mandatory": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "SampleListJson",
+          "type": "Text",
+          "description": "The sampled JSON array of length min(SampleSize, list.Length). Source is not mutated."
+        }
+      ]
+    },
+    {
+      "name": "List_ReplaceWhere",
+      "description": "Applies the same property update to every element that satisfies a multi-condition filter (AND/OR combination of any number of property comparisons). Returns the modified list and the number of items that were updated.",
+      "inputs": [
+        {
+          "name": "SourceListJson",
+          "type": "Text",
+          "description": "The source list serialized as a JSON array string",
+          "mandatory": true
+        },
+        {
+          "name": "Conditions",
+          "type": "RecordList",
+          "description": "List of Condition Structures. Same shape used by List_PopByConditions.",
+          "record": "Condition",
+          "mandatory": false
+        },
+        {
+          "name": "LogicalOperator",
+          "type": "Text",
+          "description": "How to combine conditions: 'AND' (default) or 'OR'. See ListUtils.LogicalOperators.",
+          "mandatory": false
+        },
+        {
+          "name": "UpdateProperty",
+          "type": "Text",
+          "description": "Property path on each matched item to overwrite. Missing intermediate objects are created; array indices must already exist.",
+          "mandatory": false
+        },
+        {
+          "name": "NewValueJson",
+          "type": "Text",
+          "description": "The new value as JSON. Falls back to a raw string when the value is not valid JSON.",
+          "mandatory": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "UpdatedListJson",
+          "type": "Text",
+          "description": "The updated JSON array with every matching element's UpdateProperty replaced by NewValueJson."
+        },
+        {
+          "name": "MatchCount",
+          "type": "Integer",
+          "description": "Number of elements that matched the combined condition and were updated."
+        }
+      ]
+    },
+    {
+      "name": "List_UpdateMultipleAt",
+      "description": "Updates the same PropertyName to the same NewValueJson on multiple elements at specified indices. Out-of-range indices are silently skipped.",
+      "inputs": [
+        {
+          "name": "SourceListJson",
+          "type": "Text",
+          "description": "The source list serialized as a JSON array string",
+          "mandatory": true
+        },
+        {
+          "name": "IndicesToUpdate",
+          "type": "Text",
+          "description": "Comma-separated 0-based indices to update (e.g. '1,3,5'). Negative values count from the end. Whitespace around commas is trimmed.",
+          "mandatory": false
+        },
+        {
+          "name": "PropertyName",
+          "type": "Text",
+          "description": "Property path on each targeted item to overwrite. Missing intermediate objects are created; array indices must already exist.",
+          "mandatory": false
+        },
+        {
+          "name": "NewValueJson",
+          "type": "Text",
+          "description": "The new value as JSON. Falls back to a raw string when the value is not valid JSON.",
+          "mandatory": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "UpdatedListJson",
+          "type": "Text",
+          "description": "The updated JSON array with the property changed at every in-range index."
+        },
+        {
+          "name": "UpdatedCount",
+          "type": "Integer",
+          "description": "Number of indices that were in-range and successfully updated."
+        }
+      ]
+    },
+    {
+      "name": "List_ZipMany",
+      "description": "Zips N lists together into paired objects by matching position. Generalisation of List_Zip to any number of inputs. Output length is the minimum of the input lengths.",
+      "inputs": [
+        {
+          "name": "ListsJson",
+          "type": "RecordList",
+          "description": "A list of JSON-array strings — one entry per input list.",
+          "record": "TextItem",
+          "mandatory": true
+        },
+        {
+          "name": "KeyNamesJson",
+          "type": "RecordList",
+          "description": "A list of property names — one label per input list, used as object keys in the output. If shorter than ListsJson, remaining lists default to 'Items0', 'Items1', ...",
+          "record": "TextItem",
+          "mandatory": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "ZippedListJson",
+          "type": "Text",
+          "description": "JSON array of objects, one per position, each holding one entry per input list."
+        }
+      ]
+    },
+    {
+      "name": "List_ZipManyGroupBy",
+      "description": "Cogroups N lists by a shared key. Each output group contains the Key plus one named array per input list of items sharing that key. Generalisation of List_ZipGroupBy to any number of inputs.",
+      "inputs": [
+        {
+          "name": "ListsJson",
+          "type": "RecordList",
+          "description": "A list of JSON-array strings — one entry per input list.",
+          "record": "TextItem",
+          "mandatory": true
+        },
+        {
+          "name": "KeyPropertiesJson",
+          "type": "RecordList",
+          "description": "A list of property paths — position i is the key path applied to items of ListsJson[i]. Supports nested paths.",
+          "record": "TextItem",
+          "mandatory": false
+        },
+        {
+          "name": "KeyNamesJson",
+          "type": "RecordList",
+          "description": "A list of property names — position i is the output field name for ListsJson[i]'s array within each group. Shorter lists default to 'Items0', 'Items1', ...",
+          "record": "TextItem",
+          "mandatory": false
+        },
+        {
+          "name": "CaseSensitive",
+          "type": "Boolean",
+          "description": "When true, key comparison is case-sensitive. When false (default), case-insensitive.",
+          "mandatory": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "GroupedListJson",
+          "type": "Text",
+          "description": "JSON array of groups: [{Key: <keyValue>, <KeyNames[0]>: [...], <KeyNames[1]>: [...], ...}, ...]. Items whose key is null share the 'Unknown' bucket."
+        }
+      ]
+    },
+    {
+      "name": "List_GroupByMultiple",
+      "description": "Groups a JSON list by N property paths (composite key). Each output group holds one field per key (labelled by KeyNames) plus the matching items. Generalisation of List_GroupBy to any number of key columns.",
+      "inputs": [
+        {
+          "name": "SourceListJson",
+          "type": "Text",
+          "description": "The source JSON list",
+          "mandatory": true
+        },
+        {
+          "name": "PropertyPaths",
+          "type": "RecordList",
+          "description": "Ordered list of N property paths that together form the composite group key. Supports nested paths and array indexing. Missing values fall back to the string \"Unknown\".",
+          "record": "TextItem",
+          "mandatory": false
+        },
+        {
+          "name": "KeyNames",
+          "type": "RecordList",
+          "description": "Ordered list of N labels used as the field names for the group keys in the output. Shorter lists default to 'Key0', 'Key1', ...",
+          "record": "TextItem",
+          "mandatory": false
+        },
+        {
+          "name": "ItemsFieldName",
+          "type": "Text",
+          "description": "Field name for the items array within each group. Empty defaults to 'Items'.",
+          "mandatory": false
+        },
+        {
+          "name": "CaseSensitive",
+          "type": "Boolean",
+          "description": "When true, key comparison is case-sensitive. When false (default), case-insensitive.",
+          "mandatory": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "GroupedListJson",
+          "type": "Text",
+          "description": "JSON array of groups: [{<KeyNames[0]>:<v0>, <KeyNames[1]>:<v1>, ..., <ItemsFieldName>:[...items...]}, ...]. Groups appear in first-seen order."
+        }
+      ]
+    },
+    {
+      "name": "List_ZipGroupByMultiple",
+      "description": "Cogroups two JSON lists by an N-key composite. Each output group carries one field per key plus one named array per input list of items sharing that composite key. Generalisation of List_ZipGroupBy to N keys.",
+      "inputs": [
+        {
+          "name": "ListAJson",
+          "type": "Text",
+          "description": "The first JSON list",
+          "mandatory": true
+        },
+        {
+          "name": "ListBJson",
+          "type": "Text",
+          "description": "The second JSON list",
+          "mandatory": true
+        },
+        {
+          "name": "KeyPropertiesA",
+          "type": "RecordList",
+          "description": "Ordered list of N property paths in ListA that form the composite group key.",
+          "record": "TextItem",
+          "mandatory": false
+        },
+        {
+          "name": "KeyPropertiesB",
+          "type": "RecordList",
+          "description": "Ordered list of N property paths in ListB that form the composite group key. Must have the same length as KeyPropertiesA.",
+          "record": "TextItem",
+          "mandatory": false
+        },
+        {
+          "name": "KeyNames",
+          "type": "RecordList",
+          "description": "Ordered list of N labels used as the field names for the group keys in the output. Shorter lists default to 'Key0', 'Key1', ...",
+          "record": "TextItem",
+          "mandatory": false
+        },
+        {
+          "name": "KeyNameA",
+          "type": "Text",
+          "description": "Output field name for the ListA items array within each group. Empty defaults to 'ItemsA'.",
+          "mandatory": false
+        },
+        {
+          "name": "KeyNameB",
+          "type": "Text",
+          "description": "Output field name for the ListB items array within each group. Empty defaults to 'ItemsB'.",
+          "mandatory": false
+        },
+        {
+          "name": "CaseSensitive",
+          "type": "Boolean",
+          "description": "When true, key comparison is case-sensitive. When false (default), case-insensitive.",
+          "mandatory": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "GroupedListJson",
+          "type": "Text",
+          "description": "JSON array of groups: [{<KeyNames[0]>:<v0>, ..., <KeyNameA>:[...], <KeyNameB>:[...]}, ...]. Union of first-seen composite keys across both lists preserves ordering."
+        }
+      ]
+    },
+    {
+      "name": "List_ZipManyGroupByMultiple",
+      "description": "Cogroups M lists by an N-key composite. Each output group carries one field per key plus one named array per input list of items sharing that composite key. Generalisation of List_ZipManyGroupBy to N keys.",
+      "inputs": [
+        {
+          "name": "ListsJson",
+          "type": "RecordList",
+          "description": "A list of M JSON-array strings — one entry per input list.",
+          "record": "TextItem",
+          "mandatory": true
+        },
+        {
+          "name": "KeyCount",
+          "type": "Integer",
+          "description": "Number of key columns N. Determines how many entries per list are consumed from KeyProperties.",
+          "mandatory": false
+        },
+        {
+          "name": "KeyProperties",
+          "type": "RecordList",
+          "description": "Flat list of M*N property paths in list-major order: entries [i*KeyCount .. i*KeyCount + KeyCount-1] belong to ListsJson[i]. Missing entries default to empty (Unknown bucket).",
+          "record": "TextItem",
+          "mandatory": false
+        },
+        {
+          "name": "KeyNames",
+          "type": "RecordList",
+          "description": "Ordered list of N labels used as the field names for the group keys in the output. Shorter lists default to 'Key0', 'Key1', ...",
+          "record": "TextItem",
+          "mandatory": false
+        },
+        {
+          "name": "ItemsFieldNames",
+          "type": "RecordList",
+          "description": "Ordered list of M labels — one per input list — used as the field names for that list's items array. Shorter lists default to 'Items0', 'Items1', ...",
+          "record": "TextItem",
+          "mandatory": false
+        },
+        {
+          "name": "CaseSensitive",
+          "type": "Boolean",
+          "description": "When true, key comparison is case-sensitive. When false (default), case-insensitive.",
+          "mandatory": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "GroupedListJson",
+          "type": "Text",
+          "description": "JSON array of groups: [{<KeyNames[0]>:<v0>, ..., <ItemsFieldNames[0]>:[...], <ItemsFieldNames[1]>:[...], ...}, ...]. Items whose key is null share the 'Unknown' bucket."
+        }
+      ]
+    }
+  ],
+  "sources": {
+    "ListUtils.cs": "src/ListUtils.cs",
+    "ListUtils.Condition.cs": "src/ListUtils.Condition.cs",
+    "ListUtils.Core.Aggregate.cs": "src/ListUtils.Core.Aggregate.cs",
+    "ListUtils.Core.Condition.cs": "src/ListUtils.Core.Condition.cs",
+    "ListUtils.Core.Helpers.cs": "src/ListUtils.Core.Helpers.cs",
+    "ListUtils.Core.Index.cs": "src/ListUtils.Core.Index.cs",
+    "ListUtils.Core.Relational.cs": "src/ListUtils.Core.Relational.cs",
+    "ListUtils.Core.Transform.cs": "src/ListUtils.Core.Transform.cs",
+    "ListUtils.Core.ZipMany.cs": "src/ListUtils.Core.ZipMany.cs",
+    "ListUtils.Operators.cs": "src/ListUtils.Operators.cs"
+  },
+  "binaries": [
+    "../ListUtils.O11/bin/Release/net48/Microsoft.Bcl.AsyncInterfaces.dll",
+    "../ListUtils.O11/bin/Release/net48/System.Buffers.dll",
+    "../ListUtils.O11/bin/Release/net48/System.Memory.dll",
+    "../ListUtils.O11/bin/Release/net48/System.Numerics.Vectors.dll",
+    "../ListUtils.O11/bin/Release/net48/System.Runtime.CompilerServices.Unsafe.dll",
+    "../ListUtils.O11/bin/Release/net48/System.Text.Encodings.Web.dll",
+    "../ListUtils.O11/bin/Release/net48/System.Text.Json.dll",
+    "../ListUtils.O11/bin/Release/net48/System.Threading.Tasks.Extensions.dll",
+    "../ListUtils.O11/bin/Release/net48/System.ValueTuple.dll"
+  ],
+  "csproj_properties": {
+    "TargetFrameworkVersion": "v4.8",
+    "LangVersion": "10",
+    "Nullable": "enable"
+  }
+}

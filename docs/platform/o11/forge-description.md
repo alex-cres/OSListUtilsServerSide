@@ -16,9 +16,11 @@ Advanced list manipulation utilities — pop by index, pop by condition, zip, gr
 
 ### What This Component Does
 
-**ListUtilsServerSide** is an Extension that provides thirty-two high-utility list manipulation actions that are absent or cumbersome to implement natively in OutSystems 11. It covers index-based removal, condition-based filtering (single and multi-condition with AND/OR), partition, split, list pairing (zip), grouping (single-key, N-key composite, cogroup across 2 or M lists), set operations (difference, intersect, union), aggregation (min-by, max-by, sum/avg/min/max/count/count-distinct), chunking, distinct-by, Python-style slicing, shuffling, reverse, flatten, sampling, replace-where, and in-place property updates — all in single server-side calls.
+**ListUtilsServerSide** is an Extension that provides thirty-three high-utility list manipulation actions that are absent or cumbersome to implement natively in OutSystems 11. It covers index-based removal, condition-based filtering (single and multi-condition with AND/OR), partition, split, list pairing (zip), grouping (single-key, N-key composite, cogroup across 2 or M lists), set operations (difference, intersect, union), aggregation (min-by, max-by, sum/avg/min/max/count/count-distinct), chunking, distinct-by, Python-style slicing, shuffling, reverse, flatten, sampling, replace-where, and in-place property updates — all in single server-side calls.
 
 For generic structure support, the JSON-based actions accept any Structure List serialized with `JSON Serialize` and return JSON strings that can be deserialized back with `JSON Deserialize`. This eliminates the need to build separate extensions for each data structure.
+
+In Integration Studio, multi-condition inputs use a Condition Record List with Path, Operator, Value, and CaseSensitive fields. Text-list parameters use a TextItem Record List, with each record containing a Text Value field; this is how chunk results and other text lists are represented at the XIF boundary.
 
 ---
 
@@ -169,7 +171,7 @@ Symbol aliases (`!=`, `>`, `<`, `>=`, `<=`) are still accepted for backwards com
 
 ### Features
 
-- **32 server-side actions** covering the most common list manipulation gaps
+- **33 server-side actions** covering the most common list manipulation gaps
 - **Generic structure support** via JSON serialization — works with any OutSystems Structure
 - **First-class `Condition` Structure** for multi-condition filtering — no hand-authored JSON
 - **9 comparison operators** (Equals, NotEquals, Contains, StartsWith, EndsWith, GreaterThan, LessThan, GreaterOrEqual, LessOrEqual) with symbol aliases

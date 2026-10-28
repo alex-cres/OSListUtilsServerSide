@@ -21,6 +21,9 @@ OSListUtilsServerSide/                           ← repo root
 ├── ListUtils.Tests/                             ← ODC xUnit suite (net10.0)
 ├── ListUtils.O11/                               ← O11 Integration Studio extension (net48)
 ├── ListUtils.O11.Tests/                         ← O11 xUnit suite (net48)
+├── tools/                                       ← component development utilities
+├── xif/                                         ← generated Integration Studio XIF archive
+├── xif-spec/                                    ← XIF spec/source generator
 └── docs/                                        ← README/Forge copies, versioned changelogs
 ```
 
@@ -35,9 +38,9 @@ Primary class: `ListUtils`, implementing `IListUtils`.
 
 | File | Type | Purpose |
 |------|------|---------|
-| [IListUtils.cs](ListUtils/IListUtils.cs) | `[OSInterface]` | Declares 32 actions: `List_Pop`, `List_PopMultiple`, `List_SplitAt`, `List_PopByCondition`, `List_PopMultipleByCondition`, `List_PopByConditions`, `List_PopMultipleByConditions`, `List_Partition`, `List_PartitionByConditions`, `List_Zip`, `List_GroupBy`, `List_ZipGroupBy`, `List_GroupByMultiple`, `List_ZipGroupByMultiple`, `List_Difference`, `List_Intersect`, `List_Union`, `List_Chunk`, `List_DistinctBy`, `List_Slice`, `List_Shuffle`, `List_UpdateAt`, `List_Reverse`, `List_Flatten`, `List_Sample`, `List_ReplaceWhere`, `List_UpdateMultipleAt`, `List_MinBy`, `List_MaxBy`, `List_Aggregate`, `List_ZipMany`, `List_ZipManyGroupBy`, `List_ZipManyGroupByMultiple` |
+| [IListUtils.cs](ListUtils/IListUtils.cs) | `[OSInterface]` | Declares 33 actions: `List_Pop`, `List_PopMultiple`, `List_SplitAt`, `List_PopByCondition`, `List_PopMultipleByCondition`, `List_PopByConditions`, `List_PopMultipleByConditions`, `List_Partition`, `List_PartitionByConditions`, `List_Zip`, `List_GroupBy`, `List_ZipGroupBy`, `List_GroupByMultiple`, `List_ZipGroupByMultiple`, `List_Difference`, `List_Intersect`, `List_Union`, `List_Chunk`, `List_DistinctBy`, `List_Slice`, `List_Shuffle`, `List_UpdateAt`, `List_Reverse`, `List_Flatten`, `List_Sample`, `List_ReplaceWhere`, `List_UpdateMultipleAt`, `List_MinBy`, `List_MaxBy`, `List_Aggregate`, `List_ZipMany`, `List_ZipManyGroupBy`, `List_ZipManyGroupByMultiple` |
 
-No `[OSStructure]` types — every exposed parameter is a primitive (`string`, `int`, `bool`). All list data is passed as JSON strings (`Text`), which keeps the interface generic across any consumer Structure.
+The ODC interface exposes `Condition` as an `[OSStructure]` and uses typed `List<Condition>` / `List<string>` parameters where required; JSON list payloads remain `string` (`Text`). This typed ODC boundary is distinct from the O11 XIF's Integration Studio Record List representation.
 
 ### Implementation files (partial class)
 
@@ -224,13 +227,13 @@ enforced by the script.
 
 Target framework: **`net48`**, `LangVersion=10`. Namespace: `OutSystems.NssListUtils`.
 
-### Public surface (Integration Studio–generated names)
+### Public surface (handwritten API and Integration Studio XIF)
 
 | File | Type | Purpose |
 |------|------|---------|
-| [IssListUtils.cs](ListUtils.O11/IssListUtils.cs) | Interface | Declares 32 `Mss` methods mirroring the ODC surface (Pop family, SplitAt, Partition family, Zip / GroupBy / ZipGroupBy / GroupByMultiple / ZipGroupByMultiple / Difference / Intersect / Union, Chunk / DistinctBy / Slice / Shuffle / UpdateAt / Reverse / Flatten / Sample / ReplaceWhere / UpdateMultipleAt, MinBy / MaxBy / Aggregate, ZipMany / ZipManyGroupBy / ZipManyGroupByMultiple) |
+| [IssListUtils.cs](ListUtils.O11/IssListUtils.cs) | Handwritten interface | Declares 33 `Mss` methods mirroring the ODC action surface. The handwritten C# API uses `List<Condition>` and `List<string>` for list-valued parameters. |
 
-No record types — every exposed parameter is a primitive (`string`, `int`, `bool`). Lists cross the boundary as JSON strings, identical to the ODC surface.
+The Integration Studio XIF represents those C# list-valued parameters as Record Lists: `Condition` has `Path`, `Operator`, `Value`, and `CaseSensitive`; `TextItem` has one Text attribute, `Value`, and is used for text-list inputs and outputs. The generated wrapper converts the XIF records to and from the handwritten API's `List<T>` types. This is an XIF boundary adaptation, not a change to the ODC or handwritten O11 C# signatures.
 
 ### Implementation files (partial class)
 
@@ -257,17 +260,27 @@ Logic is functionally identical to the ODC implementation. Platform-specific dif
 
 ### Runtime dependencies
 
-Declared in [ListUtils.O11.csproj](ListUtils.O11/ListUtils.O11.csproj).
+`System.Text.Json` is directly declared in [ListUtils.O11.csproj](ListUtils.O11/ListUtils.O11.csproj); the remaining runtime packages below are transitively resolved for the O11 build.
 
 | Package | Version | License | Purpose |
 |---------|---------|---------|---------|
 | `System.Text.Json` | 8.0.5 | MIT | `JsonNode` / `JsonArray` / `JsonObject` for dynamic JSON manipulation. Not part of net48 BCL — must be added as NuGet. CVE-2024-43484 resolved at 8.0.5. |
+| `Microsoft.Bcl.AsyncInterfaces` | — | MIT | Transitive runtime support for async interfaces used by `System.Text.Json`; bundled in the XIF. |
+| `System.Buffers` | — | MIT | Transitive buffer primitives used by `System.Text.Json` dependencies; bundled in the XIF. |
+| `System.Memory` | — | MIT | Transitive memory/span APIs required on net48; bundled in the XIF. |
+| `System.Numerics.Vectors` | — | MIT | Transitive vector primitives required by `System.Memory`; bundled in the XIF. |
+| `System.Runtime.CompilerServices.Unsafe` | — | MIT | Transitive low-level runtime support; bundled in the XIF. |
+| `System.Text.Encodings.Web` | — | MIT | Transitive text encoding support for `System.Text.Json`; bundled in the XIF. |
+| `System.Threading.Tasks.Extensions` | — | MIT | Transitive Task/ValueTask compatibility support; bundled in the XIF. |
+| `System.ValueTuple` | — | MIT | Transitive tuple support required on net48; bundled in the XIF. |
+
+The Release build resolves eight additional MIT NuGet dependencies for `System.Text.Json`; the XIF embeds these alongside `System.Text.Json`. All nine DLLs have `CompileAction=Binaries` and are included for deployment. The classic XIF project references their bundled DLL paths directly rather than declaring vulnerable NuGet PackageReferences, so no automatic package-version rewrite hook applies. Their versions and notices are listed in [THIRD-PARTY-NOTICES.md](./THIRD-PARTY-NOTICES.md).
 
 ---
 
 ## 4. Test projects
 
-247 functional tests + 245 load tests per platform × 2 = **984 tests total**. 14 test files per project.
+493 tests per .NET platform × 2 = **986 tests total** (493 ODC and 493 O11). The associated XIF automation Python suite contains 12 tests and is run separately. Each .NET test project contains 14 test files.
 
 Load tests use a shared 10,000-element complex JSON structure (nested objects, arrays, mixed types) and assert each Server Action completes in under **300 ms** in Release. Every load test also verifies the **result correctness** (expected element count or the invariant `updated + popped = source`) parsed outside the stopwatch so it does not count against the timing budget. `List_Difference` with `Contains` uses a 1,000-element pair because the substring operator is inherently O(A×B).
 
@@ -302,7 +315,7 @@ All actions clone JSON nodes with `JsonNode.DeepClone()` (System.Text.Json 8.0+)
 | MultiConditionTests.cs | AND/OR combinations, nested-path in condition, empty conditions guard, per-condition case sensitivity, mixed operators |
 | SearchDirectionTests.cs | SearchFromEnd on List_PopByCondition and List_PopByConditions — pops last match vs first match; verifies list order preserved after removal |
 | TransformTests.cs | 20 functional tests — `List_Chunk` (regular / uneven / oversized / negative / empty), `List_DistinctBy` (property key, nested path, empty PropertyName full-item dedupe, null-key bucket, case-sensitive vs insensitive), `List_Slice` (positive / negative Start / negative End / `End == 0` sentinel / `Step == 0` / negative Step reverse), `List_Shuffle` (`Seed != 0` reproducibility, `Seed == 0` CSPRNG variance, source not mutated), `List_UpdateAt` (positive / negative Index, nested path, auto-created missing objects, missing array short-circuit, PreviousValueJson for missing property vs JSON `null`) |
-| LoadTests.cs | 245 load tests — 5–10 per Server Action across the thirty-two actions — driven by a shared 10,000-element complex JSON list. Each test asserts elapsed time < 300 ms in Release. `List_Difference` with `Contains` and nested-key composite grouping use a 1,000-element pair (slow-path). |
+| LoadTests.cs | 245 load tests across the 33 Server Actions — driven by a shared 10,000-element complex JSON list. Each test asserts elapsed time < 300 ms in Release. `List_Difference` with `Contains` and nested-key composite grouping use a 1,000-element pair (slow-path). |
 
 Test data is inline string literals — **no binary test files are committed**.
 
@@ -328,7 +341,7 @@ The adapter pattern ensures `new ListUtils()` resolves to the wrapper in the
 O11 test namespace, delegating to `CssListUtils` internally. This allows all
 test files to compile unchanged on both platforms. The `internal IListUtils`
 interface and its wrapper in `ListUtils.O11.Tests/TestHelpers.cs` include
-adapter methods for all thirty-two actions.
+adapter methods for all thirty-three actions.
 
 ---
 
@@ -345,6 +358,12 @@ adapter methods for all thirty-two actions.
 ---
 
 ## 6. Implementation patterns
+
+### XIF source tree and generation
+
+`xif-spec/build_spec.py` derives `xif-spec/spec.json` and the generated C# adapter/core sources from `ListUtils.O11/IssListUtils.cs`, the ODC interface descriptions, the handwritten O11 implementation, and `ListUtils.O11/bin/Release/net48/`. Build the O11 project in Release before running the generator so it can include the resolved runtime DLLs. The generator produces ten implementation C# files (the adapter plus the nine generated core/utility files).
+
+The generated specification and sources are then injected by the Integration Studio UI automation workflow into the **closed** `xif/ListUtils.xif` archive. The closed archive is authoritative; editing only extracted files on disk does not update the embedded XIF. The current XIF contains 30 embedded resources, including the ten implementation files and nine deployed runtime DLLs. In this change cycle, all ten generated implementation files matched their active sources, and all 30 embedded resources—including the project file and DLLs—matched their extracted disk copies. The wrapper compiled in Integration Studio with F4. This verifies XIF wrapper compilation only; deployment, server-side binding, and action invocation were not tested.
 
 ### JSON manipulation (System.Text.Json.Nodes)
 

@@ -29,10 +29,11 @@ List_PopByConditions, List_PopMultipleByConditions), relational actions
 all follow the same JSON-in / JSON-out contract.
 
 Transformation actions (List_Chunk, List_DistinctBy, List_Slice,
-List_Shuffle, List_UpdateAt) also consume and return JSON strings.
-List_Chunk returns a nested JSON array of arrays. List_UpdateAt also
-returns the previous value of the updated property as a separate JSON
-string.
+List_Shuffle, List_UpdateAt) also consume and return JSON data.
+List_Chunk returns a List of Text; each entry is a standalone JSON array
+for one chunk, rather than one nested JSON string. List_Flatten accepts
+a List of Text containing JSON arrays. List_UpdateAt also returns the
+previous value of the updated property as a separate JSON string.
 
 Recommended pattern in a Server Action:
 

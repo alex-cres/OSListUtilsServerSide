@@ -8,11 +8,13 @@ Advanced list manipulation utilities — index-based pops, condition-based pops,
 
 ## Objective
 
-OutSystems lists lack common collection operations found in general-purpose languages (pop by index, pop by condition, zip, cogroup, group-by, multi-key group-by / cogroup, set difference / intersection / union, chunk, distinct-by, slice, shuffle, sample, sort by property, min / max by property, aggregation, partition, mass update). Implementing these natively requires verbose nested `For Each` loops with manual index tracking. This component provides **thirty-two** server-side actions that cover the most common gaps in a single call each — grouped into pop-by-index / pop-by-condition, relational (zip / group-by / cogroup / multi-key group-by / set ops), transformations, aggregations, split / partition, mass update, and multi-list zip.
+OutSystems lists lack common collection operations found in general-purpose languages (pop by index, pop by condition, zip, cogroup, group-by, multi-key group-by / cogroup, set difference / intersection / union, chunk, distinct-by, slice, shuffle, sample, sort by property, min / max by property, aggregation, partition, mass update). Implementing these natively requires verbose nested `For Each` loops with manual index tracking. This component provides **thirty-three** server-side actions that cover the most common gaps in a single call each — grouped into pop-by-index / pop-by-condition, relational (zip / group-by / cogroup / multi-key group-by / set ops), transformations, aggregations, split / partition, mass update, and multi-list zip.
 
 The JSON-based actions work with **any OutSystems Structure** — the caller serializes the list with `JSON Serialize`, passes it to the action, and deserializes the result. This generic approach eliminates the need for per-structure custom extensions.
 
 Multi-condition actions (`List_PopByConditions`, `List_PopMultipleByConditions`, `List_PartitionByConditions`, `List_ReplaceWhere`) accept a first-class **`Condition` Structure list** (`Path`, `Operator`, `Value`, `CaseSensitive`) — no hand-authored JSON. Operator strings, logical operators, and aggregate operations are also exposed as compile-time constants under `Operators`, `LogicalOperators`, and `AggregateOperations` so consumers get IDE autocomplete instead of magic strings.
+
+The ODC interface and handwritten O11 implementation use typed `List<Condition>` and `List<string>` parameters. Integration Studio's XIF does not expose a List of Text or the handwritten C# list types directly: it presents condition lists as a Record List of `Condition` and text lists as a Record List of `TextItem` (one Text attribute, `Value`). The generated XIF adapter maps these records to and from the O11 implementation's `List<T>` values.
 
 ---
 
@@ -439,8 +441,16 @@ All actions are **stateless** and **in-memory**. There is no file I/O, no networ
 |---------|-----|-----|-------|
 | `OutSystems.ExternalLibraries.SDK` | 1.5.0 | — | ODC-only; O11 uses Integration Studio DLLs |
 | `System.Text.Json` | — | 8.0.5 | Built into net10 BCL; explicit NuGet required on net48 |
+| `Microsoft.Bcl.AsyncInterfaces` | — | 8.0.0 | O11 XIF transitive runtime dependency |
+| `System.Buffers` | — | 4.5.1 | O11 XIF transitive runtime dependency |
+| `System.Memory` | — | 4.5.5 | O11 XIF transitive runtime dependency |
+| `System.Numerics.Vectors` | — | 4.5.0 | O11 XIF transitive runtime dependency |
+| `System.Runtime.CompilerServices.Unsafe` | — | 6.0.0 | O11 XIF transitive runtime dependency |
+| `System.Text.Encodings.Web` | — | 8.0.0 | O11 XIF transitive runtime dependency |
+| `System.Threading.Tasks.Extensions` | — | 4.5.4 | O11 XIF transitive runtime dependency |
+| `System.ValueTuple` | — | 4.5.0 | O11 XIF transitive runtime dependency |
 
-All packages are MIT or OutSystems proprietary (SDK only).
+All runtime packages are MIT or OutSystems proprietary (SDK only).
 
 ---
 
@@ -459,15 +469,22 @@ All packages are MIT or OutSystems proprietary (SDK only).
 
 ## Using in O11
 
-1. Build the O11 project:
+The checked-in XIF metadata and implementation sources are generated from the active interfaces and O11 implementation. After changing those sources, regenerate them in this order:
+
+1. Build the O11 project in Release so its .NET Framework assemblies are available:
    ```powershell
-   cd ListUtils.O11
-   dotnet build -c Release
+   dotnet build .\ListUtils.O11\ListUtils.O11.csproj -c Release
    ```
-2. Create an extension in **Integration Studio** with the same action signatures (14 actions, all parameters as Text, Integer, or Boolean).
-3. Click **Edit Source Code**, paste the implementation from `Actions/ListUtilsActions.cs` into the generated file.
-4. Add the `System.Text.Json` NuGet package (8.0.5) to the IS-generated `.csproj`.
-5. Build in Visual Studio, return to Integration Studio → **1-Click Publish**.
+2. Generate the XIF specification and source files from the active O11/ODC interfaces and the Release build output:
+   ```powershell
+   python .\xif-spec\build_spec.py
+   ```
+3. Close the XIF in Integration Studio, then use the Integration Studio UI automation workflow to inject the generated specification, sources, and bundled DLLs into the closed `.xif` archive. The generated extracted files on disk are inputs to this workflow, not a substitute for updating the embedded XIF.
+4. Open the updated XIF in Integration Studio and use Verify and Save (F4) to compile the generated wrapper. All nine bundled DLLs have `CompileAction=Binaries` and are included for deployment with the XIF.
+
+For the XIF boundary, `Condition` is a Record List with `Path`, `Operator`, `Value`, and `CaseSensitive` fields. Every O11 text-list input or output is represented as a Record List of `TextItem`, whose single Text attribute is `Value`; the generated adapter converts these record lists to or from the handwritten implementation's `List<Condition>` and `List<string>`. This UI-specific record-list representation does not change the ODC interface or handwritten O11 method signatures.
+
+Integration Studio compilation verifies the XIF wrapper only. Server deployment, runtime assembly binding, and action invocation on an O11 server have not been verified.
 
 ---
 
@@ -487,7 +504,7 @@ Builds all four projects: ODC library, O11 library, ODC tests, O11 tests.
 dotnet test ListUtils.sln
 ```
 
-Runs 984 tests (492 ODC net10.0 + 492 O11 net48) — 247 functional + 245 load tests per platform.
+Runs 986 .NET tests (493 ODC net10.0 + 493 O11 net48). The associated XIF automation Python suite has 12 tests and is run separately.
 
 ### Package (ODC)
 

@@ -18,8 +18,8 @@ If you are deploying to your own O11 environment for the first time:
 2. Go to Factory > Extensions and upload the XIF (or install via
    LifeTime).
 
-3. Publish the extension. System.Text.Json and its transitive
-   dependencies ship inside the XIF.
+3. Publish the extension. System.Text.Json and its eight transitive
+   dependencies are embedded as XIF binaries and included for deployment.
 
 
 CONFIGURATION
@@ -32,10 +32,14 @@ no per-tenant settings. Every call is stateless.
 USAGE
 -----
 
-All actions consume and return JSON strings. Use JSONSerialize to
-convert any Record List (including a Text List) to a JSON string before
-calling the action, then JSONDeserialize the output back to your target
-Record List.
+JSON list data is passed through Text parameters using JSONSerialize and
+JSONDeserialize. The XIF also uses Record Lists for typed list parameters:
+Condition inputs are Record Lists of Condition records with Path, Operator,
+Value, and CaseSensitive fields. Text-list inputs and outputs use a Record
+List of TextItem records; each TextItem has one Text attribute named Value.
+This is the Integration Studio interface representation. The handwritten
+O11 C# interface and implementation use List<Condition> and List<string>;
+the generated XIF adapter converts between those lists and the Record Lists.
 
 Index-based actions (List_Pop, List_PopMultiple) take a JSON array
 string plus positional information (an index, or a comma-separated
@@ -47,10 +51,11 @@ List_PopByConditions, List_PopMultipleByConditions), relational actions
 all follow the same JSON-in / JSON-out contract.
 
 Transformation actions (List_Chunk, List_DistinctBy, List_Slice,
-List_Shuffle, List_UpdateAt) also consume and return JSON strings.
-List_Chunk returns a nested JSON array of arrays. List_UpdateAt also
-returns the previous value of the updated property as a separate JSON
-string.
+List_Shuffle, List_UpdateAt) also consume and return JSON data.
+List_Chunk returns a Record List of TextItem, with each Value holding a
+standalone JSON array for one chunk. List_Flatten accepts a Record List of
+TextItem containing JSON arrays. List_UpdateAt also returns the previous
+value of the updated property as a separate JSON string.
 
 Recommended pattern in a Server Action:
 
@@ -189,10 +194,11 @@ List_Difference
 
 List_Chunk
   Input:  sourceListJson (Text), chunkSize (Integer)
-  Output: chunksListJson (Text)
-  Splits a JSON list into an array of sublists of a fixed size. The
-  last chunk may be smaller than chunkSize. chunkSize <= 0 or an empty
-  source returns "[]". Useful for batching API payloads.
+  Output: chunksListJson (Record List of TextItem)
+  Splits a JSON list into chunks. Each TextItem.Value is a standalone
+  JSON array for one chunk; the last chunk may be smaller. chunkSize <= 0
+  or an empty source returns an empty Record List. Useful for batching API
+  payloads.
 
 List_DistinctBy
   Input:  sourceListJson (Text), propertyName (Text),
@@ -347,3 +353,7 @@ structure schema.
 If a JSON string is malformed (not valid JSON), the action will throw
 a platform error. Validate JSON before calling the action or wrap the
 call in an exception handler.
+
+The XIF wrapper compiled successfully with Integration Studio F4.
+Server deployment, runtime assembly binding, and action invocation have
+not been verified.

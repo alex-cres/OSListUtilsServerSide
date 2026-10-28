@@ -8,8 +8,14 @@
 **/publish/
 *.zip
 
+# OutSystems Application Pack (Service Studio export for O11 Forge)
+*.oap
+
 # IDE / user files
 *.user
 *.suo
 .vs/
 *.DotSettings.user
+
+# Integration Studio backup snapshots
+xif/**/Backups/
