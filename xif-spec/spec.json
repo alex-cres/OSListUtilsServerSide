@@ -64,7 +64,7 @@
         {
           "name": "Index",
           "type": "Integer",
-          "description": "The 0-based index of the element to remove",
+          "description": "The 0-based index of the element to remove. Negative values count from the end (-1 = last element).",
           "mandatory": false
         }
       ],
@@ -94,7 +94,7 @@
         {
           "name": "IndicesToPop",
           "type": "Text",
-          "description": "Comma-separated 0-based indices to remove (e.g. '1,3,5')",
+          "description": "Comma-separated 0-based indices to remove (e.g. '1,3,-1'). Negative values count from the end. Duplicates, non-numeric and out-of-range entries are ignored.",
           "mandatory": false
         }
       ],

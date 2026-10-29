@@ -20,17 +20,18 @@ public partial class CssListUtils
         }
 
         var array = JsonNode.Parse(ssSourceListJson)!.AsArray();
+        int index = ssIndex < 0 ? array.Count + ssIndex : ssIndex;
 
-        if (ssIndex < 0 || ssIndex >= array.Count)
+        if (index < 0 || index >= array.Count)
         {
             ssUpdatedListJson = ssSourceListJson;
             ssPoppedElementJson = "null";
             return;
         }
 
-        var popped = array[ssIndex];
+        var popped = array[index];
         ssPoppedElementJson = popped?.ToJsonString(JsonOptions) ?? "null";
-        array.RemoveAt(ssIndex);
+        array.RemoveAt(index);
         ssUpdatedListJson = array.ToJsonString(JsonOptions);
     }
 
@@ -56,9 +57,12 @@ public partial class CssListUtils
             return;
         }
 
+        // Negative indices count from the end; non-numeric and out-of-range entries are ignored.
+        // Normalise before Distinct so "-1" and "N-1" collapse to one removal.
+        int count = array.Count;
         var indices = ssIndicesToPop.Split(',')
-            .Select(s => int.TryParse(s.Trim(), out var v) ? v : -1)
-            .Where(i => i >= 0)
+            .Select(s => int.TryParse(s.Trim(), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var v) ? (v < 0 ? count + v : v) : -1)
+            .Where(i => i >= 0 && i < count)
             .Distinct()
             .OrderByDescending(i => i)
             .ToList();

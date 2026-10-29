@@ -275,6 +275,8 @@ public partial class CssListUtils
     private static JsonNode? SetPropertyValue(JsonNode root, string propertyPath, JsonNode? newValue)
     {
         var segments = propertyPath.Split('.');
+        if (!CanWriteWithoutPartialCreation(root, segments)) return null;
+
         JsonNode? current = root;
         for (int idx = 0; idx < segments.Length - 1; idx++)
         {
@@ -284,6 +286,26 @@ public partial class CssListUtils
 
         var last = segments[segments.Length - 1];
         return SetTerminalSegment(current, last, newValue);
+    }
+
+    // Read-only pre-check. Once a segment is missing, every later hop would land on a freshly
+    // created empty object, so the write can only fail if one of those segments needs an array
+    // index or is empty — in that case abort before creating anything so the item is left untouched.
+    private static bool CanWriteWithoutPartialCreation(JsonNode root, string[] segments)
+    {
+        JsonNode? probe = root;
+        for (int idx = 0; idx < segments.Length - 1; idx++)
+        {
+            probe = NavigateSegment(probe, segments[idx]);
+            if (probe != null) continue;
+
+            for (int rest = idx; rest < segments.Length; rest++)
+            {
+                if (string.IsNullOrEmpty(segments[rest]) || ParseSegment(segments[rest]).index.HasValue) return false;
+            }
+            return true;
+        }
+        return true;
     }
 
     private static JsonNode? NavigateOrCreateSegment(JsonNode? current, string segment)

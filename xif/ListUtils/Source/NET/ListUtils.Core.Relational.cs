@@ -200,7 +200,8 @@ internal partial class ListUtilsCore
         else if (isNotEquals)
         {
             var bSet = new HashSet<string>(bValues, strCmp);
-            matchedAny = key => !(bSet.Count == 1 && bSet.Contains(key));
+            // ∃b: key != b  — true when B holds any distinct key other than `key`; false for an empty B.
+            matchedAny = key => bSet.Count > 1 || (bSet.Count == 1 && !bSet.Contains(key));
         }
         else if (isStartsWith)
         {

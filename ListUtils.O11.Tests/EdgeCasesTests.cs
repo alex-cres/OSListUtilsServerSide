@@ -224,6 +224,92 @@ public class EdgeCasesTests
         Assert.Equal(2, arr.Count);
     }
 
+    // ─── Difference with NotEquals ──────────────────────────────────────
+
+    [Fact]
+    public void List_Difference_NotEqualsWithEmptyB_KeepsAllOfA()
+    {
+        string listA = """[{"V":"1"},{"V":"2"}]""";
+        _sut.List_Difference(listA, "[]", "V", "NotEquals", false, out var diff);
+        var arr = JsonNode.Parse(diff)!.AsArray();
+        Assert.Equal(2, arr.Count);
+    }
+
+    [Fact]
+    public void List_Difference_NotEqualsWithKeylessB_KeepsAllOfA()
+    {
+        string listA = """[{"V":"1"},{"V":"2"}]""";
+        string listB = """[{"X":"1"}]""";
+        _sut.List_Difference(listA, listB, "V", "NotEquals", false, out var diff);
+        var arr = JsonNode.Parse(diff)!.AsArray();
+        Assert.Equal(2, arr.Count);
+    }
+
+    [Fact]
+    public void List_Difference_NotEqualsWithSingleKeyInB_KeepsOnlyThatKey()
+    {
+        string listA = """[{"V":"1"},{"V":"2"}]""";
+        string listB = """[{"V":"1"}]""";
+        _sut.List_Difference(listA, listB, "V", "NotEquals", false, out var diff);
+        var arr = JsonNode.Parse(diff)!.AsArray();
+        Assert.Single(arr);
+        Assert.Equal("1", arr[0]!["V"]!.GetValue<string>());
+    }
+
+    // ─── Writes through a missing array leave the item untouched ────────
+
+    [Fact]
+    public void List_UpdateAt_MissingArrayInPath_LeavesItemUnchanged()
+    {
+        _sut.List_UpdateAt("""[{"Id":1}]""", 0, "Items[0].Name", "\"X\"", out var updated, out var previous);
+        Assert.Equal("""[{"Id":1}]""", updated);
+        Assert.Equal("null", previous);
+    }
+
+    [Fact]
+    public void List_UpdateAt_MissingObjectThenArrayInPath_LeavesItemUnchanged()
+    {
+        _sut.List_UpdateAt("""[{"Id":1}]""", 0, "Meta.Tags[0]", "\"X\"", out var updated, out var previous);
+        Assert.Equal("""[{"Id":1}]""", updated);
+        Assert.Equal("null", previous);
+    }
+
+    [Fact]
+    public void List_UpdateMultipleAt_MissingArrayInPath_LeavesItemsUnchanged()
+    {
+        _sut.List_UpdateMultipleAt("""[{"Id":1},{"Id":2}]""", "0,1", "Items[0].Name", "\"X\"", out var updated, out var count);
+        Assert.Equal("""[{"Id":1},{"Id":2}]""", updated);
+        // Count reports targeted object items, including those whose write was skipped.
+        Assert.Equal(2, count);
+    }
+
+    [Fact]
+    public void List_ReplaceWhere_MissingArrayInPath_LeavesItemsUnchanged()
+    {
+        var cond = new List<Condition> { new() { Path = "Id", Operator = Operators.Equals, Value = "1" } };
+        _sut.List_ReplaceWhere("""[{"Id":1}]""", cond, LogicalOperators.AND, "Items[0].Name", "\"X\"", out var updated, out var matchCount);
+        Assert.Equal("""[{"Id":1}]""", updated);
+        Assert.Equal(1, matchCount);
+    }
+
+    [Theory]
+    [InlineData("Meta.")]
+    [InlineData("Meta..Name")]
+    [InlineData("Meta.Info.")]
+    public void List_UpdateAt_EmptySegmentAfterMissingObject_LeavesItemUnchanged(string path)
+    {
+        _sut.List_UpdateAt("""[{"Id":1}]""", 0, path, "\"X\"", out var updated, out var previous);
+        Assert.Equal("""[{"Id":1}]""", updated);
+        Assert.Equal("null", previous);
+    }
+
+    [Fact]
+    public void List_UpdateAt_MissingObjectPath_StillCreatesIntermediateObjects()
+    {
+        _sut.List_UpdateAt("""[{"Id":1}]""", 0, "Meta.Info.Name", "\"X\"", out var updated, out _);
+        Assert.Equal("""[{"Id":1,"Meta":{"Info":{"Name":"X"}}}]""", updated);
+    }
+
     // ─── Case-sensitive Zip / GroupBy ───────────────────────────────────
 
     [Fact]

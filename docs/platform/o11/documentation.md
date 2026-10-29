@@ -98,15 +98,18 @@ List_Pop
   Inputs:  SourceListJson (Text), Index (Integer)
   Outputs: UpdatedListJson (Text), PoppedElementJson (Text)
   Removes the element at a 0-based index and returns the removed element
-  plus the updated list. Out-of-range indices return the original list
-  and PoppedElementJson = "null". Empty input returns "[]" and "null".
+  plus the updated list. Negative indices count from the end (-1 is the
+  last element). Out-of-range indices return the original list and
+  PoppedElementJson = "null". Empty input returns "[]" and "null".
 
 List_PopMultiple
   Inputs:  SourceListJson (Text), IndicesToPop (Text)
   Outputs: UpdatedListJson (Text), PoppedElementsJson (Text)
   Removes elements at comma-separated 0-based indices, for example
-  "1,3,5". Whitespace is trimmed, duplicates are ignored, and out-of-range
-  indices are skipped. Removed elements keep their original order.
+  "1,3,-1". Negative values count from the end. Whitespace is trimmed;
+  duplicates (including a negative and positive index for the same
+  element) are removed once; non-numeric and out-of-range entries are
+  ignored. Removed elements keep their original order.
 
 List_SplitAt
   Inputs:  SourceListJson (Text), Index (Integer)
@@ -170,7 +173,9 @@ List_GroupBy
   Inputs:  SourceListJson (Text), PropertyName (Text)
   Outputs: GroupedListJson (Text)
   Groups elements by one property. Output shape:
-  [{"Key":"value","Items":[...]}]. Groups keep first-seen order.
+  [{"Key":"value","Items":[...]}]. Groups keep first-seen order. Key
+  comparison is always case-sensitive. Elements without the property
+  go into one "Unknown" group.
 
 List_GroupByMultiple
   Inputs:  SourceListJson (Text), PropertyPaths (TextItem Record List),
@@ -235,7 +240,9 @@ List_Difference
   Inputs:  ListAJson (Text), ListBJson (Text), MatchKey (Text),
            ComparisonOperator (Text), CaseSensitive (Boolean)
   Outputs: DifferenceListJson (Text)
-  Returns ListA elements whose MatchKey has no match in ListB.
+  Returns ListA elements whose MatchKey has no match in ListB. ListA
+  elements without a MatchKey value are always kept. Empty ListBJson
+  returns ListA unchanged.
 
 List_Intersect
   Inputs:  ListAJson (Text), ListBJson (Text), MatchKey (Text),
@@ -304,15 +311,18 @@ List_UpdateAt
            NewValueJson (Text)
   Outputs: UpdatedListJson (Text), PreviousValueJson (Text)
   Updates one property on one element. Negative Index counts from the end.
-  Missing intermediate objects are created; arrays are not created.
-  NewValueJson is parsed as JSON. Invalid JSON is stored as text.
+  Missing intermediate objects are created; arrays are not created (when
+  an array step is missing, nothing is written, the item is left
+  unchanged, and PreviousValueJson = "null"). NewValueJson is parsed as
+  JSON. Invalid JSON is stored as text.
 
 List_UpdateMultipleAt
   Inputs:  SourceListJson (Text), IndicesToUpdate (Text),
            PropertyName (Text), NewValueJson (Text)
   Outputs: UpdatedListJson (Text), UpdatedCount (Integer)
   Applies the same update at comma-separated indices. Negative indices
-  count from the end. Out-of-range indices are skipped.
+  count from the end. Out-of-range indices are skipped. Path rules match
+  List_UpdateAt. UpdatedCount counts the targeted object items.
 
 List_ReplaceWhere
   Inputs:  SourceListJson (Text), Conditions (Condition Record List),
@@ -320,6 +330,8 @@ List_ReplaceWhere
            NewValueJson (Text)
   Outputs: UpdatedListJson (Text), MatchCount (Integer)
   Updates the same property on every element that matches the conditions.
+  Path rules match List_UpdateAt. MatchCount counts the matched object
+  elements.
 
 Aggregation actions
 
@@ -340,8 +352,9 @@ List_MaxBy
 List_Aggregate
   Inputs:  SourceListJson (Text), PropertyName (Text), Operation (Text)
   Outputs: ResultValue (Text), MatchedCount (Integer)
-  Operation is Sum, Avg, Min, Max, Count, or CountDistinct. Empty
-  Operation defaults to Sum. Numeric operations skip missing or
+  Operation is Sum, Avg, Min, Max, Count, or CountDistinct. Empty or
+  unrecognised Operation is treated as Sum. CountDistinct compares
+  values case-sensitively. Numeric operations skip missing or
   non-numeric values. MatchedCount reports how many values contributed.
 
 

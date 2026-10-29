@@ -237,7 +237,7 @@ public class LoadTests
         _sut.List_Pop(LargeJsonList, -1, out var updated, out var popped);
         sw.Stop();
         AssertUnderBudget(sw.ElapsedMilliseconds, nameof(Load_Pop_NegativeIndex));
-        AssertPopSingle(updated, popped, TargetSize, expectedRemoved: 0);
+        AssertPopSingle(updated, popped, TargetSize, expectedRemoved: 1);
     }
 
     #endregion

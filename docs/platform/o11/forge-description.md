@@ -1,7 +1,7 @@
 # ListUtils O11 — O11 Extension Forge Description
 
 > **Forge:** https://www.outsystems.com/forge/component-overview/25935/listutils-o11  
-> **Current Forge version:** 0.7.1 (29 October 2026)  
+> **Current Forge version:** 0.7.2 (29 October 2026)  
 > **Platform:** OutSystems 11
 >
 > This file is the source of truth for the O11 extension description published on OutSystems Forge.
@@ -34,8 +34,8 @@ The extension exposes two structures:
 
 #### Index Actions
 
-- **List_Pop** — Removes the element at a 0-based index and returns it with the updated list.
-- **List_PopMultiple** — Removes elements at comma-separated indices.
+- **List_Pop** — Removes the element at a 0-based index (negative counts from the end) and returns it with the updated list.
+- **List_PopMultiple** — Removes elements at comma-separated indices (negative counts from the end).
 - **List_SplitAt** — Splits a list into left and right lists at an index.
 
 #### Condition Actions

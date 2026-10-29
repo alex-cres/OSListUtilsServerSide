@@ -11,7 +11,7 @@ namespace OutSystems.NssListUtils {
 		/// Removes an element at a specific index from a JSON list. Returns the removed element and the updated list as JSON.
 		/// </summary>
 		/// <param name="ssSourceListJson">The source list serialized as a JSON array string</param>
-		/// <param name="ssIndex">The 0-based index of the element to remove</param>
+		/// <param name="ssIndex">The 0-based index of the element to remove. Negative values count from the end (-1 = last element).</param>
 		/// <param name="ssUpdatedListJson">The JSON array without the popped element</param>
 		/// <param name="ssPoppedElementJson">The JSON element that was removed</param>
 		void MssList_Pop(string ssSourceListJson, int ssIndex, out string ssUpdatedListJson, out string ssPoppedElementJson);
@@ -20,7 +20,7 @@ namespace OutSystems.NssListUtils {
 		/// Removes multiple elements at specified indices from a JSON list. Returns the removed elements and the updated list as JSON.
 		/// </summary>
 		/// <param name="ssSourceListJson">The source list serialized as a JSON array string</param>
-		/// <param name="ssIndicesToPop">Comma-separated 0-based indices to remove (e.g. &apos;1,3,5&apos;)</param>
+		/// <param name="ssIndicesToPop">Comma-separated 0-based indices to remove (e.g. &apos;1,3,-1&apos;). Negative values count from the end. Duplicates, non-numeric and out-of-range entries are ignored.</param>
 		/// <param name="ssUpdatedListJson">The JSON array without the popped elements</param>
 		/// <param name="ssPoppedElementsJson">The JSON array of elements that were removed</param>
 		void MssList_PopMultiple(string ssSourceListJson, string ssIndicesToPop, out string ssUpdatedListJson, out string ssPoppedElementsJson);

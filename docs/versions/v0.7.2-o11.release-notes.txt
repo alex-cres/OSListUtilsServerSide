@@ -1,0 +1,211 @@
+ListUtils O11 0.7.2 - negative indices, two data fixes, 1,388 tests
+Released 2026-10-29
+
+
+OVERVIEW
+--------
+
+ListUtils O11 is an OutSystems 11 Integration Studio extension for
+server-side list manipulation. It pops, filters, partitions, groups,
+joins, compares, slices, samples, updates, aggregates, chunks and flattens
+lists of records.
+
+Lists are passed as JSON arrays, so the actions work with any Structure,
+Entity record or JSON payload. Serialize a Record List with JSON Serialize,
+call ListUtils, then deserialize the returned JSON.
+
+
+WHAT CHANGED IN 0.7.2
+---------------------
+
+Changed - List_Pop and List_PopMultiple now treat negative indices as
+  counting from the end (-1 is the last element), like List_SplitAt,
+  List_UpdateAt, List_UpdateMultipleAt, List_Slice and [-1] paths.
+  Negatives that are still out of range keep the old behaviour. In
+  List_PopMultiple, "2,-1" on a 3-item list removes the element once.
+  Behaviour change: a negative index used to do nothing.
+
+Fixed - List_UpdateAt, List_UpdateMultipleAt and List_ReplaceWhere no
+  longer leave an empty object behind when the path goes through a
+  missing array (for example Items[0].Name) or contains an empty segment
+  after a missing object. The item is now left unchanged.
+
+Fixed - List_Difference with NotEquals no longer drops every element of
+  list A when list B has no key values. All of A is kept.
+
+XIF - regenerated from the O11 project and recompiled with Integration
+  Studio Verify and Save. All 814 verifier checks passed, including the
+  open, save and recompile round-trips. Parameter descriptions for
+  List_Pop.Index and List_PopMultiple.IndicesToPop were updated.
+
+
+SECURITY PIPELINE POSITION
+--------------------------
+
+Not applicable. ListUtils is a general-purpose data manipulation library.
+It does not access databases, files, networks or external services.
+
+
+SERVER ACTIONS
+--------------
+
+Index
+  List_Pop                       Remove one element by index
+  List_PopMultiple               Remove elements by comma-separated indices
+  List_SplitAt                   Split into left and right lists
+
+Condition
+  List_PopByCondition            Remove first or last match
+  List_PopMultipleByCondition    Remove every match
+  List_PopByConditions           Remove first or last AND/OR match
+  List_PopMultipleByConditions   Remove every AND/OR match
+  List_Partition                 Split matching and non-matching items
+  List_PartitionByConditions     Split using AND/OR conditions
+
+Grouping, join and set
+  List_Zip                       Pair two lists by position
+  List_GroupBy                   Group by one property
+  List_GroupByMultiple           Group by composite key
+  List_ZipGroupBy                Cogroup two lists by key
+  List_ZipGroupByMultiple        Cogroup two lists by composite key
+  List_ZipMany                   Pair many lists by position
+  List_ZipManyGroupBy            Cogroup many lists by key
+  List_ZipManyGroupByMultiple    Cogroup many lists by composite key
+  List_Difference                A minus B by key
+  List_Intersect                 A and B by key
+  List_Union                     A plus B, deduplicated by key
+
+Transformation
+  List_Chunk                     Split into JSON-array chunks
+  List_Flatten                   Combine JSON-array chunks
+  List_DistinctBy                Keep first item per key
+  List_Slice                     Python-style Start, End and Step
+  List_Reverse                   Reverse order
+  List_Shuffle                   Random order, repeatable with seed
+  List_Sample                    Random subset, repeatable with seed
+
+Update
+  List_UpdateAt                  Update one property at one index
+  List_UpdateMultipleAt          Update one property at many indices
+  List_ReplaceWhere              Update every item matching conditions
+
+Aggregation
+  List_MinBy                     Element with smallest property value
+  List_MaxBy                     Element with largest property value
+  List_Aggregate                 Sum, Avg, Min, Max, Count, CountDistinct
+
+
+STRUCTURES
+----------
+
+Condition
+  Path            Text      Property path
+  Operator        Text      Comparison operator
+  Value           Text      Comparison value
+  CaseSensitive   Boolean   Case-sensitive text comparison
+
+TextItem
+  Value           Text      One text value or JSON-array string
+
+
+PROCESSING MECHANISM
+--------------------
+
+Each action parses JSON with System.Text.Json, performs the list operation,
+and returns new JSON text. It does not mutate the caller's Record List.
+
+Property paths support nested objects and array indexing, including
+negative indices. Condition actions support Equals, NotEquals, Contains,
+StartsWith, EndsWith, GreaterThan, LessThan, GreaterOrEqual and
+LessOrEqual. Logical operators are AND and OR.
+
+
+SUPPORTED INPUT
+---------------
+
+JSON arrays of objects
+  Records serialized from OutSystems Structures or Entities, or JSON from
+  integrations.
+
+JSON arrays of scalar values
+  Supported by order-based actions such as Pop, Slice, Reverse, Chunk,
+  Flatten, Shuffle and Sample.
+
+TextItem Record Lists
+  Lists of key paths, key names, field labels and JSON-array strings.
+
+Condition Record Lists
+  AND/OR filters and updates.
+
+
+RECOMMENDED USAGE PATTERN
+-------------------------
+
+1. Build or fetch a Record List.
+2. Convert it with JSON Serialize.
+3. Call the required ListUtils action.
+4. Convert returned JSON with JSON Deserialize.
+5. Catch exceptions where input JSON comes from users or integrations.
+
+
+TESTS
+-----
+
+O11 runtime verification (v0.7.1, 2026-10-29)
+  33 of 33 actions passed in a published O11 Reactive test app with
+  5,000-element regression data lists. Re-run after publishing 0.7.2.
+
+0.7.2 verification
+  Integration Studio Verify and Save succeeded; 814 of 814 XIF checks
+  passed. The compiled DLL inside the XIF was executed under .NET
+  Framework 4.8 and returned the expected results for the changes above.
+
+Repository test suite
+  694 O11 xUnit tests and 694 ODC xUnit tests, 1,388 total, identical.
+  Includes per-action contract tests, round-trip and cross-action
+  invariants, server-culture independence (pt-PT, de-DE, fr-FR, tr-TR),
+  concurrency, and the malformed-input contract for 32 actions.
+
+KNOWN LIMITATIONS
+-----------------
+
+Invalid JSON - malformed JSON or a non-array root raises a server exception.
+Large payloads - each call parses and writes JSON; batch very large data.
+Assembly conflicts - another extension may load incompatible
+  System.Text.Json dependency versions; use binding redirects if needed.
+.NET Framework 4.8 - required by the extension.
+Numeric parsing - numeric operators use InvariantCulture.
+Random actions - Seed 0 is non-deterministic; use a non-zero seed for
+  repeatable output.
+
+
+DEPENDENCIES
+------------
+
+System.Text.Json 8.0.5 - MIT. JSON parsing and serialization.
+Microsoft.Bcl.AsyncInterfaces 8.0.0 - MIT. System.Text.Json support.
+System.Buffers 4.5.1 - MIT. Buffer primitives.
+System.Memory 4.5.5 - MIT. Span and memory APIs.
+System.Numerics.Vectors 4.5.0 - MIT. Vector primitives.
+System.Runtime.CompilerServices.Unsafe 6.0.0 - MIT. Runtime support.
+System.Text.Encodings.Web 8.0.0 - MIT. Text escaping and encoding.
+System.Threading.Tasks.Extensions 4.5.4 - MIT. Task and ValueTask support.
+System.ValueTuple 4.5.0 - MIT. Tuple support.
+
+OutSystems Platform assemblies are provided by Integration Studio and the
+O11 Platform Server. They are not redistributed by this component.
+
+
+PLATFORM DETAILS
+----------------
+
+OutSystems 11
+  Extension: ListUtils
+  Forge asset: ListUtils O11
+  Target framework: .NET Framework 4.8
+  Package: Integration Studio XIF
+  Structures: Condition, TextItem
+  Actions: 33 server actions
+
+ODC
+  Published separately as an ODC External Library.
