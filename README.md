@@ -2,7 +2,7 @@
 
 **ODC External Library + O11 Integration Studio Extension**
 
-Advanced list manipulation utilities — index-based pops, condition-based pops, zip, group-by, and set difference. Uses JSON serialization for generic structure support.
+Advanced list manipulation utilities — 33 Server Actions for index- and condition-based pops, split / partition, zip, group-by and cogroup (single-key, multi-key, multi-list), set operations, transformations, randomization, mass updates, and aggregations. Uses JSON serialization for generic structure support.
 
 ---
 
@@ -27,7 +27,7 @@ Removes an element at a specific index. Returns the removed element and the upda
 | Parameter | Type | Direction | Description |
 |-----------|------|-----------|-------------|
 | `SourceListJson` | `string` (JSON array) | Input | The source list serialized as a JSON array (via `JSON Serialize`). |
-| `Index` | `int` | Input | The 0-based index of the element to remove. |
+| `Index` | `int` | Input | The 0-based index of the element to remove. Negative values count from the end (`-1` = last element). |
 | `UpdatedListJson` | `string` (JSON array) | Output | The JSON array without the popped element. Empty input returns `"[]"`; out-of-range index returns the source unchanged. |
 | `PoppedElementJson` | `string` (JSON) | Output | The removed element serialized as JSON, or `"null"` when no element was removed. |
 
@@ -38,9 +38,20 @@ Removes multiple elements at specified indices. Returns the removed elements and
 | Parameter | Type | Direction | Description |
 |-----------|------|-----------|-------------|
 | `SourceListJson` | `string` (JSON array) | Input | The source list serialized as a JSON array. |
-| `IndicesToPop` | `string` | Input | Comma-separated 0-based indices to remove (e.g. `"1,3,5"`). Whitespace is trimmed. |
+| `IndicesToPop` | `string` | Input | Comma-separated 0-based indices to remove (e.g. `"1,3,-1"`). Negative values count from the end. Whitespace is trimmed; duplicates (including a negative and positive index that point to the same element) are removed once; non-numeric and out-of-range entries are ignored. |
 | `UpdatedListJson` | `string` (JSON array) | Output | The JSON array without the popped elements. |
 | `PoppedElementsJson` | `string` (JSON array) | Output | JSON array of removed elements, in their original order. Out-of-range indices are silently ignored. |
+
+### List_SplitAt
+
+Splits a JSON list at an index into a left part (elements before `Index`) and a right part (`Index` and later).
+
+| Parameter | Type | Direction | Description |
+|-----------|------|-----------|-------------|
+| `SourceListJson` | `string` (JSON array) | Input | The source list serialized as a JSON array. |
+| `Index` | `int` | Input | 0-based split index. Negative values count from the end. Values `<= 0` leave the left part empty; values `>=` the list length leave the right part empty. |
+| `LeftListJson` | `string` (JSON array) | Output | Elements with position `< Index`. |
+| `RightListJson` | `string` (JSON array) | Output | Elements with position `>= Index`. |
 
 ### List_PopByCondition
 
@@ -107,6 +118,32 @@ Pops all elements matching multiple conditions combined with AND/OR.
 
 The same `List<Condition>` shape is reused by `List_PartitionByConditions` and `List_ReplaceWhere`.
 
+### List_Partition
+
+Splits a JSON list into matching and non-matching lists using one property condition. Non-mutating counterpart of `List_PopMultipleByCondition` — both sides are returned.
+
+| Parameter | Type | Direction | Description |
+|-----------|------|-----------|-------------|
+| `SourceListJson` | `string` (JSON array) | Input | The source list. |
+| `PropertyName` | `string` | Input | Property path to check. Supports nested paths and array indexing. Empty returns every element in `NonMatchingListJson`. |
+| `TargetValue` | `string` | Input | The value to compare against. |
+| `ComparisonOperator` | `string` | Input | Any operator from the operators table. Empty = `Equals`. |
+| `CaseSensitive` | `bool` | Input | Case-sensitivity flag (default `false`). |
+| `MatchingListJson` | `string` (JSON array) | Output | Elements that satisfy the condition, in source order. |
+| `NonMatchingListJson` | `string` (JSON array) | Output | Elements that do not satisfy the condition (including elements where the path is missing), in source order. |
+
+### List_PartitionByConditions
+
+Splits a JSON list into matching and non-matching lists using multiple conditions combined with AND / OR.
+
+| Parameter | Type | Direction | Description |
+|-----------|------|-----------|-------------|
+| `SourceListJson` | `string` (JSON array) | Input | The source list. |
+| `Conditions` | `List<Condition>` | Input | List of `Condition` Structures. An empty list returns every element in `NonMatchingListJson`. |
+| `LogicalOperator` | `string` | Input | `AND` (default) or `OR`. |
+| `MatchingListJson` | `string` (JSON array) | Output | Elements that satisfy the combined condition. |
+| `NonMatchingListJson` | `string` (JSON array) | Output | Elements that do not satisfy the combined condition. |
+
 ### List_Zip
 
 Combines two JSON lists into paired objects by matching index.
@@ -117,7 +154,7 @@ Combines two JSON lists into paired objects by matching index.
 | `ListBJson` | `string` | Input | The second JSON list. |
 | `KeyNameA` | `string` | Input | Key label for List A entries in the output objects. |
 | `KeyNameB` | `string` | Input | Key label for List B entries in the output objects. |
-| `ZippedListJson` | `string` | Output | JSON array of paired objects `[{keyNameA: ..., keyNameB: ...}, ...]`. Truncates to the shorter list. |
+| `ZippedListJson` | `string` | Output | JSON array of paired objects `[{<KeyNameA>: ..., <KeyNameB>: ...}, ...]`. Truncates to the shorter list. |
 
 ### List_GroupBy
 
@@ -127,7 +164,7 @@ Groups a flat JSON list by a property value.
 |-----------|------|-----------|-------------|
 | `SourceListJson` | `string` | Input | The source JSON list. |
 | `PropertyName` | `string` | Input | Property path to group by. Supports nested paths with dots (e.g. `Customer.Country`). CamelCase fallback applied at each segment. |
-| `GroupedListJson` | `string` | Output | JSON array of `{"Key": "value", "Items": [...]}` groups. Groups appear in first-seen order. |
+| `GroupedListJson` | `string` | Output | JSON array of `{"Key": "value", "Items": [...]}` groups. Groups appear in first-seen order. Key comparison is **always case-sensitive** (there is no `CaseSensitive` flag on this action). Items with no value at `PropertyName` (or every item, when `PropertyName` is empty) go into a single `"Unknown"` group. |
 
 ### List_ZipGroupBy
 
@@ -195,6 +232,28 @@ Cogroup two JSON lists by an **N-key composite** — the N-key generalisation of
 | `CaseSensitive` | `bool` | Input | Key comparison flag (default `false`). |
 | `GroupedListJson` | `string` | Output | JSON array of `{<KeyNames[0]>: <v0>, …, <KeyNameA>: [...], <KeyNameB>: [...]}` groups. Ordering follows A's first-seen composite keys, then any B-only composite keys. Items with missing key values fall into the single `"Unknown"` bucket per key column. |
 
+### List_ZipMany
+
+Zips any number of JSON lists into paired objects by position — the N-list generalisation of `List_Zip`.
+
+| Parameter | Type | Direction | Description |
+|-----------|------|-----------|-------------|
+| `ListsJson` | `List<string>` | Input | A list of JSON-array strings — one entry per input list. An empty entry is treated as an empty list. |
+| `KeyNamesJson` | `List<string>` | Input | One output label per input list. Missing / blank entries default to `"Items0"`, `"Items1"`, … |
+| `ZippedListJson` | `string` (JSON array) | Output | JSON array with one object per position, each holding one field per input list. Output length is the shortest input length. |
+
+### List_ZipManyGroupBy
+
+Cogroups any number of JSON lists by one key path per list — the N-list generalisation of `List_ZipGroupBy`.
+
+| Parameter | Type | Direction | Description |
+|-----------|------|-----------|-------------|
+| `ListsJson` | `List<string>` | Input | A list of JSON-array strings — one entry per input list. |
+| `KeyPropertiesJson` | `List<string>` | Input | Position `i` is the key path applied to the items of `ListsJson[i]`. Supports nested paths and array indexing. Missing entries put that list's items in the `"Unknown"` bucket. |
+| `KeyNamesJson` | `List<string>` | Input | Position `i` is the output field name for `ListsJson[i]`'s items array. Missing / blank entries default to `"Items0"`, `"Items1"`, … |
+| `CaseSensitive` | `bool` | Input | Key comparison flag (default `false`). |
+| `GroupedListJson` | `string` (JSON array) | Output | JSON array of `{"Key": <keyValue>, <KeyNames[0]>: [...], <KeyNames[1]>: [...], …}` groups in first-seen order across the inputs. Items whose key is missing share the `"Unknown"` bucket. |
+
 ### List_ZipManyGroupByMultiple
 
 Cogroup **M lists** by an **N-key composite** — the N-key generalisation of `List_ZipManyGroupBy`. For every distinct composite key across all M inputs, emits one group holding one field per key plus M named arrays.
@@ -220,7 +279,32 @@ Computes the set difference (A − B) of two JSON lists on a key property.
 | `MatchKey` | `string` | Input | Property path to match on. Supports nested paths and array indexing (`Ref.Code`, `Codes[0]`). |
 | `ComparisonOperator` | `string` | Input | Any operator from the operators table below. |
 | `CaseSensitive` | `bool` | Input | Case-sensitivity flag (default `false`). |
-| `DifferenceListJson` | `string` | Output | Elements in A whose `MatchKey` has no match in B. |
+| `DifferenceListJson` | `string` | Output | Elements in A whose `MatchKey` has no match in B. Elements of A with no value at `MatchKey` are always kept. An empty `ListBJson` returns A unchanged; an empty `ListAJson` returns `"[]"`. |
+
+### List_Intersect
+
+Computes the set intersection (A ∩ B) of two JSON lists on a key property, preserving A's order.
+
+| Parameter | Type | Direction | Description |
+|-----------|------|-----------|-------------|
+| `ListAJson` | `string` (JSON array) | Input | The base JSON list. |
+| `ListBJson` | `string` (JSON array) | Input | The list to intersect with. |
+| `MatchKey` | `string` | Input | Property path to match on. Supports nested paths and array indexing. |
+| `ComparisonOperator` | `string` | Input | Any operator from the operators table. Empty = `Equals`. |
+| `CaseSensitive` | `bool` | Input | Case-sensitivity flag (default `false`). |
+| `IntersectionListJson` | `string` (JSON array) | Output | Elements in A whose `MatchKey` matches at least one `MatchKey` value in B. Elements without a key value are excluded. |
+
+### List_Union
+
+Concatenates two JSON lists and removes duplicates by a key property. The first occurrence wins, so A's items appear first.
+
+| Parameter | Type | Direction | Description |
+|-----------|------|-----------|-------------|
+| `ListAJson` | `string` (JSON array) | Input | The first JSON list. |
+| `ListBJson` | `string` (JSON array) | Input | The second JSON list. |
+| `MatchKey` | `string` | Input | Property path used as the uniqueness key. Empty compares whole elements by their JSON. |
+| `CaseSensitive` | `bool` | Input | Key comparison flag (default `false`). |
+| `UnionListJson` | `string` (JSON array) | Output | A + B with duplicates removed. Elements whose key is missing share one bucket, so at most one keyless element survives. |
 
 ### List_Chunk
 
@@ -231,6 +315,15 @@ Splits a JSON list into a **List of Text** where each entry is a standalone JSON
 | `SourceListJson` | `string` (JSON array) | Input | The source list serialized as a JSON array. |
 | `ChunkSize` | `int` | Input | Maximum number of elements per chunk. `<= 0` (or empty source) returns an empty list. |
 | `ChunksListJson` | `List<string>` (Text List — each entry a JSON array) | Output | One entry per chunk. Each entry is a self-contained JSON array string (e.g. `"[{...},{...}]"`) ready for `JSON Deserialize` into the caller's Structure List. The last entry may hold fewer elements than `ChunkSize`. |
+
+### List_Flatten
+
+Concatenates a list of JSON-array strings into one JSON array. Inverse of `List_Chunk`.
+
+| Parameter | Type | Direction | Description |
+|-----------|------|-----------|-------------|
+| `ChunksListJson` | `List<string>` | Input | A list of JSON-array strings, typically `List_Chunk`'s output. Empty, invalid-JSON, and non-array entries are skipped. |
+| `FlatListJson` | `string` (JSON array) | Output | The elements of every inner array, in order. |
 
 ### List_DistinctBy
 
@@ -265,6 +358,26 @@ Randomizes the order of a JSON list using the Fisher-Yates algorithm. Source lis
 | `Seed` | `int` | Input | Random seed. **`Seed == 0` uses `RandomNumberGenerator` (CSPRNG per swap)** — suitable for security-sensitive shuffles. Any non-zero value uses `System.Random(Seed)` and produces the same permutation every call (useful for reproducible tests). |
 | `ShuffledListJson` | `string` (JSON array) | Output | The shuffled JSON array. |
 
+### List_Reverse
+
+Reverses a JSON list. Equivalent to `List_Slice(-1, 0, -1)` but explicit and cheaper.
+
+| Parameter | Type | Direction | Description |
+|-----------|------|-----------|-------------|
+| `SourceListJson` | `string` (JSON array) | Input | The source list. |
+| `ReversedListJson` | `string` (JSON array) | Output | The elements in reverse order. |
+
+### List_Sample
+
+Returns a random subset of a JSON list without replacement, using the same seed rules as `List_Shuffle`.
+
+| Parameter | Type | Direction | Description |
+|-----------|------|-----------|-------------|
+| `SourceListJson` | `string` (JSON array) | Input | The source list. |
+| `SampleSize` | `int` | Input | Number of elements to return. `<= 0` returns `"[]"`; values `>=` the list length return the full list in shuffled order. |
+| `Seed` | `int` | Input | `0` uses a CSPRNG (`RandomNumberGenerator`); any non-zero value uses `System.Random(Seed)` for reproducible output. |
+| `SampleListJson` | `string` (JSON array) | Output | JSON array of `min(SampleSize, list length)` elements. |
+
 ### List_UpdateAt
 
 Sets a single property of the item at a given `Index`. Returns the modified list and the previous value of that property.
@@ -273,16 +386,81 @@ Sets a single property of the item at a given `Index`. Returns the modified list
 |-----------|------|-----------|-------------|
 | `SourceListJson` | `string` (JSON array) | Input | The source list. |
 | `Index` | `int` | Input | 0-based index of the item to modify. Negative values count from the end. Out-of-range indices return the source unchanged and `PreviousValueJson = "null"`. |
-| `PropertyName` | `string` | Input | Property path to update on the target item. Supports nested paths (`Address.City`) and array indexing (`Tags[0]`). **Missing intermediate objects are created; arrays are NOT auto-created** — if an array indexing step encounters a missing or non-array node, the action returns the source unchanged. |
+| `PropertyName` | `string` | Input | Property path to update on the target item. Supports nested paths (`Address.City`) and array indexing (`Tags[0]`). **Missing intermediate objects are created; arrays are NOT auto-created** — if an array indexing step encounters a missing or non-array node, nothing is written (the item is left unchanged) and `PreviousValueJson = "null"`. |
 | `NewValueJson` | `string` (JSON) | Input | The new value as JSON (`"Active"`, `42`, `true`, `{"City":"Lisbon"}`, `null`). Falls back to a raw string when the value is not valid JSON. |
 | `UpdatedListJson` | `string` (JSON array) | Output | The updated JSON array with the property changed. |
 | `PreviousValueJson` | `string` (JSON) | Output | The previous JSON value of the modified property, or `"null"` when: the index was out of range, `PropertyName` was empty, the item was not an object, the property did not exist, OR the property existed with a JSON `null` value (the last two cases are indistinguishable). |
+
+### List_UpdateMultipleAt
+
+Sets the same property to the same value on the items at several indices.
+
+| Parameter | Type | Direction | Description |
+|-----------|------|-----------|-------------|
+| `SourceListJson` | `string` (JSON array) | Input | The source list. |
+| `IndicesToUpdate` | `string` | Input | Comma-separated 0-based indices (e.g. `"1,3,5"`). Negative values count from the end. Whitespace is trimmed; duplicates, invalid entries, and out-of-range indices are skipped. |
+| `PropertyName` | `string` | Input | Property path to overwrite. Missing intermediate objects are created; arrays are not — when an array step is missing, that item is left unchanged. |
+| `NewValueJson` | `string` (JSON) | Input | The new value as JSON. Falls back to a raw string when the value is not valid JSON. |
+| `UpdatedListJson` | `string` (JSON array) | Output | The updated JSON array. |
+| `UpdatedCount` | `int` | Output | Number of distinct in-range object items targeted. An item whose write was skipped because an array step was missing is still counted. |
+
+### List_ReplaceWhere
+
+Sets the same property to the same value on every element that matches a multi-condition filter.
+
+| Parameter | Type | Direction | Description |
+|-----------|------|-----------|-------------|
+| `SourceListJson` | `string` (JSON array) | Input | The source list. |
+| `Conditions` | `List<Condition>` | Input | List of `Condition` Structures. An empty list returns the source unchanged with `MatchCount = 0`. |
+| `LogicalOperator` | `string` | Input | `AND` (default) or `OR`. |
+| `UpdateProperty` | `string` | Input | Property path to overwrite on each matched element. Missing intermediate objects are created; arrays are not — when an array step is missing, that element is left unchanged. |
+| `NewValueJson` | `string` (JSON) | Input | The new value as JSON. Falls back to a raw string when the value is not valid JSON. |
+| `UpdatedListJson` | `string` (JSON array) | Output | The updated JSON array. |
+| `MatchCount` | `int` | Output | Number of matched object elements. An element whose write was skipped because an array step was missing is still counted. |
+
+### List_MinBy
+
+Returns the element with the smallest value at a property path.
+
+| Parameter | Type | Direction | Description |
+|-----------|------|-----------|-------------|
+| `SourceListJson` | `string` (JSON array) | Input | The source list. |
+| `PropertyName` | `string` | Input | Property path to compare on. Supports nested paths and array indexing. |
+| `NumericMode` | `bool` | Input | `true` parses values as decimals (`InvariantCulture`) and skips non-numeric values; `false` compares values as case-insensitive ordinal text. |
+| `ElementJson` | `string` (JSON) | Output | The full winning element, or `"null"` when no element qualified. Ties keep the first occurrence. |
+| `MinValue` | `string` | Output | The raw value at `PropertyName` for the winning element, or `""` when no element qualified. |
+| `MinIndex` | `int` | Output | 0-based index of the winning element, or `-1` when no element qualified. |
+
+### List_MaxBy
+
+Returns the element with the largest value at a property path. Same parameters and rules as `List_MinBy`, with outputs `ElementJson`, `MaxValue`, and `MaxIndex`.
+
+| Parameter | Type | Direction | Description |
+|-----------|------|-----------|-------------|
+| `SourceListJson` | `string` (JSON array) | Input | The source list. |
+| `PropertyName` | `string` | Input | Property path to compare on. |
+| `NumericMode` | `bool` | Input | `true` = decimal comparison; `false` = case-insensitive ordinal text comparison. |
+| `ElementJson` | `string` (JSON) | Output | The full winning element, or `"null"` when no element qualified. Ties keep the first occurrence. |
+| `MaxValue` | `string` | Output | The raw winning value, or `""`. |
+| `MaxIndex` | `int` | Output | 0-based index of the winning element, or `-1`. |
+
+### List_Aggregate
+
+Calculates a scalar aggregation over a property path.
+
+| Parameter | Type | Direction | Description |
+|-----------|------|-----------|-------------|
+| `SourceListJson` | `string` (JSON array) | Input | The source list. |
+| `PropertyName` | `string` | Input | Property path to aggregate. Supports nested paths and array indexing. |
+| `Operation` | `string` | Input | `Sum`, `Avg`, `Min`, `Max`, `Count`, or `CountDistinct` (case-insensitive; use `AggregateOperations`). Empty or unrecognised values are treated as `Sum`. `CountDistinct` compares values case-sensitively. |
+| `ResultValue` | `string` | Output | The result as text. Numeric operations return a decimal formatted with `InvariantCulture`; `Count` / `CountDistinct` return an integer. Empty when no value contributed to a numeric operation. |
+| `MatchedCount` | `int` | Output | Number of contributing items: non-null values for `Count` / `CountDistinct`, or values parseable as decimals for numeric operations. |
 
 ---
 
 ## Comparison Operators
 
-The condition-based actions (`List_PopByCondition`, `List_PopMultipleByCondition`, `List_Difference`) accept an operator that controls how `TargetValue` is compared against the property value. Multi-condition actions (`List_PopByConditions`, `List_PopMultipleByConditions`, `List_PartitionByConditions`, `List_ReplaceWhere`) accept the same operators inside each `Condition` Structure's `Operator` field.
+The single-condition actions (`List_PopByCondition`, `List_PopMultipleByCondition`, `List_Partition`) and the keyed set actions (`List_Difference`, `List_Intersect`) accept an operator that controls how values are compared. Multi-condition actions (`List_PopByConditions`, `List_PopMultipleByConditions`, `List_PartitionByConditions`, `List_ReplaceWhere`) accept the same operators inside each `Condition` Structure's `Operator` field.
 
 | Operator | Aliases | Behaviour |
 |----------|---------|-----------|
@@ -306,7 +484,7 @@ All nine names are also exposed as compile-time constants on the `Operators` hel
 
 ## Property Paths
 
-`PropertyName`, `MatchKey`, and every `Condition.Path` support both **dot-separated navigation** and **array indexing**:
+`PropertyName`, `MatchKey`, `UpdateProperty`, every `Condition.Path`, and every entry of the key-path lists (`PropertyPaths`, `KeyProperties*`) support both **dot-separated navigation** and **array indexing**:
 
 | Path syntax | Resolves to |
 |------------|-------------|
@@ -391,16 +569,21 @@ All actions are **stateless** and **in-memory**. There is no file I/O, no networ
 | Action category | Mechanism | Complexity |
 |-----------------|-----------|------------|
 | Index-based pops (`List_Pop`, `List_PopMultiple`) | Parse the JSON string into a `JsonArray`, `RemoveAt` by index. `List_PopMultiple` reverse-sorts and dedupes the comma-separated indices before removal to avoid index shifting. | O(N) |
-| Condition-based pops (`PopByCondition`, `PopMultipleByCondition`) | Parse the JSON string into a `JsonArray`, linear scan matching `propertyName == targetValue`, return modified arrays serialized back to JSON. | O(N) |
-| `List_Zip` | Parse both JSON arrays, iterate to `Min(A.Count, B.Count)`, construct paired `JsonObject`s. | O(min(A,B)) |
-| `List_GroupBy` | Single-pass scan building a `Dictionary<string, JsonArray>` keyed by property value. Preserves insertion order via a parallel list. | O(N) |
-| `List_ZipGroupBy` | Two single-pass scans (A then B) into per-side `Dictionary<string, JsonArray>` buckets sharing the same key order. Union of first-seen keys drives the output. | O(A + B) |
-| `List_Difference` | Build a `HashSet<string>` from B's key values, then filter A against it (except for `Contains`, which stays O(A×B)). | O(A + B) |
-| `List_Chunk` | Single pass over the source, sliding a `JsonArray` buffer of `ChunkSize` elements. | O(N) |
+| `List_SplitAt` | Normalize the index, detach every element once, and route each into the left or right array. | O(N) |
+| Condition-based pops and partitions (`PopByCondition`, `PopMultipleByCondition`, `Partition`, and the `…ByConditions` variants) | Parse the JSON array, split each property path once, then make a linear scan evaluating the condition(s) per element. | O(N × conditions) |
+| `List_Zip` / `List_ZipMany` | Parse every JSON array, iterate to the shortest length, construct paired `JsonObject`s. | O(total elements) |
+| `List_GroupBy` / `List_GroupByMultiple` | Single-pass scan building a `Dictionary<string, JsonArray>` keyed by the property value (or the Unit-Separator-joined composite key). Preserves first-seen order. | O(N × keys) |
+| `List_ZipGroupBy` / `List_ZipManyGroupBy` / `…GroupByMultiple` variants | One pass per input list into per-list buckets sharing the same key order. | O(total elements × keys) |
+| `List_Difference` | Build a `HashSet<string>` from B's key values, then filter A against it. Numeric operators use precomputed `min(B)` / `max(B)`; `StartsWith` / `EndsWith` scan key prefixes / suffixes; `Contains` stays a linear scan. | O(A + B); `Contains` O(A × B) |
+| `List_Intersect` | `Equals` uses a `HashSet<string>` of B's keys; every other operator compares each A key against every B key. | O(A + B) for `Equals`; otherwise O(A × B) |
+| `List_Union` | Single pass over A then B with a `HashSet<string>` of seen keys (or whole-element JSON when `MatchKey` is empty). | O(A + B) |
+| `List_Chunk` / `List_Flatten` | Single pass over the source, sliding a `JsonArray` buffer of `ChunkSize` elements / concatenating each parsed inner array. | O(N) |
 | `List_DistinctBy` | Single pass building a `HashSet<string>` on the property-derived key (or full-item JSON when `PropertyName` is empty). First occurrence wins. | O(N) |
 | `List_Slice` | Normalise `Start` / `End` / `Step`, then walk the source once with the normalised step (negative walks in reverse). | O(N) |
-| `List_Shuffle` | Deep-clone the source, run Fisher-Yates in place. `Seed == 0` calls `RandomNumberGenerator.GetInt32` per swap; `Seed != 0` uses `System.Random(Seed)`. | O(N) |
-| `List_UpdateAt` | Deep-clone the source, walk `PropertyName` on the item at `Index`, set the leaf and return the previous value. | O(path length) |
+| `List_Reverse` | Detach elements from the tail and append them to a new array. | O(N) |
+| `List_Shuffle` / `List_Sample` | Detach the parsed elements into a buffer and run Fisher-Yates (full for Shuffle; partial over the first `SampleSize` slots for Sample). `Seed == 0` uses `RandomNumberGenerator`; `Seed != 0` uses `System.Random(Seed)`. | O(N) |
+| `List_UpdateAt` / `List_UpdateMultipleAt` / `List_ReplaceWhere` | Parse the source, walk `PropertyName` / `UpdateProperty` on each targeted item, set the leaf (auto-creating missing objects), and serialize the parsed array. | O(N × path length) |
+| `List_MinBy` / `List_MaxBy` / `List_Aggregate` | Single pass reading the property value from each item and updating the running result. | O(N) |
 
 **Property name matching:** All JSON actions try the exact `PropertyName` first, then a camelCase variant (first letter lowered). This handles the mismatch between OutSystems PascalCase attribute names and the camelCase keys produced by `JSON Serialize`.
 
@@ -418,11 +601,11 @@ All actions are **stateless** and **in-memory**. There is no file I/O, no networ
        │
        ▼
 ┌──────────────────────┐
-│  ListUtils Action    │ ───► Manipulates the JSON (pop, zip, group, diff)
+│  ListUtils Action    │ ───► Manipulates the JSON (pop, partition, group, join, update, …)
 └──────────────────────┘
        │
-       ├───► [updatedListJson]  ───► JSON Deserialize → Structure List
-       └───► [poppedElementJson] ──► JSON Deserialize → Structure Record
+       ├───► [UpdatedListJson]  ───► JSON Deserialize → Structure List
+       └───► [PoppedElementJson] ──► JSON Deserialize → Structure Record
 ```
 
 ---
@@ -484,7 +667,7 @@ The checked-in XIF metadata and implementation sources are generated from the ac
 
 For the XIF boundary, `Condition` is a Record List with `Path`, `Operator`, `Value`, and `CaseSensitive` fields. Every O11 text-list input or output is represented as a Record List of `TextItem`, whose single Text attribute is `Value`; the generated adapter converts these record lists to or from the handwritten implementation's `List<Condition>` and `List<string>`. This UI-specific record-list representation does not change the ODC interface or handwritten O11 method signatures.
 
-Integration Studio compilation verifies the XIF wrapper only. Server deployment, runtime assembly binding, and action invocation on an O11 server have not been verified.
+The published v0.7.1 O11 extension was verified at runtime in an O11 Reactive test app on 2026-10-29: all 33 actions passed deterministic regression cases with 5,000-element inputs. See [the O11 release notes](./docs/versions/v0.7.1-o11.md).
 
 ---
 
@@ -504,7 +687,7 @@ Builds all four projects: ODC library, O11 library, ODC tests, O11 tests.
 dotnet test ListUtils.sln
 ```
 
-Runs 986 .NET tests (493 ODC net10.0 + 493 O11 net48). The associated XIF automation Python suite has 12 tests and is run separately.
+Runs 1,388 .NET tests (694 ODC net10.0 + 694 O11 net48). The XIF model tests used by the Integration Studio automation (12 Python tests in `.github/skills/integrationstudio-ui-automation/tests/test_xif_model.py` at the workspace root) are run separately.
 
 ### Package (ODC)
 

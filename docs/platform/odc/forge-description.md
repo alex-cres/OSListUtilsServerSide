@@ -4,13 +4,14 @@
 > Update it whenever the component's behaviour, actions, or interface changes.
 > It is versioned alongside the codebase — a copy is kept per release under `docs/versions/`.
 >
+> **Current version:** 0.7.2 (29 October 2026) — see [v0.7.2](../../versions/v0.7.2.md)  
 > **O11 version:** https://www.outsystems.com/forge/component-overview/25935/listutils-o11
 
 ---
 
 ## Short Description (Forge subtitle — 160 chars max)
 
-Advanced list manipulation utilities — pop by index, pop by condition, zip, group-by, and set difference. Works with any Structure via JSON serialization.
+33 server actions to pop, filter, partition, group, join, compare, slice, sample, update, aggregate, chunk and flatten lists. Any Structure via JSON.
 
 ---
 
@@ -28,19 +29,25 @@ For generic structure support, the JSON-based actions accept any Structure List 
 
 #### Index-Based Actions
 
-**List_Pop** — Removes an element at a specific 0-based index from a JSON list. Returns the removed element and the updated list.
+**List_Pop** — Removes an element at a specific 0-based index from a JSON list (negative indices count from the end). Returns the removed element and the updated list.
 
-**List_PopMultiple** — Removes multiple elements at specified indices (comma-separated string). Indices are processed in reverse-sorted order so earlier removals do not shift later positions.
+**List_PopMultiple** — Removes multiple elements at specified indices (comma-separated string; negative indices count from the end). Indices are processed in reverse-sorted order so earlier removals do not shift later positions.
+
+**List_SplitAt** — Splits a list into left and right lists at an index. Negative indices count from the end.
 
 #### Condition-Based Actions (JSON)
 
-**List_PopByCondition** — Finds the first object in a JSON array matching a property condition. Supports 9 comparison operators, dot-separated nested paths (e.g. `Address.City`), array indexing (e.g. `Items[0].Name`, `Tags[-1]`), and a `caseSensitive` flag.
+**List_PopByCondition** — Finds the first object in a JSON array matching a property condition. Supports 9 comparison operators, dot-separated nested paths (e.g. `Address.City`), array indexing (e.g. `Items[0].Name`, `Tags[-1]`), and a `CaseSensitive` flag.
 
 **List_PopMultipleByCondition** — Same as above but removes ALL matching elements. Returns the list of removed elements as a JSON array.
 
 **List_PopByConditions** — Multi-condition version. Accepts a list of `Condition` Structures (each with `Path`, `Operator`, `Value`, `CaseSensitive`) and combines them with AND (default) or OR logical operator. No JSON hand-authoring — build the list in your Server Action.
 
 **List_PopMultipleByConditions** — Multi-condition version that removes ALL matching elements.
+
+**List_Partition** — Splits a list into matching and non-matching lists using one property condition. Nothing is removed — both sides are returned.
+
+**List_PartitionByConditions** — Splits a list into matching and non-matching lists using multiple AND/OR conditions.
 
 #### Relational & Set Actions (JSON)
 
@@ -50,15 +57,27 @@ For generic structure support, the JSON-based actions accept any Structure List 
 
 **List_GroupByMultiple** — N-key generalisation of `List_GroupBy`. Groups a JSON list by an **ordered list of property paths** (composite key). Each output group emits one field per key (labelled by `KeyNames[i]`, defaulting to `Key0`, `Key1`, …) plus the items array (`ItemsFieldName`, defaulting to `Items`). Composite keys are joined internally with the ASCII Unit Separator so distinct tuples never collide.
 
+**List_ZipGroupBy** — Cogroups two lists by a shared key. Each group holds `Key` plus two named arrays (`KeyNameA` / `KeyNameB`) of the items from each list sharing that key.
+
 **List_ZipGroupByMultiple** — N-key generalisation of the two-list cogroup. Cogroups two lists by an ordered list of property paths per side (both sides must supply the same number of paths). Each output group holds one field per key column plus two named arrays (`KeyNameA` / `KeyNameB`).
+
+**List_ZipMany** — Pairs any number of lists by position (takes a List of Text of JSON arrays). Output length is the shortest input.
+
+**List_ZipManyGroupBy** — Cogroups any number of lists by one key path per list.
 
 **List_ZipManyGroupByMultiple** — M-list, N-key cogroup. Generalises `List_ZipManyGroupBy` to composite keys. `KeyProperties` is a flat list in list-major order — entries `[i*KeyCount .. i*KeyCount + KeyCount - 1]` supply the key paths for `ListsJson[i]`. Missing key values collapse into the shared `"Unknown"` bucket per key column.
 
 **List_Difference** — Computes the set difference (A − B) matching on a key property. Supports nested paths, array indexing, comparison operators, and case sensitivity.
 
+**List_Intersect** — Computes the set intersection (A ∩ B) on a key property, preserving A's order.
+
+**List_Union** — Concatenates A and B, then removes duplicates by key (first occurrence wins). An empty key compares whole elements.
+
 #### Transformation & Randomization Actions (JSON)
 
-**List_Chunk** — Splits a JSON list into an array of fixed-size sublists. The last chunk may be smaller. `ChunkSize <= 0` or an empty source returns `[]`. Ideal for batching API payloads.
+**List_Chunk** — Splits a JSON list into fixed-size chunks returned as a List of Text, where each entry is a standalone JSON array ready for `JSON Deserialize`. The last chunk may be smaller. `ChunkSize <= 0` or an empty source returns an empty list. Ideal for batching API payloads.
+
+**List_Flatten** — Concatenates a List of Text of JSON arrays back into one JSON array. Inverse of `List_Chunk`.
 
 **List_DistinctBy** — Filters to unique elements by a property key (first occurrence wins). Empty property dedupes on the entire item. Works on structures — native ODC `Distinct` only supports basic types.
 
@@ -66,7 +85,23 @@ For generic structure support, the JSON-based actions accept any Structure List 
 
 **List_Shuffle** — Randomises order via Fisher-Yates. `Seed == 0` uses a cryptographically-seeded RNG (`RandomNumberGenerator`); any non-zero seed produces a reproducible permutation. Source list is not mutated.
 
+**List_Reverse** — Reverses a list.
+
+**List_Sample** — Returns a random subset without replacement, with the same seed rules as `List_Shuffle`.
+
+#### Update Actions (JSON)
+
 **List_UpdateAt** — Sets a property of the item at a given index and returns the previous value. Negative indices count from the end. Nested paths are supported; missing intermediate objects are created (arrays are not auto-created).
+
+**List_UpdateMultipleAt** — Applies the same property update at multiple comma-separated indices and returns how many items were updated.
+
+**List_ReplaceWhere** — Applies the same property update to every element matching AND/OR `Condition` entries and returns the match count.
+
+#### Aggregation Actions (JSON)
+
+**List_MinBy** / **List_MaxBy** — Return the element with the smallest / largest value at a property path, plus the value and its index. Numeric or text comparison.
+
+**List_Aggregate** — Calculates `Sum`, `Avg`, `Min`, `Max`, `Count`, or `CountDistinct` over a property path.
 
 ---
 
@@ -76,20 +111,20 @@ The condition-based actions accept an operator:
 
 | Operator | Behaviour |
 |----------|-----------|
-| `Equals` (default), `""` | Exact match (per `caseSensitive` flag) |
+| `Equals` (default), `""` | Exact match (per `CaseSensitive` flag) |
 | `NotEquals`, `!=` | Inverse of Equals |
 | `Contains` | Substring match |
 | `StartsWith`, `EndsWith` | Prefix / suffix match |
 | `GreaterThan`, `>` / `LessThan`, `<` | Numeric comparison |
 | `GreaterOrEqual`, `>=` / `LessOrEqual`, `<=` | Numeric with boundary |
 
-The `caseSensitive` boolean (default `false`) toggles case sensitivity for string operators. Numeric operators ignore it.
+The `CaseSensitive` boolean (default `false`) toggles case sensitivity for string operators. Numeric operators ignore it.
 
 ---
 
 ### Property Paths
 
-`PropertyName`, `MatchKey`, and every `Condition.Path` support both dot navigation and array indexing:
+`PropertyName`, `MatchKey`, `UpdateProperty`, every `Condition.Path`, and every key-path list entry support both dot navigation and array indexing:
 
 ```
 Address.City             →  obj["Address"]["City"]
@@ -158,11 +193,11 @@ Symbol aliases (`!=`, `>`, `<`, `>=`, `<=`) are still accepted for backwards com
        │
        ▼
 ┌──────────────────────┐
-│  ListUtils Action    │ ───► Manipulates (pop, zip, group, diff)
+│  ListUtils Action    │ ───► Manipulates the JSON (pop, partition, group, join, update, …)
 └──────────────────────┘
        │
-       ├───► [updatedListJson]  ───► JSON Deserialize → Structure List
-       └───► [poppedElementJson] ──► JSON Deserialize → Structure Record
+       ├───► [UpdatedListJson]  ───► JSON Deserialize → Structure List
+       └───► [PoppedElementJson] ──► JSON Deserialize → Structure Record
 ```
 
 4. For index-based actions (`List_Pop`, `List_PopMultiple`), serialize your `List of Text` (or any Structure List) with `JSON Serialize` first — every action consumes and returns JSON strings.
@@ -180,7 +215,7 @@ Symbol aliases (`!=`, `>`, `<`, `>=`, `<=`) are still accepted for backwards com
 - **Case sensitivity toggle** — per-action flag or per-condition field in multi-condition mode
 - **Nested property paths + array indexing** — dot navigation, positive/negative indices, mixed at any depth
 - **CamelCase fallback** applied at every path segment
-- **O(N) performance** for all operations — no nested loops
-- **Null-safe** — empty or null inputs return empty results, never exceptions
+- **Linear-time core operations** — most actions are a single O(N) pass; `List_Difference` with `Contains` and `List_Intersect` with any operator other than `Equals` compare every A key with every B key
+- **Null-safe** — null or empty inputs return empty results instead of exceptions (malformed JSON still raises an error)
 - **No external dependencies** on ODC — uses built-in `System.Text.Json`
 - **Stateless** — no configuration, no site properties, no persistent state

@@ -32,14 +32,63 @@ public class ListPopTests
     }
 
     [Fact]
-    public void List_Pop_NegativeIndex_ReturnsOriginalList()
+    public void List_Pop_NegativeIndex_CountsFromEnd()
     {
-        string json = """["a","b"]""";
+        string json = """["a","b","c"]""";
 
         _sut.List_Pop(json, -1, out var updated, out var popped);
 
+        Assert.Equal("\"c\"", popped);
+        var arr = JsonNode.Parse(updated)!.AsArray();
+        Assert.Equal(2, arr.Count);
+        Assert.Equal("a", arr[0]!.ToString());
+        Assert.Equal("b", arr[1]!.ToString());
+    }
+
+    [Fact]
+    public void List_Pop_NegativeIndexEqualToLength_RemovesFirst()
+    {
+        string json = """["a","b","c"]""";
+
+        _sut.List_Pop(json, -3, out var updated, out var popped);
+
+        Assert.Equal("\"a\"", popped);
+        Assert.Equal(2, JsonNode.Parse(updated)!.AsArray().Count);
+    }
+
+    [Fact]
+    public void List_Pop_NegativeIndexBeyondLength_ReturnsOriginalList()
+    {
+        string json = """["a","b"]""";
+
+        _sut.List_Pop(json, -3, out var updated, out var popped);
+
         Assert.Equal("null", popped);
         Assert.Equal(json, updated);
+    }
+
+    [Theory]
+    [InlineData(int.MinValue)]
+    [InlineData(int.MaxValue)]
+    public void List_Pop_ExtremeIndex_ReturnsOriginalList(int index)
+    {
+        string json = """["a","b"]""";
+
+        _sut.List_Pop(json, index, out var updated, out var popped);
+
+        Assert.Equal("null", popped);
+        Assert.Equal(json, updated);
+    }
+
+    [Fact]
+    public void List_PopMultiple_ExtremeIndices_Ignored()
+    {
+        string json = """["a","b"]""";
+
+        _sut.List_PopMultiple(json, "-2147483648,2147483647,-2147483649", out var updated, out var popped);
+
+        Assert.Equal("[]", popped);
+        Assert.Equal(2, JsonNode.Parse(updated)!.AsArray().Count);
     }
 
     [Fact]
@@ -125,6 +174,50 @@ public class ListPopTests
         var poppedArr = JsonNode.Parse(popped)!.AsArray();
         Assert.Single(poppedArr);
         Assert.Equal("a", poppedArr[0]!.ToString());
+    }
+
+    [Fact]
+    public void List_PopMultiple_NegativeIndices_CountFromEnd()
+    {
+        string json = """["a","b","c","d","e"]""";
+
+        _sut.List_PopMultiple(json, "0,-1,-2", out var updated, out var popped);
+
+        var poppedArr = JsonNode.Parse(popped)!.AsArray();
+        Assert.Equal(3, poppedArr.Count);
+        Assert.Equal("a", poppedArr[0]!.ToString());
+        Assert.Equal("d", poppedArr[1]!.ToString());
+        Assert.Equal("e", poppedArr[2]!.ToString());
+        var updatedArr = JsonNode.Parse(updated)!.AsArray();
+        Assert.Equal(2, updatedArr.Count);
+        Assert.Equal("b", updatedArr[0]!.ToString());
+        Assert.Equal("c", updatedArr[1]!.ToString());
+    }
+
+    [Fact]
+    public void List_PopMultiple_NegativeAndPositiveAliases_RemoveOnce()
+    {
+        string json = """["a","b","c"]""";
+
+        _sut.List_PopMultiple(json, "2,-1", out var updated, out var popped);
+
+        var poppedArr = JsonNode.Parse(popped)!.AsArray();
+        Assert.Single(poppedArr);
+        Assert.Equal("c", poppedArr[0]!.ToString());
+        Assert.Equal(2, JsonNode.Parse(updated)!.AsArray().Count);
+    }
+
+    [Fact]
+    public void List_PopMultiple_NegativeBeyondLengthAndNonNumeric_Ignored()
+    {
+        string json = """["a","b","c"]""";
+
+        _sut.List_PopMultiple(json, "-4,x,1", out var updated, out var popped);
+
+        var poppedArr = JsonNode.Parse(popped)!.AsArray();
+        Assert.Single(poppedArr);
+        Assert.Equal("b", poppedArr[0]!.ToString());
+        Assert.Equal(2, JsonNode.Parse(updated)!.AsArray().Count);
     }
 
     [Fact]

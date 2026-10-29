@@ -18,17 +18,18 @@ public partial class ListUtils
         }
 
         var array = JsonNode.Parse(SourceListJson)!.AsArray();
+        int index = Index < 0 ? array.Count + Index : Index;
 
-        if (Index < 0 || Index >= array.Count)
+        if (index < 0 || index >= array.Count)
         {
             UpdatedListJson = SourceListJson;
             PoppedElementJson = "null";
             return;
         }
 
-        var popped = array[Index];
+        var popped = array[index];
         PoppedElementJson = popped?.ToJsonString(JsonOptions) ?? "null";
-        array.RemoveAt(Index);
+        array.RemoveAt(index);
         UpdatedListJson = array.ToJsonString(JsonOptions);
     }
 
@@ -54,9 +55,12 @@ public partial class ListUtils
             return;
         }
 
+        // Negative indices count from the end; non-numeric and out-of-range entries are ignored.
+        // Normalise before Distinct so "-1" and "N-1" collapse to one removal.
+        int count = array.Count;
         var indices = IndicesToPop.Split(',')
-            .Select(s => int.TryParse(s.Trim(), out var v) ? v : -1)
-            .Where(i => i >= 0)
+            .Select(s => int.TryParse(s.Trim(), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var v) ? (v < 0 ? count + v : v) : -1)
+            .Where(i => i >= 0 && i < count)
             .Distinct()
             .OrderByDescending(i => i)
             .ToList();

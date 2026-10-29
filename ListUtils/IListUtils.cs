@@ -9,7 +9,7 @@ public interface IListUtils
     void List_Pop(
         [OSParameter(Description = "The source list serialized as a JSON array string")]
         string SourceListJson,
-        [OSParameter(Description = "The 0-based index of the element to remove")]
+        [OSParameter(Description = "The 0-based index of the element to remove. Negative values count from the end (-1 = last element).")]
         int Index,
         [OSParameter(Description = "The JSON array without the popped element")]
         out string UpdatedListJson,
@@ -20,7 +20,7 @@ public interface IListUtils
     void List_PopMultiple(
         [OSParameter(Description = "The source list serialized as a JSON array string")]
         string SourceListJson,
-        [OSParameter(Description = "Comma-separated 0-based indices to remove (e.g. '1,3,5')")]
+        [OSParameter(Description = "Comma-separated 0-based indices to remove (e.g. '1,3,-1'). Negative values count from the end. Duplicates, non-numeric and out-of-range entries are ignored.")]
         string IndicesToPop,
         [OSParameter(Description = "The JSON array without the popped elements")]
         out string UpdatedListJson,

@@ -1,0 +1,208 @@
+ListUtilsServerSide 0.7.2 - negative indices, two data fixes, 1,388 tests
+Released 2026-10-29
+
+
+OVERVIEW
+--------
+
+ListUtilsServerSide is an ODC External Library with 33 server actions for
+list manipulation that is missing or cumbersome in native OutSystems logic:
+pop, filter, partition, group, join, compare, slice, sample, update,
+aggregate, chunk and flatten.
+
+Lists are passed as JSON arrays, so the actions work with any Structure,
+Entity record or JSON payload. Serialize a list with JSON Serialize, call
+the action, then JSON Deserialize the result. The same actions ship for
+OutSystems 11 as the ListUtils O11 extension (version 0.7.2 O11).
+
+
+WHAT CHANGED IN 0.7.2
+---------------------
+
+Changed - List_Pop and List_PopMultiple now treat negative indices as
+  counting from the end (-1 is the last element), like List_SplitAt,
+  List_UpdateAt, List_UpdateMultipleAt, List_Slice and [-1] paths.
+  Negatives that are still out of range keep the old behaviour. In
+  List_PopMultiple, "2,-1" on a 3-item list removes the element once.
+  Behaviour change: a negative index used to do nothing.
+
+Fixed - List_UpdateAt, List_UpdateMultipleAt and List_ReplaceWhere no
+  longer leave an empty object behind when the path goes through a
+  missing array (for example Items[0].Name) or contains an empty segment
+  after a missing object. The item is now left unchanged.
+
+Fixed - List_Difference with NotEquals no longer drops every element of
+  list A when list B has no key values. All of A is kept.
+
+Documentation - full parameter reference for all 33 actions, PascalCase
+  names in the documentation tab, and documented edge cases.
+
+
+SECURITY PIPELINE POSITION
+--------------------------
+
+Not applicable. ListUtilsServerSide is a general-purpose data manipulation
+library. It does not access databases, files, networks or external
+services, and keeps no state between calls.
+
+
+SERVER ACTIONS
+--------------
+
+Index
+  List_Pop                       Remove one element by index
+  List_PopMultiple               Remove elements by comma-separated indices
+  List_SplitAt                   Split into left and right lists
+
+Condition
+  List_PopByCondition            Remove first or last match
+  List_PopMultipleByCondition    Remove every match
+  List_PopByConditions           Remove first or last AND/OR match
+  List_PopMultipleByConditions   Remove every AND/OR match
+  List_Partition                 Split matching and non-matching items
+  List_PartitionByConditions     Split using AND/OR conditions
+
+Grouping, join and set
+  List_Zip                       Pair two lists by position
+  List_GroupBy                   Group by one property
+  List_GroupByMultiple           Group by composite key
+  List_ZipGroupBy                Cogroup two lists by key
+  List_ZipGroupByMultiple        Cogroup two lists by composite key
+  List_ZipMany                   Pair many lists by position
+  List_ZipManyGroupBy            Cogroup many lists by key
+  List_ZipManyGroupByMultiple    Cogroup many lists by composite key
+  List_Difference                A minus B by key
+  List_Intersect                 A and B by key
+  List_Union                     A plus B, deduplicated by key
+
+Transformation
+  List_Chunk                     Split into JSON-array chunks
+  List_Flatten                   Combine JSON-array chunks
+  List_DistinctBy                Keep first item per key
+  List_Slice                     Python-style Start, End and Step
+  List_Reverse                   Reverse order
+  List_Shuffle                   Random order, repeatable with seed
+  List_Sample                    Random subset, repeatable with seed
+
+Update
+  List_UpdateAt                  Update one property at one index
+  List_UpdateMultipleAt          Update one property at many indices
+  List_ReplaceWhere              Update every item matching conditions
+
+Aggregation
+  List_MinBy                     Element with smallest property value
+  List_MaxBy                     Element with largest property value
+  List_Aggregate                 Sum, Avg, Min, Max, Count, CountDistinct
+
+Structure: Condition
+  Path            Text      Property path
+  Operator        Text      Comparison operator
+  Value           Text      Comparison value
+  CaseSensitive   Boolean   Case-sensitive text comparison
+
+
+PROCESSING MECHANISM
+--------------------
+
+Each action parses its JSON input with System.Text.Json, performs the list
+operation, and returns new JSON text. The caller's list is never mutated.
+
+Property paths support nested objects and array indexing, including
+negative indices (Address.City, Items[0].Name, Tags[-1]), with a camelCase
+fallback at every segment. Condition actions support Equals, NotEquals,
+Contains, StartsWith, EndsWith, GreaterThan, LessThan, GreaterOrEqual and
+LessOrEqual, combined with AND or OR. Numeric comparisons and outputs use
+InvariantCulture, so results do not depend on the server locale.
+
+
+SUPPORTED INPUT
+---------------
+
+JSON arrays of objects
+  Lists serialized from ODC Structures or Entities, or JSON from
+  integrations.
+
+JSON arrays of scalar values
+  Supported by order-based actions such as Pop, Slice, Reverse, Chunk,
+  Flatten, Shuffle and Sample.
+
+List of Text
+  Key paths, key names, field labels and JSON-array strings for the
+  multi-key, multi-list, Chunk and Flatten actions.
+
+Condition list
+  AND/OR filters, partitions and updates.
+
+
+RECOMMENDED USAGE PATTERN
+-------------------------
+
+1. Build or fetch the list in a Server Action.
+2. Convert it with JSON Serialize.
+3. Call the required ListUtils action.
+4. Convert the returned JSON with JSON Deserialize.
+5. Wrap the call in an exception handler when the JSON comes from users
+   or integrations.
+
+
+TESTS
+-----
+
+694 ODC xUnit tests and 694 O11 xUnit tests, 1,388 total, all passing.
+The two suites are byte-for-byte identical.
+
+  Per-action contract tests for all 33 actions
+  Round-trip invariants on seeded random data (Chunk then Flatten,
+    SplitAt, Reverse, Slice, Shuffle and Sample permutations)
+  Cross-action equivalences (Partition vs PopMultipleByCondition,
+    GroupBy vs GroupByMultiple, ZipGroupBy vs ZipManyGroupBy and the
+    Multiple variants, Zip vs ZipMany, Union vs DistinctBy,
+    UpdateMultipleAt vs ReplaceWhere, Aggregate vs MinBy and MaxBy)
+  Server-culture independence (pt-PT, de-DE, fr-FR, tr-TR)
+  Concurrent calls on one instance
+  Malformed-input contract for all 32 JSON-consuming actions
+  245 load tests on 10,000-element lists, each under 300 ms
+
+
+KNOWN LIMITATIONS
+-----------------
+
+Invalid JSON - malformed JSON raises an exception; a non-array root raises
+  an exception. Validate or catch.
+Memory - the whole JSON list is parsed in memory; batch very large lists.
+Conditions - AND/OR is flat; nested logic needs chained calls.
+Array indexing - fixed and negative indices only, no wildcards.
+GroupBy - key comparison is always case-sensitive.
+Zip - output length is the shorter list.
+Slice - End = 0 means "unspecified".
+UpdateAt - creates missing objects but never arrays.
+  PreviousValueJson "null" cannot tell a missing property from JSON null.
+UpdateMultipleAt / ReplaceWhere - counts include targeted items whose
+  write was skipped because an array step was missing.
+Shuffle and Sample - Seed 0 is non-deterministic; use a non-zero seed for
+  repeatable output.
+
+
+DEPENDENCIES
+------------
+
+OutSystems.ExternalLibraries.SDK 1.5.0 - OutSystems proprietary. Provides
+  the OSInterface, OSAction and OSStructure attributes.
+
+System.Text.Json - part of the .NET 10 base class library; no separate
+  package is shipped.
+
+
+PLATFORM DETAILS
+----------------
+
+ODC
+  Target framework: .NET 10 (net10.0), published for linux-x64
+  Package: ExternalLibrary.zip, under 1 MB (ODC limit 90 MB)
+  Interface: IListUtils
+  Structure: Condition
+  Constants: Operators, LogicalOperators, AggregateOperations
+
+OutSystems 11
+  Published separately as the ListUtils O11 Integration Studio extension,
+  version 0.7.2 O11, targeting .NET Framework 4.8.

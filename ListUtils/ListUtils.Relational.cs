@@ -192,8 +192,8 @@ public partial class ListUtils
         else if (isNotEquals)
         {
             var bSet = new HashSet<string>(bValues, strCmp);
-            // ∃b: key != b  is true unless every b equals key (i.e. bSet == {key}).
-            matchedAny = key => !(bSet.Count == 1 && bSet.Contains(key));
+            // ∃b: key != b  — true when B holds any distinct key other than `key`; false for an empty B.
+            matchedAny = key => bSet.Count > 1 || (bSet.Count == 1 && !bSet.Contains(key));
         }
         else if (isStartsWith)
         {
