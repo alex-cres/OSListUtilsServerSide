@@ -1,14 +1,17 @@
-# ListUtilsServerSide — O11 Extension Forge Description
+# ListUtils O11 — O11 Extension Forge Description
 
+> **Forge:** https://www.outsystems.com/forge/component-overview/25935/listutils-o11  
+> **Current Forge version:** 0.7.1 (29 October 2026)  
+> **Platform:** OutSystems 11
+>
 > This file is the source of truth for the O11 extension description published on OutSystems Forge.
 > Update it whenever the component's behaviour, actions, or interface changes.
-> It is versioned alongside the codebase — a copy is kept per release under `docs/versions/`.
 
 ---
 
 ## Short Description (Forge subtitle — 160 chars max)
 
-Advanced list manipulation utilities — pop by index, pop by condition, zip, group-by, and set difference. Works with any Structure via JSON serialization.
+33 server actions to pop, filter, partition, group, join, compare, slice, sample, update, aggregate, chunk and flatten JSON lists in OutSystems 11.
 
 ---
 
@@ -16,181 +19,144 @@ Advanced list manipulation utilities — pop by index, pop by condition, zip, gr
 
 ### What This Component Does
 
-**ListUtilsServerSide** is an Extension that provides thirty-three high-utility list manipulation actions that are absent or cumbersome to implement natively in OutSystems 11. It covers index-based removal, condition-based filtering (single and multi-condition with AND/OR), partition, split, list pairing (zip), grouping (single-key, N-key composite, cogroup across 2 or M lists), set operations (difference, intersect, union), aggregation (min-by, max-by, sum/avg/min/max/count/count-distinct), chunking, distinct-by, Python-style slicing, shuffling, reverse, flatten, sampling, replace-where, and in-place property updates — all in single server-side calls.
+**ListUtils O11** is an OutSystems 11 Integration Studio extension with 33 server actions for list manipulation that is missing or cumbersome in native OutSystems logic.
 
-For generic structure support, the JSON-based actions accept any Structure List serialized with `JSON Serialize` and return JSON strings that can be deserialized back with `JSON Deserialize`. This eliminates the need to build separate extensions for each data structure.
+It works with any Structure, Entity record, or JSON payload: serialize a Record List with **JSON Serialize**, call a ListUtils action, then deserialize the returned JSON with **JSON Deserialize**.
 
-In Integration Studio, multi-condition inputs use a Condition Record List with Path, Operator, Value, and CaseSensitive fields. Text-list parameters use a TextItem Record List, with each record containing a Text Value field; this is how chunk results and other text lists are represented at the XIF boundary.
+The extension exposes two structures:
+
+- `Condition` — `Path`, `Operator`, `Value`, `CaseSensitive`, used by multi-condition actions.
+- `TextItem` — one Text `Value`, used for lists of property paths, key names, labels, and JSON-array strings.
 
 ---
 
 ### Server Actions
 
-#### Index-Based Actions
+#### Index Actions
 
-**List_Pop** — Removes an element at a specific 0-based index from a JSON list. Returns the removed element and the updated list.
+- **List_Pop** — Removes the element at a 0-based index and returns it with the updated list.
+- **List_PopMultiple** — Removes elements at comma-separated indices.
+- **List_SplitAt** — Splits a list into left and right lists at an index.
 
-**List_PopMultiple** — Removes multiple elements at specified indices (comma-separated string). Indices are processed in reverse-sorted order so earlier removals do not shift later positions.
+#### Condition Actions
 
-#### Condition-Based Actions (JSON)
+- **List_PopByCondition** — Removes the first or last element matching one property condition.
+- **List_PopMultipleByCondition** — Removes every element matching one property condition.
+- **List_PopByConditions** — Removes the first or last element matching multiple AND/OR conditions.
+- **List_PopMultipleByConditions** — Removes every element matching multiple AND/OR conditions.
+- **List_Partition** — Splits a list into matching and non-matching lists using one condition.
+- **List_PartitionByConditions** — Splits a list into matching and non-matching lists using multiple AND/OR conditions.
 
-**List_PopByCondition** — Finds the first object in a JSON array matching a property condition. Supports 9 comparison operators, dot-separated nested paths (e.g. `Address.City`), array indexing (e.g. `Items[0].Name`, `Tags[-1]`), and a `caseSensitive` flag.
+#### Grouping, Join and Set Actions
 
-**List_PopMultipleByCondition** — Same as above but removes ALL matching elements. Returns the list of removed elements as a JSON array.
+- **List_Zip** — Pairs two lists by position.
+- **List_GroupBy** — Groups elements by one property path.
+- **List_GroupByMultiple** — Groups elements by a composite key built from multiple property paths.
+- **List_ZipGroupBy** — Cogroups two lists by a shared key.
+- **List_ZipGroupByMultiple** — Cogroups two lists by a composite key.
+- **List_ZipMany** — Pairs any number of lists by position.
+- **List_ZipManyGroupBy** — Cogroups any number of lists by one key per list.
+- **List_ZipManyGroupByMultiple** — Cogroups any number of lists by composite keys.
+- **List_Difference** — Returns elements in list A with no matching key in list B.
+- **List_Intersect** — Returns elements in list A with a matching key in list B.
+- **List_Union** — Combines A and B, then removes duplicates by key.
 
-**List_PopByConditions** — Multi-condition version. Accepts a list of `Condition` Structures (each with `Path`, `Operator`, `Value`, `CaseSensitive`) and combines them with AND (default) or OR logical operator. No JSON hand-authoring — build the list in your Server Action.
+#### Transformation Actions
 
-**List_PopMultipleByConditions** — Multi-condition version that removes ALL matching elements.
+- **List_Chunk** — Splits a list into fixed-size JSON-array chunks returned as a TextItem Record List.
+- **List_Flatten** — Combines JSON-array chunks back into one list.
+- **List_DistinctBy** — Keeps the first element for each unique property value.
+- **List_Slice** — Extracts a subset with Python-style Start, End and Step.
+- **List_Reverse** — Reverses a list.
+- **List_Shuffle** — Randomizes order; a non-zero seed gives repeatable output.
+- **List_Sample** — Returns a random subset without replacement; a non-zero seed gives repeatable output.
 
-#### Relational & Set Actions (JSON)
+#### Update Actions
 
-**List_Zip** — Pairs two JSON lists element-by-element into objects with caller-specified key names. Truncates to the shorter list.
+- **List_UpdateAt** — Updates one property on one element and returns the previous value.
+- **List_UpdateMultipleAt** — Applies the same property update at multiple indices.
+- **List_ReplaceWhere** — Applies the same property update to every element matching AND/OR conditions.
 
-**List_GroupBy** — Groups a flat JSON list by a property value (nested paths + array indexing supported). Returns an array of `{Key, Items}` objects in first-seen order.
+#### Aggregation Actions
 
-**List_GroupByMultiple** — N-key generalisation of `List_GroupBy`. Groups a JSON list by an **ordered list of property paths** (composite key). Each output group emits one field per key (labelled by `KeyNames[i]`, defaulting to `Key0`, `Key1`, …) plus the items array (`ItemsFieldName`, defaulting to `Items`). Composite keys are joined internally with the ASCII Unit Separator so distinct tuples never collide.
-
-**List_ZipGroupByMultiple** — N-key generalisation of the two-list cogroup. Cogroups two lists by an ordered list of property paths per side (both sides must supply the same number of paths). Each output group holds one field per key column plus two named arrays (`KeyNameA` / `KeyNameB`).
-
-**List_ZipManyGroupByMultiple** — M-list, N-key cogroup. Generalises `List_ZipManyGroupBy` to composite keys. `KeyProperties` is a flat list in list-major order — entries `[i*KeyCount .. i*KeyCount + KeyCount - 1]` supply the key paths for `ListsJson[i]`. Missing key values collapse into the shared `"Unknown"` bucket per key column.
-
-**List_Difference** — Computes the set difference (A − B) matching on a key property. Supports nested paths, array indexing, comparison operators, and case sensitivity.
-
-#### Transformation & Randomization Actions (JSON)
-
-**List_Chunk** — Splits a JSON list into an array of fixed-size sublists. The last chunk may be smaller. `ChunkSize <= 0` or an empty source returns `[]`. Ideal for batching API payloads.
-
-**List_DistinctBy** — Filters to unique elements by a property key (first occurrence wins). Empty property dedupes on the entire item. Works on structures — native `Distinct` in Service Studio only supports basic types.
-
-**List_Slice** — Python/JavaScript-style slicing with `Start`, `End`, `Step`. Negative indices count from the end. `End == 0` is a sentinel meaning "to end of list" (forward step) or "past the beginning" (backward step). Negative `Step` reverses the walk.
-
-**List_Shuffle** — Randomises order via Fisher-Yates. `Seed == 0` uses a cryptographically-seeded RNG (`RandomNumberGenerator`); any non-zero seed produces a reproducible permutation. Source list is not mutated.
-
-**List_UpdateAt** — Sets a property of the item at a given index and returns the previous value. Negative indices count from the end. Nested paths are supported; missing intermediate objects are created (arrays are not auto-created).
+- **List_MinBy** — Returns the element with the smallest value at a property path.
+- **List_MaxBy** — Returns the element with the largest value at a property path.
+- **List_Aggregate** — Calculates Sum, Avg, Min, Max, Count, or CountDistinct over a property path.
 
 ---
 
 ### Comparison Operators
 
-The condition-based actions accept an operator:
+Use these Text values in `ComparisonOperator` and `Condition.Operator`:
 
 | Operator | Behaviour |
 |----------|-----------|
-| `Equals` (default), `""` | Exact match (per `caseSensitive` flag) |
-| `NotEquals`, `!=` | Inverse of Equals |
-| `Contains` | Substring match |
-| `StartsWith`, `EndsWith` | Prefix / suffix match |
-| `GreaterThan`, `>` / `LessThan`, `<` | Numeric comparison |
-| `GreaterOrEqual`, `>=` / `LessOrEqual`, `<=` | Numeric with boundary |
+| `Equals` or empty | Exact match |
+| `NotEquals` or `!=` | Not equal |
+| `Contains` | Text contains the value |
+| `StartsWith` | Text starts with the value |
+| `EndsWith` | Text ends with the value |
+| `GreaterThan` or `>` | Numeric greater than |
+| `LessThan` or `<` | Numeric less than |
+| `GreaterOrEqual` or `>=` | Numeric greater than or equal |
+| `LessOrEqual` or `<=` | Numeric less than or equal |
 
-The `caseSensitive` boolean (default `false`) toggles case sensitivity for string operators. Numeric operators ignore it.
+`LogicalOperator` accepts `AND` or `OR`; empty means `AND`. `List_Aggregate` accepts `Sum`, `Avg`, `Min`, `Max`, `Count`, or `CountDistinct`.
 
 ---
 
 ### Property Paths
 
-`PropertyName`, `MatchKey`, and every `Condition.Path` support both dot navigation and array indexing:
+Property inputs and `Condition.Path` support dot navigation and array indexing:
 
 ```
-Address.City             →  obj["Address"]["City"]
-Items[0].Name            →  obj["Items"][0]["Name"]
-Tags[-1]                 →  last element of Tags
-Groups[0].Members[-1]    →  mix of dots and indexing at multiple depths
+Address.City
+Items[0].Name
+Tags[-1]
+Groups[0].Members[-1].Email
 ```
 
-CamelCase fallback is applied at each segment. Negative indices count from the end.
-
----
-
-### Multiple Conditions
-
-`List_PopByConditions`, `List_PopMultipleByConditions`, `List_PartitionByConditions`, and `List_ReplaceWhere` accept a `Condition` Record List. Each entry:
-
-```
-Condition {
-  Path          = "Status"       // property path (nested + array indexing)
-  Operator      = Operators.Equals
-  Value         = "Active"       // target value as text
-  CaseSensitive = False          // optional, default False
-}
-```
-
-Combine any number of entries and pass `LogicalOperator = LogicalOperators.AND` (all must match) or `LogicalOperators.OR` (at least one). Passing an empty list returns the source unchanged.
-
-### Constant classes
-
-Operator strings are exposed as compile-time constants — no more magic strings:
-
-- `Operators` — `Equals`, `NotEquals`, `Contains`, `StartsWith`, `EndsWith`, `GreaterThan`, `LessThan`, `GreaterOrEqual`, `LessOrEqual`
-- `LogicalOperators` — `AND`, `OR`
-- `AggregateOperations` — `Sum`, `Avg`, `Min`, `Max`, `Count`, `CountDistinct` (used by `List_Aggregate`)
-
-Symbol aliases (`!=`, `>`, `<`, `>=`, `<=`) are still accepted for backwards compatibility.
-
----
-
-### Search Direction
-
-`List_PopByCondition` and `List_PopByConditions` accept a `SearchFromEnd` boolean:
-
-- `false` (default) — pops the FIRST match, iterating from the beginning
-- `true` — pops the LAST match, iterating from the end
-
-`List_PopMultipleByCondition` and `List_PopMultipleByConditions` always pop every match, so they do not need this flag.
+Negative indices count from the end. Each name segment also tries a camelCase fallback.
 
 ---
 
 ### How to Use
 
-1. Import the extension XIF through **Service Center** or **LifeTime**.
+1. Install **ListUtils O11** from Forge.
+2. In Service Studio, open **Manage Dependencies**, select the **ListUtils** extension, and tick the actions and structures you need.
+3. Serialize the source Record List with **JSON Serialize**.
+4. Call the ListUtils action.
+5. Deserialize the returned JSON with **JSON Deserialize**.
 
-2. In **Service Studio**, add **ListUtilsServerSide** as a dependency (Ctrl+Q → search → tick the actions).
-
-3. In any Server Action:
-
-```
-[Your Structure List]
-       │
-       ▼
-┌──────────────────────┐
-│    JSON Serialize    │ ───► Converts Structure List to plain text
-└──────────────────────┘
-       │
-       ▼
-┌──────────────────────┐
-│  ListUtils Action    │ ───► Manipulates (pop, zip, group, diff)
-└──────────────────────┘
-       │
-       ├───► [updatedListJson]  ───► JSON Deserialize → Structure List
-       └───► [poppedElementJson] ──► JSON Deserialize → Structure Record
-```
-
-4. For index-based actions (`List_Pop`, `List_PopMultiple`), serialize your `List of Text` (or any Record List) with `JSONSerialize` first — every action consumes and returns JSON strings.
+For multi-condition actions, build a `Condition` Record List. For path, key-name, label, and multi-list inputs, build a `TextItem` Record List.
 
 ---
 
 ### Features
 
-- **33 server-side actions** covering the most common list manipulation gaps
-- **Generic structure support** via JSON serialization — works with any OutSystems Structure
-- **First-class `Condition` Structure** for multi-condition filtering — no hand-authored JSON
-- **9 comparison operators** (Equals, NotEquals, Contains, StartsWith, EndsWith, GreaterThan, LessThan, GreaterOrEqual, LessOrEqual) with symbol aliases
-- **`Operators`, `LogicalOperators`, `AggregateOperations` constant classes** — IDE autocomplete and compile-time typo detection instead of magic strings
-- **Multiple conditions with AND/OR** — combine any number of conditions per query
-- **Case sensitivity toggle** — per-action flag or per-condition field in multi-condition mode
-- **Nested property paths + array indexing** — dot navigation, positive/negative indices, mixed at any depth
-- **CamelCase fallback** applied at every path segment
-- **O(N) performance** for all operations — no nested loops
-- **Null-safe** — empty or null inputs return empty results, never exceptions
-- **Stateless** — no configuration, no site properties, no persistent state
+- **33 server actions** for common list-processing gaps in OutSystems 11.
+- **Any data shape** through JSON Serialize and JSON Deserialize.
+- **Typed `Condition` records** for multi-condition filtering and updates.
+- **AND/OR conditions** with nine comparison operators.
+- **Nested property paths and array indexing**, including negative indices.
+- **Composite keys and multi-list cogrouping**.
+- **Deterministic shuffle and sample** with non-zero seeds.
+- **Stateless** — no Site Properties, database tables, or configuration screens.
+
+---
+
+### Verified Runtime
+
+All 33 actions were verified in a published O11 Reactive test app on 29 October 2026. The regression dashboard used deterministic inputs with 5,000 elements in every data list and passed 33 of 33 cases.
 
 ---
 
 ### Installation
 
-Import the extension XIF through Service Center or LifeTime, then reference it in Service Studio. The `System.Text.Json` dependency and its transitive assemblies ship inside the XIF — nothing else needs to be installed on the server.
+Install from Forge, or upload the XIF through Service Center or LifeTime and publish it. System.Text.Json 8.0.5 and its eight .NET Framework support assemblies ship inside the extension.
 
 ### Compatibility
 
-- Requires .NET Framework 4.8 on the O11 server.
-- Bundles `System.Text.Json` 8.0.5 (MIT license). If another extension on the same server bundles a different version, use a binding redirect in the eSpace web.config.
+- Requires an OutSystems 11 environment running .NET Framework 4.8.
+- Bundles System.Text.Json 8.0.5 and its runtime support assemblies.
+- If another extension loads incompatible versions of the same assemblies, configure binding redirects.

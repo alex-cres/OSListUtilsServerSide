@@ -3,6 +3,8 @@
 > This file is the source of truth for the component description published on OutSystems Forge.
 > Update it whenever the component's behaviour, actions, or interface changes.
 > It is versioned alongside the codebase — a copy is kept per release under `docs/versions/`.
+>
+> **O11 version:** https://www.outsystems.com/forge/component-overview/25935/listutils-o11
 
 ---
 
